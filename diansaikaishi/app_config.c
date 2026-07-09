@@ -31,7 +31,7 @@ void AppConfig_InitDefault(void)
     g_appConfig.min_target_laps = 1;
     g_appConfig.max_target_laps = 99;
 
-    g_appConfig.base_speed = 220;
+    g_appConfig.base_speed = 160;
     g_appConfig.min_base_speed = 100;
     g_appConfig.max_base_speed = 700;
 

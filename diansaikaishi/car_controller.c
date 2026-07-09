@@ -5,6 +5,10 @@
 #include "motor.h"
 #include "track_sensor.h"
 
+#ifndef TRACK_REVERSE_CORRECTION
+#define TRACK_REVERSE_CORRECTION    (0)
+#endif
+
 AppRuntime g_appRuntime;
 
 static int16_t clamp_i16(int32_t value, int16_t minValue, int16_t maxValue)
@@ -63,12 +67,16 @@ static void update_tracking(void)
         (int16_t)-g_appConfig.max_correction,
         g_appConfig.max_correction);
 
+    if (TRACK_REVERSE_CORRECTION) {
+        correction = -correction;
+    }
+
     g_appRuntime.correction = (int16_t)correction;
     g_appRuntime.left_speed = clamp_i16(
-        (int32_t)g_appConfig.base_speed - g_appRuntime.correction,
+        (int32_t)g_appConfig.base_speed + g_appRuntime.correction,
         -MOTOR_MAX_DUTY, MOTOR_MAX_DUTY);
     g_appRuntime.right_speed = clamp_i16(
-        (int32_t)g_appConfig.base_speed + g_appRuntime.correction,
+        (int32_t)g_appConfig.base_speed - g_appRuntime.correction,
         -MOTOR_MAX_DUTY, MOTOR_MAX_DUTY);
 
     Motor_SetSpeed(g_appRuntime.left_speed, g_appRuntime.right_speed);
