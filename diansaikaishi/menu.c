@@ -75,6 +75,7 @@ static void menu_handle_status_key(KeyEvent event)
         case KEY2_SHORT:
             switch (state) {
                 case CAR_STATE_READY:
+                    CarController_ResetRuntime();
                     CarState_Set(CAR_STATE_RUNNING);
                     break;
                 case CAR_STATE_RUNNING:

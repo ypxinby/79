@@ -1,4 +1,5 @@
 #include "oled_ui.h"
+#include "app.h"
 #include "app_config.h"
 #include "car_controller.h"
 #include "car_state.h"
@@ -13,6 +14,8 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
     OLED_SetCursor(0, 0);
     OLED_PrintString("ST:");
     OLED_PrintString(CarState_ToString(CarState_Get()));
+    OLED_PrintString(" M:");
+    OLED_PrintString(CarController_RunModeToString(CarController_GetRunMode()));
 
     OLED_SetCursor(2, 0);
     OLED_PrintString("LAP:");
@@ -57,6 +60,8 @@ static void print_sensor_page(uint8_t raw, uint8_t blackCount, int16_t error)
 {
     OLED_SetCursor(0, 0);
     OLED_PrintString("SENSOR");
+    OLED_PrintString(" M:");
+    OLED_PrintString(CarController_RunModeToString(CarController_GetRunMode()));
 
     OLED_SetCursor(2, 0);
     OLED_PrintString("RAW:");
@@ -69,6 +74,8 @@ static void print_sensor_page(uint8_t raw, uint8_t blackCount, int16_t error)
     OLED_SetCursor(6, 0);
     OLED_PrintString("LOST:");
     OLED_PrintInt16((int16_t)g_appRuntime.lost_count);
+    OLED_PrintString(" T:");
+    OLED_PrintInt16((int16_t)g_trackTurnDebug);
     OLED_PrintString(" E:");
     OLED_PrintInt16(error);
 }

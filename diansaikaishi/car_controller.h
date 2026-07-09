@@ -3,19 +3,32 @@
 
 #include <stdint.h>
 
+typedef enum {
+    TRACK_MODE_SEEK_LINE = 0,
+    TRACK_MODE_FOLLOW_LINE,
+    TRACK_MODE_TURN_LEFT_90,
+    TRACK_MODE_TURN_RIGHT_90,
+    TRACK_MODE_LOST_RECOVER
+} TrackRunMode;
+
 typedef struct {
     uint8_t current_lap;
     uint8_t sensor_raw;
     uint8_t black_count;
+    TrackRunMode run_mode;
+    uint8_t has_seen_line;
 
     int16_t line_error;
     int16_t last_error;
+    int16_t last_valid_error;
     int16_t correction;
 
     int16_t left_speed;
     int16_t right_speed;
 
     uint8_t lost_count;
+    uint16_t lost_elapsed_ms;
+    uint16_t turn_elapsed_ms;
     uint16_t lap_cooldown_ms;
 } AppRuntime;
 
@@ -24,5 +37,7 @@ extern AppRuntime g_appRuntime;
 void CarController_Init(void);
 void CarController_ResetRuntime(void);
 void CarController_Update_20ms(void);
+TrackRunMode CarController_GetRunMode(void);
+const char *CarController_RunModeToString(TrackRunMode mode);
 
 #endif

@@ -88,3 +88,29 @@ bool TrackSensor_IsStartLine(uint8_t raw, uint8_t threshold)
 {
     return TrackSensor_CountBlack(raw) >= threshold;
 }
+
+bool TrackSensor_IsLineDetected(uint8_t raw)
+{
+    return (raw & TRACK_RAW_VALID_MASK) != 0U;
+}
+
+bool TrackSensor_IsCenterDetected(uint8_t raw)
+{
+    return (raw & TRACK_CENTER_MASK) != 0U;
+}
+
+TrackTurnType TrackSensor_DetectTurn(uint8_t raw, int16_t error)
+{
+    uint8_t leftEdge = (uint8_t)(raw & TRACK_LEFT_EDGE_MASK);
+    uint8_t rightEdge = (uint8_t)(raw & TRACK_RIGHT_EDGE_MASK);
+
+    if ((leftEdge != 0U) && (rightEdge == 0U) && (error <= -200)) {
+        return TRACK_TURN_LEFT_90;
+    }
+
+    if ((rightEdge != 0U) && (leftEdge == 0U) && (error >= 200)) {
+        return TRACK_TURN_RIGHT_90;
+    }
+
+    return TRACK_TURN_NONE;
+}

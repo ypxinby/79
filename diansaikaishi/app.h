@@ -10,6 +10,8 @@ extern volatile uint8_t g_keyEvent;
 extern volatile uint8_t g_carStateDebug;
 extern volatile uint8_t g_oledPageDebug;
 extern volatile uint8_t g_paramItemDebug;
+extern volatile uint8_t g_trackModeDebug;
+extern volatile uint8_t g_trackTurnDebug;
 
 void App_Init(void);
 void App_Update_20ms(void);

@@ -18,6 +18,8 @@ volatile uint8_t g_keyEvent;
 volatile uint8_t g_carStateDebug;
 volatile uint8_t g_oledPageDebug;
 volatile uint8_t g_paramItemDebug;
+volatile uint8_t g_trackModeDebug;
+volatile uint8_t g_trackTurnDebug;
 
 void App_Init(void)
 {
@@ -53,6 +55,9 @@ void App_Update_20ms(void)
     g_carStateDebug = (uint8_t)CarState_Get();
     g_oledPageDebug = (uint8_t)Menu_GetPage();
     g_paramItemDebug = (uint8_t)Menu_GetParamItem();
+    g_trackModeDebug = (uint8_t)CarController_GetRunMode();
+    g_trackTurnDebug =
+        (uint8_t)TrackSensor_DetectTurn(g_trackRaw, g_trackError);
 
     OledUi_Update_20ms(g_trackRaw, g_trackBlackCount, g_trackError,
         g_keyEvent);

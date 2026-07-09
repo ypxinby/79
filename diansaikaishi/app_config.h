@@ -12,6 +12,18 @@ typedef struct {
     int16_t min_base_speed;
     int16_t max_base_speed;
 
+    int16_t search_speed;
+    int16_t min_search_speed;
+    int16_t max_search_speed;
+
+    int16_t recover_speed;
+    int16_t min_recover_speed;
+    int16_t max_recover_speed;
+
+    int16_t turn_speed;
+    int16_t min_turn_speed;
+    int16_t max_turn_speed;
+
     int16_t max_correction;
     int16_t min_max_correction;
     int16_t max_max_correction;
@@ -23,6 +35,9 @@ typedef struct {
     uint8_t start_line_threshold;
     uint8_t lost_line_threshold;
     uint16_t lap_cooldown_ms;
+    uint16_t lost_recover_max_ms;
+    uint16_t turn_min_ms;
+    uint16_t turn_max_ms;
 } AppConfig;
 
 extern AppConfig g_appConfig;
