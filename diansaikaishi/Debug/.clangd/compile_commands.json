@@ -1,0 +1,77 @@
+[
+   {
+      "directory" : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug",
+      "command"   : "clang++ -D__MSPM0G3507__ -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi\" -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source/third_party/CMSIS/Core/Include\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -xc",
+      "file"      : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug/ti_msp_dl_config.c"
+   },
+   {
+      "directory" : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug",
+      "command"   : "clang++ -D__MSPM0G3507__ -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi\" -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source/third_party/CMSIS/Core/Include\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -xc",
+      "file"      : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/empty.c"
+   },
+   {
+      "directory" : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug",
+      "command"   : "clang++ -D__MSPM0G3507__ -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi\" -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source/third_party/CMSIS/Core/Include\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -xc",
+      "file"      : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/encoder.c"
+   },
+   {
+      "directory" : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug",
+      "command"   : "clang++ -D__MSPM0G3507__ -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi\" -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source/third_party/CMSIS/Core/Include\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -xc",
+      "file"      : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/motor.c"
+   },
+   {
+      "directory" : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug",
+      "command"   : "clang++ -D__MSPM0G3507__ -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi\" -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source/third_party/CMSIS/Core/Include\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -xc",
+      "file"      : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/pid.c"
+   },
+   {
+      "directory" : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug",
+      "command"   : "clang++ -D__MSPM0G3507__ -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi\" -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source/third_party/CMSIS/Core/Include\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -xc",
+      "file"      : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/straight_control.c"
+   },
+   {
+      "directory" : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug",
+      "command"   : "clang++ -D__MSPM0G3507__ -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi\" -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source/third_party/CMSIS/Core/Include\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -xc",
+      "file"      : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/track_sensor.c"
+   },
+   {
+      "directory" : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug",
+      "command"   : "clang++ -D__MSPM0G3507__ -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi\" -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source/third_party/CMSIS/Core/Include\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -xc",
+      "file"      : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/oled.c"
+   },
+   {
+      "directory" : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug",
+      "command"   : "clang++ -D__MSPM0G3507__ -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi\" -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source/third_party/CMSIS/Core/Include\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -xc",
+      "file"      : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/oled_ui.c"
+   },
+   {
+      "directory" : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug",
+      "command"   : "clang++ -D__MSPM0G3507__ -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi\" -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source/third_party/CMSIS/Core/Include\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -xc",
+      "file"      : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/key.c"
+   },
+   {
+      "directory" : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug",
+      "command"   : "clang++ -D__MSPM0G3507__ -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi\" -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source/third_party/CMSIS/Core/Include\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -xc",
+      "file"      : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/app_config.c"
+   },
+   {
+      "directory" : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug",
+      "command"   : "clang++ -D__MSPM0G3507__ -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi\" -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source/third_party/CMSIS/Core/Include\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -xc",
+      "file"      : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/car_state.c"
+   },
+   {
+      "directory" : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug",
+      "command"   : "clang++ -D__MSPM0G3507__ -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi\" -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source/third_party/CMSIS/Core/Include\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -xc",
+      "file"      : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/menu.c"
+   },
+   {
+      "directory" : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug",
+      "command"   : "clang++ -D__MSPM0G3507__ -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi\" -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source/third_party/CMSIS/Core/Include\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -xc",
+      "file"      : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/app.c"
+   },
+   {
+      "directory" : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug",
+      "command"   : "clang++ -D__MSPM0G3507__ -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi\" -I\"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source/third_party/CMSIS/Core/Include\" -I\"C:/TI/mspm0_sdk_2_05_01_00/source\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/armv7em-ti-none-eabihf/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c++/v1\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib/clang/18/include\" -isystem\"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/include/c\" -xc",
+      "file"      : "D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/car_controller.c"
+   }
+]
