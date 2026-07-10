@@ -20,6 +20,7 @@ typedef struct {
     uint8_t i2c_addr;
     uint8_t last_who_am_i;
     uint8_t last_error_code;
+    uint8_t bus_state;
 } ImuRuntime;
 
 bool Imu_Init(void);

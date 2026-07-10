@@ -18,7 +18,7 @@
 #define MPU6050_PWR_MGMT_WAKE          (0x00U)
 #define MPU6050_SMPLRT_DIV_1KHZ_125HZ  (0x07U)
 
-#define IMU_I2C_DELAY_CYCLES           (36U)
+#define IMU_I2C_DELAY_CYCLES           (160U)
 
 #define IMU_ERROR_NONE                 (0U)
 #define IMU_ERROR_WHO_READ_68          (1U)
@@ -101,6 +101,25 @@ static bool imu_sda_read(void)
     return (DL_GPIO_readPins(GPIO_IMU_PORT, GPIO_IMU_SDA_PIN) != 0U);
 }
 
+static bool imu_scl_read(void)
+{
+    imu_scl_high();
+    return (DL_GPIO_readPins(GPIO_IMU_PORT, GPIO_IMU_SCL_PIN) != 0U);
+}
+
+static void imu_update_bus_state(void)
+{
+    uint8_t state = 0;
+
+    if (imu_sda_read()) {
+        state |= 1U;
+    }
+    if (imu_scl_read()) {
+        state |= 2U;
+    }
+    g_imuRuntime.bus_state = state;
+}
+
 static void imu_i2c_init_pins(void)
 {
 #ifdef GPIO_IMU_SDA_IOMUX
@@ -113,6 +132,7 @@ static void imu_i2c_init_pins(void)
     DL_GPIO_setPins(GPIO_IMU_PORT, GPIO_IMU_SDA_PIN | GPIO_IMU_SCL_PIN);
     imu_sda_high();
     imu_scl_high();
+    imu_update_bus_state();
 }
 
 static void imu_i2c_start(void)
@@ -249,6 +269,7 @@ static void imu_reset_runtime(void)
     g_imuRuntime.i2c_addr = MPU6050_I2C_ADDR_AD0_LOW;
     g_imuRuntime.last_who_am_i = 0;
     g_imuRuntime.last_error_code = IMU_ERROR_NONE;
+    g_imuRuntime.bus_state = 0;
 }
 
 bool Imu_Init(void)
@@ -366,6 +387,7 @@ void Imu_Update(float dt_s)
 
     if (!g_imuRuntime.initialized) {
         g_imuRuntime.data_valid = false;
+        imu_update_bus_state();
         return;
     }
 

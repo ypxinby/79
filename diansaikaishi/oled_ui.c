@@ -111,8 +111,8 @@ static void print_imu_page(void)
     OLED_SetCursor(2, 0);
     OLED_PrintString("ID:");
     OLED_PrintInt16((int16_t)imu->last_who_am_i);
-    OLED_PrintString(" A:");
-    OLED_PrintInt16((int16_t)imu->i2c_addr);
+    OLED_PrintString(" B:");
+    OLED_PrintInt16((int16_t)imu->bus_state);
 
     OLED_SetCursor(4, 0);
     OLED_PrintString("R:");
