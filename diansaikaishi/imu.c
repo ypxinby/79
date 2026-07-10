@@ -364,6 +364,11 @@ void Imu_Update(float dt_s)
     (void)dt_s;
     g_imuRuntime.update_count++;
 
+    if (!g_imuRuntime.initialized) {
+        g_imuRuntime.data_valid = false;
+        return;
+    }
+
     if (!Imu_ReadRawGyroZ(&raw_gyro_z)) {
         return;
     }
