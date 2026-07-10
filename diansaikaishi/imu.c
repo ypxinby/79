@@ -18,8 +18,19 @@
 #define MPU6050_PWR_MGMT_WAKE          (0x00U)
 #define MPU6050_SMPLRT_DIV_1KHZ_125HZ  (0x07U)
 
-#define IMU_I2C_ADDR                   (MPU6050_I2C_ADDR_AD0_LOW)
 #define IMU_I2C_DELAY_CYCLES           (36U)
+
+#define IMU_ERROR_NONE                 (0U)
+#define IMU_ERROR_WHO_READ_68          (1U)
+#define IMU_ERROR_WHO_READ_69          (2U)
+#define IMU_ERROR_WHO_VALUE            (3U)
+#define IMU_ERROR_PWR_WRITE            (4U)
+#define IMU_ERROR_SAMPLE_WRITE         (5U)
+#define IMU_ERROR_CONFIG_WRITE         (6U)
+#define IMU_ERROR_GYRO_CONFIG_WRITE    (7U)
+#define IMU_ERROR_NOT_INITIALIZED      (8U)
+#define IMU_ERROR_GYRO_READ            (9U)
+#define IMU_ERROR_NULL_POINTER         (10U)
 
 #ifndef GPIO_IMU_PORT
 #define GPIO_IMU_PORT                  (GPIOA)
@@ -174,7 +185,7 @@ static bool mpu6050_write_reg(uint8_t reg, uint8_t value)
     bool ok;
 
     imu_i2c_start();
-    ok = imu_i2c_write_byte((uint8_t)(IMU_I2C_ADDR << 1));
+    ok = imu_i2c_write_byte((uint8_t)(g_imuRuntime.i2c_addr << 1));
     ok = ok && imu_i2c_write_byte(reg);
     ok = ok && imu_i2c_write_byte(value);
     imu_i2c_stop();
@@ -191,7 +202,7 @@ static bool mpu6050_read_regs(uint8_t reg, uint8_t *buffer, uint8_t length)
     }
 
     imu_i2c_start();
-    ok = imu_i2c_write_byte((uint8_t)(IMU_I2C_ADDR << 1));
+    ok = imu_i2c_write_byte((uint8_t)(g_imuRuntime.i2c_addr << 1));
     ok = ok && imu_i2c_write_byte(reg);
 
     if (!ok) {
@@ -200,7 +211,7 @@ static bool mpu6050_read_regs(uint8_t reg, uint8_t *buffer, uint8_t length)
     }
 
     imu_i2c_start();
-    ok = imu_i2c_write_byte((uint8_t)((IMU_I2C_ADDR << 1) | 1U));
+    ok = imu_i2c_write_byte((uint8_t)((g_imuRuntime.i2c_addr << 1) | 1U));
     if (!ok) {
         imu_i2c_stop();
         return false;
@@ -235,6 +246,9 @@ static void imu_reset_runtime(void)
     g_imuRuntime.data_valid = false;
     g_imuRuntime.update_count = 0;
     g_imuRuntime.read_error_count = 0;
+    g_imuRuntime.i2c_addr = MPU6050_I2C_ADDR_AD0_LOW;
+    g_imuRuntime.last_who_am_i = 0;
+    g_imuRuntime.last_error_code = IMU_ERROR_NONE;
 }
 
 bool Imu_Init(void)
@@ -246,36 +260,52 @@ bool Imu_Init(void)
 #if ENABLE_IMU
     imu_i2c_init_pins();
 
+    g_imuRuntime.i2c_addr = MPU6050_I2C_ADDR_AD0_LOW;
     if (!mpu6050_read_reg(MPU6050_REG_WHO_AM_I, &who_am_i)) {
+        g_imuRuntime.last_error_code = IMU_ERROR_WHO_READ_68;
         g_imuRuntime.read_error_count++;
-        return false;
+
+        g_imuRuntime.i2c_addr = MPU6050_I2C_ADDR_AD0_HIGH;
+        if (!mpu6050_read_reg(MPU6050_REG_WHO_AM_I, &who_am_i)) {
+            g_imuRuntime.last_error_code = IMU_ERROR_WHO_READ_69;
+            g_imuRuntime.read_error_count++;
+            g_imuRuntime.i2c_addr = MPU6050_I2C_ADDR_AD0_LOW;
+            return false;
+        }
     }
 
+    g_imuRuntime.last_who_am_i = who_am_i;
     if (who_am_i != MPU6050_WHO_AM_I_VALUE) {
+        g_imuRuntime.last_error_code = IMU_ERROR_WHO_VALUE;
         g_imuRuntime.read_error_count++;
         return false;
     }
 
     if (!mpu6050_write_reg(MPU6050_REG_PWR_MGMT_1, MPU6050_PWR_MGMT_WAKE)) {
+        g_imuRuntime.last_error_code = IMU_ERROR_PWR_WRITE;
         g_imuRuntime.read_error_count++;
         return false;
     }
     if (!mpu6050_write_reg(MPU6050_REG_SMPLRT_DIV,
             MPU6050_SMPLRT_DIV_1KHZ_125HZ)) {
+        g_imuRuntime.last_error_code = IMU_ERROR_SAMPLE_WRITE;
         g_imuRuntime.read_error_count++;
         return false;
     }
     if (!mpu6050_write_reg(MPU6050_REG_CONFIG, MPU6050_CONFIG_DLPF_44HZ)) {
+        g_imuRuntime.last_error_code = IMU_ERROR_CONFIG_WRITE;
         g_imuRuntime.read_error_count++;
         return false;
     }
     if (!mpu6050_write_reg(MPU6050_REG_GYRO_CONFIG,
             MPU6050_GYRO_CONFIG_250DPS)) {
+        g_imuRuntime.last_error_code = IMU_ERROR_GYRO_CONFIG_WRITE;
         g_imuRuntime.read_error_count++;
         return false;
     }
 
     g_imuRuntime.initialized = true;
+    g_imuRuntime.last_error_code = IMU_ERROR_NONE;
 #endif
 
     return g_imuRuntime.initialized;
@@ -286,6 +316,7 @@ bool Imu_ReadRawGyroZ(int16_t *raw_gyro_z)
     uint8_t data[2];
 
     if (raw_gyro_z == (int16_t *)0) {
+        g_imuRuntime.last_error_code = IMU_ERROR_NULL_POINTER;
         g_imuRuntime.read_error_count++;
         return false;
     }
@@ -293,21 +324,25 @@ bool Imu_ReadRawGyroZ(int16_t *raw_gyro_z)
 #if ENABLE_IMU
     if (!g_imuRuntime.initialized) {
         g_imuRuntime.data_valid = false;
+        g_imuRuntime.last_error_code = IMU_ERROR_NOT_INITIALIZED;
         g_imuRuntime.read_error_count++;
         return false;
     }
 
     if (!mpu6050_read_regs(MPU6050_REG_GYRO_ZOUT_H, data, 2U)) {
         g_imuRuntime.data_valid = false;
+        g_imuRuntime.last_error_code = IMU_ERROR_GYRO_READ;
         g_imuRuntime.read_error_count++;
         return false;
     }
 
     *raw_gyro_z = (int16_t)(((uint16_t)data[0] << 8) | data[1]);
+    g_imuRuntime.last_error_code = IMU_ERROR_NONE;
     return true;
 #else
     *raw_gyro_z = 0;
     g_imuRuntime.data_valid = false;
+    g_imuRuntime.last_error_code = IMU_ERROR_NOT_INITIALIZED;
     g_imuRuntime.read_error_count++;
     return false;
 #endif

@@ -105,15 +105,19 @@ static void print_imu_page(void)
     } else {
         OLED_PrintString("ERR");
     }
-    OLED_PrintString(" D:");
-    OLED_PrintInt16((int16_t)imu->data_valid);
+    OLED_PrintString(" C:");
+    OLED_PrintInt16((int16_t)imu->last_error_code);
 
     OLED_SetCursor(2, 0);
-    OLED_PrintString("RAW:");
-    OLED_PrintInt16(imu->raw_gyro_z);
+    OLED_PrintString("ID:");
+    OLED_PrintInt16((int16_t)imu->last_who_am_i);
+    OLED_PrintString(" A:");
+    OLED_PrintInt16((int16_t)imu->i2c_addr);
 
     OLED_SetCursor(4, 0);
-    OLED_PrintString("GZ10:");
+    OLED_PrintString("R:");
+    OLED_PrintInt16(imu->raw_gyro_z);
+    OLED_PrintString(" G:");
     OLED_PrintInt16(gyroDpsX10);
 
     OLED_SetCursor(6, 0);

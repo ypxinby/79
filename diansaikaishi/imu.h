@@ -16,6 +16,10 @@ typedef struct {
 
     uint32_t update_count;
     uint32_t read_error_count;
+
+    uint8_t i2c_addr;
+    uint8_t last_who_am_i;
+    uint8_t last_error_code;
 } ImuRuntime;
 
 bool Imu_Init(void);
