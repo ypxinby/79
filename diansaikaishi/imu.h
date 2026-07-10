@@ -7,6 +7,7 @@
 typedef struct {
     int16_t raw_gyro_z;
     float gyro_z_dps;
+    float corrected_gyro_z_dps;
     float gyro_bias_dps;
     float yaw_deg;
 

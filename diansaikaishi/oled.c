@@ -114,6 +114,7 @@ static const uint8_t *oled_get_glyph(char ch)
     static const uint8_t eight[5] = {0x36, 0x49, 0x49, 0x49, 0x36};
     static const uint8_t nine[5]  = {0x06, 0x49, 0x49, 0x29, 0x1E};
     static const uint8_t glyphA[5] = {0x7E, 0x11, 0x11, 0x11, 0x7E};
+    static const uint8_t glyphB[5] = {0x7F, 0x49, 0x49, 0x49, 0x36};
     static const uint8_t glyphC[5] = {0x3E, 0x41, 0x41, 0x41, 0x22};
     static const uint8_t glyphD[5] = {0x7F, 0x41, 0x41, 0x22, 0x1C};
     static const uint8_t glyphE[5] = {0x7F, 0x49, 0x49, 0x49, 0x41};
@@ -134,6 +135,7 @@ static const uint8_t *oled_get_glyph(char ch)
     static const uint8_t glyphW[5] = {0x7F, 0x20, 0x18, 0x20, 0x7F};
     static const uint8_t glyphX[5] = {0x63, 0x14, 0x08, 0x14, 0x63};
     static const uint8_t glyphY[5] = {0x07, 0x08, 0x70, 0x08, 0x07};
+    static const uint8_t glyphb[5] = {0x7F, 0x48, 0x48, 0x48, 0x30};
 
     switch (ch) {
         case ' ': return space;
@@ -151,6 +153,7 @@ static const uint8_t *oled_get_glyph(char ch)
         case '8': return eight;
         case '9': return nine;
         case 'A': return glyphA;
+        case 'B': return glyphB;
         case 'C': return glyphC;
         case 'D': return glyphD;
         case 'E': return glyphE;
@@ -171,6 +174,7 @@ static const uint8_t *oled_get_glyph(char ch)
         case 'W': return glyphW;
         case 'X': return glyphX;
         case 'Y': return glyphY;
+        case 'b': return glyphb;
         default: return space;
     }
 }

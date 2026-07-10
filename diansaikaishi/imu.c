@@ -293,6 +293,7 @@ static void imu_reset_runtime(void)
 {
     g_imuRuntime.raw_gyro_z = 0;
     g_imuRuntime.gyro_z_dps = 0.0f;
+    g_imuRuntime.corrected_gyro_z_dps = 0.0f;
     g_imuRuntime.gyro_bias_dps = 0.0f;
     g_imuRuntime.yaw_deg = 0.0f;
     g_imuRuntime.initialized = false;
@@ -467,6 +468,7 @@ void Imu_Update(float dt_s)
     if (imu_abs_float(corrected_gyro_z) < g_appConfig.gyro_deadband_dps) {
         corrected_gyro_z = 0.0f;
     }
+    g_imuRuntime.corrected_gyro_z_dps = corrected_gyro_z;
     if (g_imuRuntime.calibrated) {
         g_imuRuntime.yaw_deg += corrected_gyro_z * dt_s;
     }

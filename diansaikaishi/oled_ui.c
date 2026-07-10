@@ -96,7 +96,7 @@ static void print_imu_page(void)
 {
     const ImuRuntime *imu = Imu_GetRuntime();
     int16_t gyroDpsX10 =
-        clamp_display_i16((int32_t)(imu->gyro_z_dps * 10.0f));
+        clamp_display_i16((int32_t)(imu->corrected_gyro_z_dps * 10.0f));
     int16_t biasDpsX10 =
         clamp_display_i16((int32_t)(imu->gyro_bias_dps * 10.0f));
     int16_t yawDeg = clamp_display_i16((int32_t)imu->yaw_deg);
@@ -110,7 +110,7 @@ static void print_imu_page(void)
     }
     OLED_PrintString(" C:");
     OLED_PrintInt16((int16_t)imu->last_error_code);
-    OLED_PrintString(" B:");
+    OLED_PrintString(" b:");
     OLED_PrintInt16((int16_t)imu->bus_state);
 
     OLED_SetCursor(2, 0);
