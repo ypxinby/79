@@ -21,6 +21,9 @@
 #define MPU6050_SMPLRT_DIV_1KHZ_125HZ  (0x07U)
 
 #define IMU_I2C_DELAY_CYCLES           (160U)
+#define IMU_STARTUP_DELAY_CYCLES       (3200000U)
+#define IMU_WHO_AM_I_RETRY_COUNT       (20U)
+#define IMU_WHO_AM_I_RETRY_DELAY       (160000U)
 
 #define IMU_ERROR_NONE                 (0U)
 #define IMU_ERROR_WHO_READ_68          (1U)
@@ -71,6 +74,11 @@ ImuRuntime g_imuRuntime;
 static void imu_delay(void)
 {
     delay_cycles(IMU_I2C_DELAY_CYCLES);
+}
+
+static void imu_delay_cycles(uint32_t cycles)
+{
+    delay_cycles(cycles);
 }
 
 static void imu_scl_high(void)
@@ -179,6 +187,17 @@ static void imu_i2c_stop(void)
     imu_sda_high();
 }
 
+static void imu_i2c_recover_bus(void)
+{
+    imu_sda_high();
+    for (uint8_t i = 0; i < 9U; i++) {
+        imu_scl_high();
+        imu_scl_low();
+    }
+    imu_i2c_stop();
+    imu_update_bus_state();
+}
+
 static bool imu_i2c_write_byte(uint8_t value)
 {
     bool nack;
@@ -279,6 +298,20 @@ static bool mpu6050_read_reg(uint8_t reg, uint8_t *value)
     return mpu6050_read_regs(reg, value, 1U);
 }
 
+static bool mpu6050_read_who_am_i_retry(uint8_t *who_am_i)
+{
+    for (uint8_t i = 0; i < IMU_WHO_AM_I_RETRY_COUNT; i++) {
+        if (mpu6050_read_reg(MPU6050_REG_WHO_AM_I, who_am_i)) {
+            return true;
+        }
+        g_imuRuntime.read_error_count++;
+        imu_i2c_recover_bus();
+        imu_delay_cycles(IMU_WHO_AM_I_RETRY_DELAY);
+    }
+
+    return false;
+}
+
 static float mpu6050_raw_gyro_to_dps(int16_t raw_gyro)
 {
     return ((float)raw_gyro) / MPU6050_GYRO_250DPS_SCALE;
@@ -316,19 +349,14 @@ bool Imu_Init(void)
 
 #if ENABLE_IMU
     imu_i2c_init_pins();
+    imu_delay_cycles(IMU_STARTUP_DELAY_CYCLES);
+    imu_i2c_recover_bus();
 
     g_imuRuntime.i2c_addr = MPU6050_I2C_ADDR_AD0_LOW;
-    if (!mpu6050_read_reg(MPU6050_REG_WHO_AM_I, &who_am_i)) {
+    if (!mpu6050_read_who_am_i_retry(&who_am_i)) {
         g_imuRuntime.last_error_code = IMU_ERROR_WHO_READ_68;
-        g_imuRuntime.read_error_count++;
-
-        g_imuRuntime.i2c_addr = MPU6050_I2C_ADDR_AD0_HIGH;
-        if (!mpu6050_read_reg(MPU6050_REG_WHO_AM_I, &who_am_i)) {
-            g_imuRuntime.last_error_code = IMU_ERROR_WHO_READ_69;
-            g_imuRuntime.read_error_count++;
-            g_imuRuntime.i2c_addr = MPU6050_I2C_ADDR_AD0_LOW;
-            return false;
-        }
+        g_imuRuntime.i2c_addr = MPU6050_I2C_ADDR_AD0_LOW;
+        return false;
     }
 
     g_imuRuntime.last_who_am_i = who_am_i;
