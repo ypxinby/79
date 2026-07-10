@@ -24,6 +24,9 @@
 #define IMU_STARTUP_DELAY_CYCLES       (3200000U)
 #define IMU_WHO_AM_I_RETRY_COUNT       (20U)
 #define IMU_WHO_AM_I_RETRY_DELAY       (160000U)
+#define IMU_CONFIG_SETTLE_DELAY        (16000000U)
+#define IMU_CALIBRATION_DISCARD_COUNT  (50U)
+#define IMU_CALIBRATION_SAMPLE_DELAY   (160000U)
 
 #define IMU_ERROR_NONE                 (0U)
 #define IMU_ERROR_WHO_READ_68          (1U)
@@ -446,6 +449,15 @@ bool Imu_CalibrateGyroBias(uint16_t sample_count)
         return false;
     }
 
+    imu_delay_cycles(IMU_CONFIG_SETTLE_DELAY);
+
+    for (uint16_t i = 0; i < IMU_CALIBRATION_DISCARD_COUNT; i++) {
+        int16_t raw_gyro_z;
+
+        (void)Imu_ReadRawGyroZ(&raw_gyro_z);
+        imu_delay_cycles(IMU_CALIBRATION_SAMPLE_DELAY);
+    }
+
     for (uint16_t i = 0; i < sample_count; i++) {
         int16_t raw_gyro_z;
 
@@ -453,6 +465,7 @@ bool Imu_CalibrateGyroBias(uint16_t sample_count)
             sum += raw_gyro_z;
             valid_count++;
         }
+        imu_delay_cycles(IMU_CALIBRATION_SAMPLE_DELAY);
     }
 
     min_valid_count =

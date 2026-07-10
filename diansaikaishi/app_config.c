@@ -61,7 +61,7 @@ void AppConfig_InitDefault(void)
     g_appConfig.lost_recover_max_ms = 1400;
     g_appConfig.turn_min_ms = 160;
     g_appConfig.turn_max_ms = 1400;
-    g_appConfig.gyro_deadband_dps = 0.5f;
+    g_appConfig.gyro_deadband_dps = 1.5f;
 
     g_appConfig.heading_kp = 20;
     g_appConfig.heading_kd = 5;
