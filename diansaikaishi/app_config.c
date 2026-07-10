@@ -35,6 +35,10 @@ void AppConfig_InitDefault(void)
     g_appConfig.min_base_speed = 100;
     g_appConfig.max_base_speed = 700;
 
+    g_appConfig.motor_balance = 0;
+    g_appConfig.min_motor_balance = -80;
+    g_appConfig.max_motor_balance = 80;
+
     g_appConfig.search_speed = 100;
     g_appConfig.min_search_speed = 50;
     g_appConfig.max_search_speed = 300;
@@ -58,9 +62,9 @@ void AppConfig_InitDefault(void)
     g_appConfig.start_line_threshold = 5;
     g_appConfig.lost_line_threshold = 15;
     g_appConfig.lap_cooldown_ms = 2000;
-    g_appConfig.lost_recover_max_ms = 700;
+    g_appConfig.lost_recover_max_ms = 1400;
     g_appConfig.turn_min_ms = 160;
-    g_appConfig.turn_max_ms = 700;
+    g_appConfig.turn_max_ms = 1400;
 }
 
 void AppConfig_LimitAll(void)
@@ -70,6 +74,9 @@ void AppConfig_LimitAll(void)
 
     g_appConfig.base_speed = clamp_i16(g_appConfig.base_speed,
         g_appConfig.min_base_speed, g_appConfig.max_base_speed);
+
+    g_appConfig.motor_balance = clamp_i16(g_appConfig.motor_balance,
+        g_appConfig.min_motor_balance, g_appConfig.max_motor_balance);
 
     g_appConfig.search_speed = clamp_i16(g_appConfig.search_speed,
         g_appConfig.min_search_speed, g_appConfig.max_search_speed);

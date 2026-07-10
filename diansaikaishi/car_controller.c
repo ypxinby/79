@@ -43,11 +43,19 @@ static void set_output_speed(int16_t leftSpeed, int16_t rightSpeed)
     Motor_SetSpeed(g_appRuntime.left_speed, g_appRuntime.right_speed);
 }
 
+static void set_balanced_forward_speed(int16_t leftSpeed, int16_t rightSpeed)
+{
+    set_output_speed(
+        (int16_t)((int32_t)leftSpeed + g_appConfig.motor_balance),
+        (int16_t)((int32_t)rightSpeed - g_appConfig.motor_balance));
+}
+
 static void handle_seek_line(void)
 {
     if (TrackSensor_IsLineLost(g_appRuntime.sensor_raw)) {
         g_appRuntime.correction = 0;
-        set_output_speed(g_appConfig.search_speed, g_appConfig.search_speed);
+        set_balanced_forward_speed(g_appConfig.search_speed,
+            g_appConfig.search_speed);
         return;
     }
 

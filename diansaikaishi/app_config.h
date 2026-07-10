@@ -12,6 +12,10 @@ typedef struct {
     int16_t min_base_speed;
     int16_t max_base_speed;
 
+    int16_t motor_balance;
+    int16_t min_motor_balance;
+    int16_t max_motor_balance;
+
     int16_t search_speed;
     int16_t min_search_speed;
     int16_t max_search_speed;
