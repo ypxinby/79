@@ -131,13 +131,40 @@ static int16_t update_heading_control_correction(int16_t error,
 #endif
 }
 
+static int16_t update_seek_heading_correction(void)
+{
+#if ENABLE_IMU && ENABLE_HEADING_CONTROL
+    const HeadingControlRuntime *heading;
+
+    if (!Imu_IsReady()) {
+        reset_heading_control_runtime();
+        return 0;
+    }
+
+    heading = HeadingControl_GetRuntime();
+    if (!heading->target_locked) {
+        HeadingControl_LockCurrentYaw(Imu_GetYaw());
+        HeadingControl_Enable(true);
+    }
+
+    g_appRuntime.heading_correction =
+        HeadingControl_Update(Imu_GetYaw(), Imu_GetCorrectedGyroZDps(),
+            0.02f);
+    return g_appRuntime.heading_correction;
+#else
+    return 0;
+#endif
+}
+
 static void handle_seek_line(void)
 {
     if (TrackSensor_IsLineLost(g_appRuntime.sensor_raw)) {
-        g_appRuntime.correction = 0;
-        reset_heading_control_runtime();
-        set_output_speed(g_appConfig.search_speed,
-            g_appConfig.search_speed);
+        int16_t correction = update_seek_heading_correction();
+
+        g_appRuntime.correction = correction;
+        set_output_speed(
+            (int16_t)((int32_t)g_appConfig.search_speed + correction),
+            (int16_t)((int32_t)g_appConfig.search_speed - correction));
         return;
     }
 
@@ -147,6 +174,7 @@ static void handle_seek_line(void)
     update_recover_direction_from_error(g_appRuntime.line_error);
     g_appRuntime.lost_count = 0;
     g_appRuntime.run_mode = TRACK_MODE_FOLLOW_LINE;
+    reset_heading_control_runtime();
 }
 
 static void handle_follow_line(void)
