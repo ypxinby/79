@@ -143,13 +143,17 @@ static void imu_update_drive_state(void)
 static void imu_i2c_init_pins(void)
 {
 #ifdef GPIO_IMU_SDA_IOMUX
-    DL_GPIO_initDigitalOutput(GPIO_IMU_SDA_IOMUX);
+    DL_GPIO_initDigitalInputFeatures(GPIO_IMU_SDA_IOMUX,
+        DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_NONE,
+        DL_GPIO_HYSTERESIS_DISABLE, DL_GPIO_WAKEUP_DISABLE);
 #endif
 #ifdef GPIO_IMU_SCL_IOMUX
-    DL_GPIO_initDigitalOutput(GPIO_IMU_SCL_IOMUX);
+    DL_GPIO_initDigitalInputFeatures(GPIO_IMU_SCL_IOMUX,
+        DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_NONE,
+        DL_GPIO_HYSTERESIS_DISABLE, DL_GPIO_WAKEUP_DISABLE);
 #endif
 
-    DL_GPIO_setPins(GPIO_IMU_PORT, GPIO_IMU_SDA_PIN | GPIO_IMU_SCL_PIN);
+    DL_GPIO_clearPins(GPIO_IMU_PORT, GPIO_IMU_SDA_PIN | GPIO_IMU_SCL_PIN);
     imu_sda_high();
     imu_scl_high();
     imu_update_bus_state();
