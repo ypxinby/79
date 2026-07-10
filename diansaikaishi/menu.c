@@ -58,8 +58,14 @@ static void menu_adjust_param(int8_t direction)
                 (uint8_t)(g_appConfig.lost_line_threshold + direction);
             break;
         case PARAM_SEEK_HEADING_OFFSET:
-            g_appConfig.seek_heading_offset_deg +=
-                (int16_t)(direction * 5);
+            g_appConfig.seek_heading_offset_deg += direction;
+            break;
+        case PARAM_SEEK_TASK_MODE:
+            if (direction > 0) {
+                g_appConfig.seek_task_mode = SEEK_TASK_DIAGONAL;
+            } else {
+                g_appConfig.seek_task_mode = SEEK_TASK_STRAIGHT;
+            }
             break;
         default:
             break;
@@ -185,6 +191,8 @@ const char *Menu_ParamItemToString(ParamItem item)
             return "LOST";
         case PARAM_SEEK_HEADING_OFFSET:
             return "YAW";
+        case PARAM_SEEK_TASK_MODE:
+            return "TASK";
         default:
             return "ERR";
     }
@@ -209,6 +217,8 @@ int16_t Menu_GetParamValue(ParamItem item)
             return (int16_t)g_appConfig.lost_line_threshold;
         case PARAM_SEEK_HEADING_OFFSET:
             return g_appConfig.seek_heading_offset_deg;
+        case PARAM_SEEK_TASK_MODE:
+            return (int16_t)g_appConfig.seek_task_mode;
         default:
             return 0;
     }

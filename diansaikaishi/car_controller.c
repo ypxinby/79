@@ -325,6 +325,22 @@ static void handle_turn_90(uint8_t turnLeft)
     }
 }
 
+static void apply_seek_task_config(void)
+{
+#if ENABLE_IMU && ENABLE_HEADING_CONTROL
+    if ((g_appConfig.seek_task_mode == SEEK_TASK_DIAGONAL) &&
+        Imu_IsReady()) {
+        g_appRuntime.seek_heading_mode = SEEK_HEADING_TARGET;
+        g_appRuntime.seek_target_yaw_deg =
+            Imu_GetYaw() + (float)g_appConfig.seek_diagonal_offset_deg;
+        return;
+    }
+#endif
+
+    g_appRuntime.seek_heading_mode = SEEK_HEADING_CURRENT;
+    g_appRuntime.seek_target_yaw_deg = 0.0f;
+}
+
 void CarController_Init(void)
 {
     CarController_ResetRuntime();
@@ -353,6 +369,7 @@ void CarController_ResetRuntime(void)
     g_appRuntime.heading_straight_elapsed_ms = 0;
     g_appRuntime.lap_cooldown_ms = 0;
     reset_heading_control_runtime();
+    apply_seek_task_config();
     Motor_Stop();
 }
 

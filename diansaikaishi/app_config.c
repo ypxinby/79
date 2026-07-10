@@ -71,6 +71,8 @@ void AppConfig_InitDefault(void)
     g_appConfig.heading_enable_derivative = 100;
     g_appConfig.heading_lock_delay_ms = 100;
     g_appConfig.seek_heading_offset_deg = 0;
+    g_appConfig.seek_task_mode = SEEK_TASK_STRAIGHT;
+    g_appConfig.seek_diagonal_offset_deg = -30;
 }
 
 void AppConfig_LimitAll(void)
@@ -140,6 +142,11 @@ void AppConfig_LimitAll(void)
     }
     g_appConfig.seek_heading_offset_deg =
         clamp_i16(g_appConfig.seek_heading_offset_deg, -45, 45);
+    g_appConfig.seek_task_mode =
+        clamp_u8(g_appConfig.seek_task_mode, SEEK_TASK_STRAIGHT,
+            SEEK_TASK_DIAGONAL);
+    g_appConfig.seek_diagonal_offset_deg =
+        clamp_i16(g_appConfig.seek_diagonal_offset_deg, -90, 90);
 }
 
 void AppConfig_IncreaseTargetLap(void)
