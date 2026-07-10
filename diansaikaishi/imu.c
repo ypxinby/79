@@ -12,6 +12,7 @@
 #define MPU6050_REG_PWR_MGMT_1         (0x6BU)
 #define MPU6050_REG_WHO_AM_I           (0x75U)
 #define MPU6050_WHO_AM_I_VALUE         (0x68U)
+#define MPU6050_WHO_AM_I_COMPAT_VALUE  (0x70U)
 #define MPU6050_GYRO_250DPS_SCALE      (131.0f)
 #define MPU6050_CONFIG_DLPF_44HZ       (0x03U)
 #define MPU6050_GYRO_CONFIG_250DPS     (0x00U)
@@ -322,7 +323,8 @@ bool Imu_Init(void)
     }
 
     g_imuRuntime.last_who_am_i = who_am_i;
-    if (who_am_i != MPU6050_WHO_AM_I_VALUE) {
+    if ((who_am_i != MPU6050_WHO_AM_I_VALUE) &&
+        (who_am_i != MPU6050_WHO_AM_I_COMPAT_VALUE)) {
         g_imuRuntime.last_error_code = IMU_ERROR_WHO_VALUE;
         g_imuRuntime.read_error_count++;
         return false;
