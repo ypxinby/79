@@ -58,8 +58,7 @@ static void menu_adjust_param(int8_t direction)
                 (uint8_t)(g_appConfig.lost_line_threshold + direction);
             break;
         case PARAM_SEEK_HEADING_OFFSET:
-            g_appConfig.seek_heading_offset_deg +=
-                (int16_t)(direction * 5);
+            g_appConfig.seek_heading_offset_deg += direction;
             break;
         default:
             break;
