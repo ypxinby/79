@@ -120,6 +120,26 @@ static void imu_update_bus_state(void)
     g_imuRuntime.bus_state = state;
 }
 
+static void imu_update_drive_state(void)
+{
+    uint8_t state = 0;
+
+    DL_GPIO_setPins(GPIO_IMU_PORT, GPIO_IMU_SDA_PIN | GPIO_IMU_SCL_PIN);
+    DL_GPIO_enableOutput(GPIO_IMU_PORT, GPIO_IMU_SDA_PIN | GPIO_IMU_SCL_PIN);
+    imu_delay();
+
+    if ((DL_GPIO_readPins(GPIO_IMU_PORT, GPIO_IMU_SDA_PIN) != 0U)) {
+        state |= 1U;
+    }
+    if ((DL_GPIO_readPins(GPIO_IMU_PORT, GPIO_IMU_SCL_PIN) != 0U)) {
+        state |= 2U;
+    }
+
+    g_imuRuntime.drive_state = state;
+    imu_sda_high();
+    imu_scl_high();
+}
+
 static void imu_i2c_init_pins(void)
 {
 #ifdef GPIO_IMU_SDA_IOMUX
@@ -133,6 +153,7 @@ static void imu_i2c_init_pins(void)
     imu_sda_high();
     imu_scl_high();
     imu_update_bus_state();
+    imu_update_drive_state();
 }
 
 static void imu_i2c_start(void)
@@ -270,6 +291,7 @@ static void imu_reset_runtime(void)
     g_imuRuntime.last_who_am_i = 0;
     g_imuRuntime.last_error_code = IMU_ERROR_NONE;
     g_imuRuntime.bus_state = 0;
+    g_imuRuntime.drive_state = 0;
 }
 
 bool Imu_Init(void)
@@ -388,6 +410,7 @@ void Imu_Update(float dt_s)
     if (!g_imuRuntime.initialized) {
         g_imuRuntime.data_valid = false;
         imu_update_bus_state();
+        imu_update_drive_state();
         return;
     }
 

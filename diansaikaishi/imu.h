@@ -21,6 +21,7 @@ typedef struct {
     uint8_t last_who_am_i;
     uint8_t last_error_code;
     uint8_t bus_state;
+    uint8_t drive_state;
 } ImuRuntime;
 
 bool Imu_Init(void);
