@@ -10,6 +10,8 @@ static void menu_toggle_status_sensor_page(void)
 {
     if (g_oledPage == OLED_PAGE_STATUS) {
         g_oledPage = OLED_PAGE_SENSOR;
+    } else if (g_oledPage == OLED_PAGE_SENSOR) {
+        g_oledPage = OLED_PAGE_IMU;
     } else {
         g_oledPage = OLED_PAGE_STATUS;
     }
