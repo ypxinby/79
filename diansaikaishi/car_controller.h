@@ -23,6 +23,7 @@ typedef struct {
     int16_t last_valid_error;
     int8_t recover_direction;
     int16_t correction;
+    int16_t heading_correction;
 
     int16_t left_speed;
     int16_t right_speed;
@@ -30,6 +31,7 @@ typedef struct {
     uint8_t lost_count;
     uint16_t lost_elapsed_ms;
     uint16_t turn_elapsed_ms;
+    uint16_t heading_straight_elapsed_ms;
     uint16_t lap_cooldown_ms;
 } AppRuntime;
 

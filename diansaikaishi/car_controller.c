@@ -1,7 +1,10 @@
 #include "car_controller.h"
 
 #include "app_config.h"
+#include "app_features.h"
 #include "car_state.h"
+#include "heading_control.h"
+#include "imu.h"
 #include "motor.h"
 #include "track_sensor.h"
 
@@ -25,6 +28,11 @@ static int16_t clamp_i16(int32_t value, int16_t minValue, int16_t maxValue)
         return maxValue;
     }
     return (int16_t)value;
+}
+
+static int16_t abs_i16(int16_t value)
+{
+    return (value < 0) ? (int16_t)-value : value;
 }
 
 static void update_sensor_runtime(void)
@@ -54,10 +62,80 @@ static void update_recover_direction_from_error(int16_t error)
     }
 }
 
+static void reset_heading_control_runtime(void)
+{
+#if ENABLE_IMU && ENABLE_HEADING_CONTROL
+    HeadingControl_Reset();
+    g_appRuntime.heading_correction = 0;
+    g_appRuntime.heading_straight_elapsed_ms = 0;
+#endif
+}
+
+static bool is_heading_control_allowed(int16_t error, int16_t derivative)
+{
+#if ENABLE_IMU && ENABLE_HEADING_CONTROL
+    if (!Imu_IsReady()) {
+        return false;
+    }
+    if (g_appRuntime.black_count > 3U) {
+        return false;
+    }
+    if (abs_i16(error) > g_appConfig.heading_enable_error) {
+        return false;
+    }
+    if (abs_i16(derivative) > g_appConfig.heading_enable_derivative) {
+        return false;
+    }
+    return true;
+#else
+    (void)error;
+    (void)derivative;
+    return false;
+#endif
+}
+
+static int16_t update_heading_control_correction(int16_t error,
+    int16_t derivative)
+{
+#if ENABLE_IMU && ENABLE_HEADING_CONTROL
+    const HeadingControlRuntime *heading;
+
+    if (!is_heading_control_allowed(error, derivative)) {
+        reset_heading_control_runtime();
+        return 0;
+    }
+
+    if (g_appRuntime.heading_straight_elapsed_ms <
+        g_appConfig.heading_lock_delay_ms) {
+        g_appRuntime.heading_straight_elapsed_ms =
+            (uint16_t)(g_appRuntime.heading_straight_elapsed_ms +
+                CAR_CONTROLLER_PERIOD_MS);
+        g_appRuntime.heading_correction = 0;
+        return 0;
+    }
+
+    heading = HeadingControl_GetRuntime();
+    if (!heading->target_locked) {
+        HeadingControl_LockCurrentYaw(Imu_GetYaw());
+        HeadingControl_Enable(true);
+    }
+
+    g_appRuntime.heading_correction =
+        HeadingControl_Update(Imu_GetYaw(), Imu_GetCorrectedGyroZDps(),
+            0.02f);
+    return g_appRuntime.heading_correction;
+#else
+    (void)error;
+    (void)derivative;
+    return 0;
+#endif
+}
+
 static void handle_seek_line(void)
 {
     if (TrackSensor_IsLineLost(g_appRuntime.sensor_raw)) {
         g_appRuntime.correction = 0;
+        reset_heading_control_runtime();
         set_output_speed(g_appConfig.search_speed,
             g_appConfig.search_speed);
         return;
@@ -80,6 +158,7 @@ static void handle_follow_line(void)
 
     if (TrackSensor_IsLineLost(g_appRuntime.sensor_raw)) {
         g_appRuntime.correction = 0;
+        reset_heading_control_runtime();
         g_appRuntime.lost_elapsed_ms = 0;
         g_appRuntime.run_mode = TRACK_MODE_LOST_RECOVER;
         return;
@@ -97,6 +176,7 @@ static void handle_follow_line(void)
         g_appRuntime.recover_direction = RECOVER_DIRECTION_LEFT;
         g_appRuntime.run_mode = TRACK_MODE_TURN_LEFT_90;
         g_appRuntime.correction = 0;
+        reset_heading_control_runtime();
         return;
     }
     if (turn == TRACK_TURN_RIGHT_90) {
@@ -104,6 +184,7 @@ static void handle_follow_line(void)
         g_appRuntime.recover_direction = RECOVER_DIRECTION_RIGHT;
         g_appRuntime.run_mode = TRACK_MODE_TURN_RIGHT_90;
         g_appRuntime.correction = 0;
+        reset_heading_control_runtime();
         return;
     }
 
@@ -121,6 +202,11 @@ static void handle_follow_line(void)
     if (TRACK_REVERSE_CORRECTION) {
         correction = -correction;
     }
+
+    correction += update_heading_control_correction(error, derivative);
+    correction = clamp_i16(correction,
+        (int16_t)-g_appConfig.max_correction,
+        g_appConfig.max_correction);
 
     g_appRuntime.correction = (int16_t)correction;
     set_output_speed(
@@ -140,6 +226,7 @@ static void handle_lost_recover(void)
         g_appRuntime.last_valid_error = g_appRuntime.line_error;
         update_recover_direction_from_error(g_appRuntime.line_error);
         g_appRuntime.run_mode = TRACK_MODE_FOLLOW_LINE;
+        reset_heading_control_runtime();
         return;
     }
 
@@ -152,6 +239,7 @@ static void handle_lost_recover(void)
     }
 
     g_appRuntime.correction = 0;
+    reset_heading_control_runtime();
 
     if (g_appRuntime.lost_elapsed_ms >= g_appConfig.lost_recover_max_ms) {
         Motor_Stop();
@@ -177,6 +265,7 @@ static void handle_turn_90(uint8_t turnLeft)
     }
 
     g_appRuntime.correction = 0;
+    reset_heading_control_runtime();
 
     if (g_appRuntime.turn_elapsed_ms >= g_appConfig.turn_min_ms) {
         if (TrackSensor_IsCenterDetected(g_appRuntime.sensor_raw)) {
@@ -185,6 +274,7 @@ static void handle_turn_90(uint8_t turnLeft)
             update_recover_direction_from_error(g_appRuntime.line_error);
             g_appRuntime.run_mode = TRACK_MODE_FOLLOW_LINE;
             g_appRuntime.turn_elapsed_ms = 0;
+            reset_heading_control_runtime();
             return;
         }
     }
@@ -219,12 +309,15 @@ void CarController_ResetRuntime(void)
     g_appRuntime.last_valid_error = 0;
     g_appRuntime.recover_direction = RECOVER_DIRECTION_NONE;
     g_appRuntime.correction = 0;
+    g_appRuntime.heading_correction = 0;
     g_appRuntime.left_speed = 0;
     g_appRuntime.right_speed = 0;
     g_appRuntime.lost_count = 0;
     g_appRuntime.lost_elapsed_ms = 0;
     g_appRuntime.turn_elapsed_ms = 0;
+    g_appRuntime.heading_straight_elapsed_ms = 0;
     g_appRuntime.lap_cooldown_ms = 0;
+    reset_heading_control_runtime();
     Motor_Stop();
 }
 
@@ -237,6 +330,7 @@ void CarController_Update_20ms(void)
         g_appRuntime.left_speed = 0;
         g_appRuntime.right_speed = 0;
         g_appRuntime.correction = 0;
+        reset_heading_control_runtime();
         return;
     }
 
@@ -261,6 +355,7 @@ void CarController_Update_20ms(void)
             g_appRuntime.left_speed = 0;
             g_appRuntime.right_speed = 0;
             g_appRuntime.correction = 0;
+            reset_heading_control_runtime();
             CarState_Set(CAR_STATE_ERROR);
             break;
     }

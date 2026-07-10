@@ -25,7 +25,7 @@ volatile uint8_t g_trackTurnDebug;
 
 static void App_UpdateHeadingObserver(void)
 {
-#if ENABLE_IMU && ENABLE_HEADING_OBSERVER
+#if ENABLE_IMU && ENABLE_HEADING_OBSERVER && !ENABLE_HEADING_CONTROL
     const HeadingControlRuntime *heading = HeadingControl_GetRuntime();
 
     if (!Imu_IsReady()) {
