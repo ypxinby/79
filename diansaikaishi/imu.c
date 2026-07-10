@@ -536,6 +536,11 @@ float Imu_GetGyroZDps(void)
     return g_imuRuntime.gyro_z_dps;
 }
 
+float Imu_GetCorrectedGyroZDps(void)
+{
+    return g_imuRuntime.corrected_gyro_z_dps;
+}
+
 float Imu_GetGyroBiasDps(void)
 {
     return g_imuRuntime.gyro_bias_dps;

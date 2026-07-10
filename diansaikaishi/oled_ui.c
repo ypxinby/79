@@ -3,6 +3,7 @@
 #include "app_config.h"
 #include "car_controller.h"
 #include "car_state.h"
+#include "heading_control.h"
 #include "imu.h"
 #include "menu.h"
 #include "oled.h"
@@ -132,6 +133,40 @@ static void print_imu_page(void)
     OLED_PrintInt16((int16_t)imu->last_who_am_i);
 }
 
+static void print_heading_page(void)
+{
+    const ImuRuntime *imu = Imu_GetRuntime();
+    const HeadingControlRuntime *heading = HeadingControl_GetRuntime();
+    int16_t yawDeg = clamp_display_i16((int32_t)imu->yaw_deg);
+    int16_t targetDeg =
+        clamp_display_i16((int32_t)heading->target_yaw_deg);
+    int16_t errorX10 =
+        clamp_display_i16((int32_t)(heading->heading_error_deg * 10.0f));
+    int16_t derivativeX10 =
+        clamp_display_i16((int32_t)(heading->heading_derivative * 10.0f));
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("HEAD OBS");
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("Y:");
+    OLED_PrintInt16(yawDeg);
+    OLED_PrintString(" T:");
+    OLED_PrintInt16(targetDeg);
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("E10:");
+    OLED_PrintInt16(errorX10);
+    OLED_PrintString(" D10:");
+    OLED_PrintInt16(derivativeX10);
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("C:");
+    OLED_PrintInt16(heading->correction);
+    OLED_PrintString(" LK:");
+    OLED_PrintInt16((int16_t)heading->target_locked);
+}
+
 void OledUi_Init(void)
 {
     OLED_Init();
@@ -160,6 +195,9 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
             break;
         case OLED_PAGE_IMU:
             print_imu_page();
+            break;
+        case OLED_PAGE_HEADING:
+            print_heading_page();
             break;
         case OLED_PAGE_STATUS:
         default:

@@ -23,6 +23,26 @@ volatile uint8_t g_paramItemDebug;
 volatile uint8_t g_trackModeDebug;
 volatile uint8_t g_trackTurnDebug;
 
+static void App_UpdateHeadingObserver(void)
+{
+#if ENABLE_IMU && ENABLE_HEADING_OBSERVER
+    const HeadingControlRuntime *heading = HeadingControl_GetRuntime();
+
+    if (!Imu_IsReady()) {
+        HeadingControl_Enable(false);
+        return;
+    }
+
+    if (!heading->target_locked) {
+        HeadingControl_LockCurrentYaw(Imu_GetYaw());
+        HeadingControl_Enable(true);
+    }
+
+    (void)HeadingControl_Update(Imu_GetYaw(), Imu_GetCorrectedGyroZDps(),
+        0.02f);
+#endif
+}
+
 void App_Init(void)
 {
     Motor_Init();
@@ -49,6 +69,7 @@ void App_Update_20ms(void)
 #if ENABLE_IMU
     Imu_Update(0.02f);
 #endif
+    App_UpdateHeadingObserver();
 
     Key_Update_20ms();
     {

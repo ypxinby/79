@@ -33,6 +33,7 @@ void Imu_ResetYaw(void);
 void Imu_SetYaw(float yaw_deg);
 float Imu_GetYaw(void);
 float Imu_GetGyroZDps(void);
+float Imu_GetCorrectedGyroZDps(void);
 float Imu_GetGyroBiasDps(void);
 bool Imu_IsReady(void);
 const ImuRuntime *Imu_GetRuntime(void);
