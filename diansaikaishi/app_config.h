@@ -3,9 +3,6 @@
 
 #include <stdint.h>
 
-#define SEEK_TASK_STRAIGHT         (0U)
-#define SEEK_TASK_DIAGONAL         (1U)
-
 typedef struct {
     uint8_t target_laps;
     uint8_t min_target_laps;
@@ -52,8 +49,6 @@ typedef struct {
     int16_t heading_enable_derivative;
     uint16_t heading_lock_delay_ms;
     int16_t seek_heading_offset_deg;
-    uint8_t seek_task_mode;
-    int16_t seek_diagonal_offset_deg;
 } AppConfig;
 
 extern AppConfig g_appConfig;
