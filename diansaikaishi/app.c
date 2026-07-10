@@ -5,6 +5,7 @@
 #include "car_controller.h"
 #include "car_state.h"
 #include "encoder.h"
+#include "heading_control.h"
 #include "imu.h"
 #include "key.h"
 #include "menu.h"
@@ -33,6 +34,7 @@ void App_Init(void)
         Imu_ResetYaw();
     }
 #endif
+    HeadingControl_Init();
     CarState_Init();
     Menu_Init();
     TrackSensor_Init();

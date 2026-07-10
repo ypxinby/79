@@ -40,6 +40,14 @@ typedef struct {
     uint16_t turn_max_ms;
 
     float gyro_deadband_dps;
+
+    int16_t heading_kp;
+    int16_t heading_kd;
+    int16_t heading_scale;
+    int16_t heading_max_correction;
+    int16_t heading_enable_error;
+    int16_t heading_enable_derivative;
+    uint16_t heading_lock_delay_ms;
 } AppConfig;
 
 extern AppConfig g_appConfig;
