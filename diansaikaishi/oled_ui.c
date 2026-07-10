@@ -97,6 +97,9 @@ static void print_imu_page(void)
     const ImuRuntime *imu = Imu_GetRuntime();
     int16_t gyroDpsX10 =
         clamp_display_i16((int32_t)(imu->gyro_z_dps * 10.0f));
+    int16_t biasDpsX10 =
+        clamp_display_i16((int32_t)(imu->gyro_bias_dps * 10.0f));
+    int16_t yawDeg = clamp_display_i16((int32_t)imu->yaw_deg);
 
     OLED_SetCursor(0, 0);
     OLED_PrintString("IMU:");
@@ -111,12 +114,10 @@ static void print_imu_page(void)
     OLED_PrintInt16((int16_t)imu->bus_state);
 
     OLED_SetCursor(2, 0);
-    OLED_PrintString("ID:");
-    OLED_PrintInt16((int16_t)imu->last_who_am_i);
-    OLED_PrintString(" A:");
-    OLED_PrintInt16((int16_t)imu->i2c_addr);
-    OLED_PrintString(" H:");
-    OLED_PrintInt16((int16_t)imu->drive_state);
+    OLED_PrintString("Y:");
+    OLED_PrintInt16(yawDeg);
+    OLED_PrintString(" CAL:");
+    OLED_PrintInt16((int16_t)imu->calibrated);
 
     OLED_SetCursor(4, 0);
     OLED_PrintString("R:");
@@ -125,10 +126,10 @@ static void print_imu_page(void)
     OLED_PrintInt16(gyroDpsX10);
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("E:");
-    OLED_PrintInt16(clamp_display_i16((int32_t)imu->read_error_count));
-    OLED_PrintString(" U:");
-    OLED_PrintInt16(clamp_display_i16((int32_t)imu->update_count));
+    OLED_PrintString("BI:");
+    OLED_PrintInt16(biasDpsX10);
+    OLED_PrintString(" ID:");
+    OLED_PrintInt16((int16_t)imu->last_who_am_i);
 }
 
 void OledUi_Init(void)

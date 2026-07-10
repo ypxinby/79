@@ -1,5 +1,6 @@
 #include "imu.h"
 
+#include "app_config.h"
 #include "app_features.h"
 #include "ti_msp_dl_config.h"
 
@@ -32,6 +33,8 @@
 #define IMU_ERROR_NOT_INITIALIZED      (8U)
 #define IMU_ERROR_GYRO_READ            (9U)
 #define IMU_ERROR_NULL_POINTER         (10U)
+#define IMU_ERROR_CALIBRATION          (11U)
+#define IMU_CALIBRATION_MIN_VALID_DIV  (10U)
 
 #ifndef GPIO_IMU_PORT
 #define GPIO_IMU_PORT                  (GPIOA)
@@ -281,6 +284,11 @@ static float mpu6050_raw_gyro_to_dps(int16_t raw_gyro)
     return ((float)raw_gyro) / MPU6050_GYRO_250DPS_SCALE;
 }
 
+static float imu_abs_float(float value)
+{
+    return (value < 0.0f) ? -value : value;
+}
+
 static void imu_reset_runtime(void)
 {
     g_imuRuntime.raw_gyro_z = 0;
@@ -399,16 +407,45 @@ bool Imu_ReadRawGyroZ(int16_t *raw_gyro_z)
 
 bool Imu_CalibrateGyroBias(uint16_t sample_count)
 {
-    (void)sample_count;
+    int64_t sum = 0;
+    uint16_t valid_count = 0;
+    uint16_t min_valid_count;
 
-    g_imuRuntime.calibrated = false;
-    g_imuRuntime.gyro_bias_dps = 0.0f;
-    return false;
+    if (!g_imuRuntime.initialized || (sample_count == 0U)) {
+        g_imuRuntime.calibrated = false;
+        g_imuRuntime.last_error_code = IMU_ERROR_CALIBRATION;
+        return false;
+    }
+
+    for (uint16_t i = 0; i < sample_count; i++) {
+        int16_t raw_gyro_z;
+
+        if (Imu_ReadRawGyroZ(&raw_gyro_z)) {
+            sum += raw_gyro_z;
+            valid_count++;
+        }
+    }
+
+    min_valid_count =
+        (uint16_t)(sample_count - (sample_count / IMU_CALIBRATION_MIN_VALID_DIV));
+    if (valid_count < min_valid_count) {
+        g_imuRuntime.calibrated = false;
+        g_imuRuntime.last_error_code = IMU_ERROR_CALIBRATION;
+        return false;
+    }
+
+    g_imuRuntime.gyro_bias_dps =
+        mpu6050_raw_gyro_to_dps((int16_t)(sum / valid_count));
+    g_imuRuntime.calibrated = true;
+    g_imuRuntime.last_error_code = IMU_ERROR_NONE;
+
+    return true;
 }
 
 void Imu_Update(float dt_s)
 {
     int16_t raw_gyro_z;
+    float corrected_gyro_z;
 
     (void)dt_s;
     g_imuRuntime.update_count++;
@@ -426,6 +463,13 @@ void Imu_Update(float dt_s)
 
     g_imuRuntime.raw_gyro_z = raw_gyro_z;
     g_imuRuntime.gyro_z_dps = mpu6050_raw_gyro_to_dps(raw_gyro_z);
+    corrected_gyro_z = g_imuRuntime.gyro_z_dps - g_imuRuntime.gyro_bias_dps;
+    if (imu_abs_float(corrected_gyro_z) < g_appConfig.gyro_deadband_dps) {
+        corrected_gyro_z = 0.0f;
+    }
+    if (g_imuRuntime.calibrated) {
+        g_imuRuntime.yaw_deg += corrected_gyro_z * dt_s;
+    }
     g_imuRuntime.data_valid = true;
 }
 

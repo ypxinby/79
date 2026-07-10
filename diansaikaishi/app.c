@@ -28,7 +28,10 @@ void App_Init(void)
     Encoder_Reset();
     AppConfig_InitDefault();
 #if ENABLE_IMU
-    (void)Imu_Init();
+    if (Imu_Init()) {
+        (void)Imu_CalibrateGyroBias(200U);
+        Imu_ResetYaw();
+    }
 #endif
     CarState_Init();
     Menu_Init();

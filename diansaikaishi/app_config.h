@@ -38,6 +38,8 @@ typedef struct {
     uint16_t lost_recover_max_ms;
     uint16_t turn_min_ms;
     uint16_t turn_max_ms;
+
+    float gyro_deadband_dps;
 } AppConfig;
 
 extern AppConfig g_appConfig;
