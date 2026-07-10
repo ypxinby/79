@@ -173,6 +173,15 @@ extern "C" {
 /* Defines for K3: GPIOA.27 with pinCMx 60 on package pin 31 */
 #define GPIO_KEYS_K3_PIN                                        (DL_GPIO_PIN_27)
 #define GPIO_KEYS_K3_IOMUX                                       (IOMUX_PINCM60)
+/* Port definition for Pin Group GPIO_IMU */
+#define GPIO_IMU_PORT                                                    (GPIOA)
+
+/* Defines for IMU_SDA: GPIOA.10 with pinCMx 21 on package pin 56 */
+#define GPIO_IMU_IMU_SDA_PIN                                    (DL_GPIO_PIN_10)
+#define GPIO_IMU_IMU_SDA_IOMUX                                   (IOMUX_PINCM21)
+/* Defines for IMU_SCL: GPIOA.11 with pinCMx 22 on package pin 57 */
+#define GPIO_IMU_IMU_SCL_PIN                                    (DL_GPIO_PIN_11)
+#define GPIO_IMU_IMU_SCL_IOMUX                                   (IOMUX_PINCM22)
 
 /* clang-format on */
 

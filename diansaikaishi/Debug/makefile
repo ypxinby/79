@@ -18,13 +18,13 @@ ORDERED_OBJS += \
 "./ti_msp_dl_config.o" \
 "./startup_mspm0g350x_ticlang.o" \
 "./encoder.o" \
+"./imu.o" \
 "./key.o" \
 "./menu.o" \
 "./motor.o" \
 "./oled.o" \
 "./oled_ui.o" \
 "./pid.o" \
-"./straight_control.o" \
 "./track_sensor.o" \
 $(GEN_CMDS__FLAG) \
 -Wl,-ldevice.cmd.genlibs \
@@ -150,8 +150,8 @@ diansaikaishi.out: $(OBJS) $(GEN_CMDS)
 # Other Targets
 clean:
 	-$(RM) $(GEN_MISC_FILES__QUOTED)$(GEN_FILES__QUOTED)$(EXE_OUTPUTS__QUOTED)
-	-$(RM) "app.o" "app_config.o" "car_controller.o" "car_state.o" "empty.o" "ti_msp_dl_config.o" "startup_mspm0g350x_ticlang.o" "encoder.o" "key.o" "menu.o" "motor.o" "oled.o" "oled_ui.o" "pid.o" "straight_control.o" "track_sensor.o" 
-	-$(RM) "app.d" "app_config.d" "car_controller.d" "car_state.d" "empty.d" "ti_msp_dl_config.d" "startup_mspm0g350x_ticlang.d" "encoder.d" "key.d" "menu.d" "motor.d" "oled.d" "oled_ui.d" "pid.d" "straight_control.d" "track_sensor.d" 
+	-$(RM) "app.o" "app_config.o" "car_controller.o" "car_state.o" "empty.o" "ti_msp_dl_config.o" "startup_mspm0g350x_ticlang.o" "encoder.o" "imu.o" "key.o" "menu.o" "motor.o" "oled.o" "oled_ui.o" "pid.o" "track_sensor.o" 
+	-$(RM) "app.d" "app_config.d" "car_controller.d" "car_state.d" "empty.d" "ti_msp_dl_config.d" "startup_mspm0g350x_ticlang.d" "encoder.d" "imu.d" "key.d" "menu.d" "motor.d" "oled.d" "oled_ui.d" "pid.d" "track_sensor.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 

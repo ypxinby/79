@@ -9,13 +9,13 @@
 #include "app.h"
 #include "encoder.h"
 #include "motor.h"
-#include "straight_control.h"
 #include "ti_msp_dl_config.h"
 
 #define APP_TICK_HZ             (10000U)
 #define APP_TICKS_PER_MS        (APP_TICK_HZ / 1000U)
+#define APP_UPDATE_PERIOD_MS    (20U)
 
-static volatile bool g_straightControlDue;
+static volatile bool g_appUpdateDue;
 
 int main(void)
 {
@@ -28,8 +28,8 @@ int main(void)
     __enable_irq();
 
     while (1) {
-        if (g_straightControlDue) {
-            g_straightControlDue = false;
+        if (g_appUpdateDue) {
+            g_appUpdateDue = false;
             App_Update_20ms();
         }
     }
@@ -47,9 +47,9 @@ void SysTick_Handler(void)
         tick100usCount = 0;
 
         controlMsCount++;
-        if (controlMsCount >= STRAIGHT_CONTROL_PERIOD_MS) {
+        if (controlMsCount >= APP_UPDATE_PERIOD_MS) {
             controlMsCount = 0;
-            g_straightControlDue = true;
+            g_appUpdateDue = true;
         }
     }
 }

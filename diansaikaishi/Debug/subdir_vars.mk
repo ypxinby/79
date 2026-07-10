@@ -17,13 +17,13 @@ C_SRCS += \
 ./ti_msp_dl_config.c \
 C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/m0p/startup_system_files/ticlang/startup_mspm0g350x_ticlang.c \
 ../encoder.c \
+../imu.c \
 ../key.c \
 ../menu.c \
 ../motor.c \
 ../oled.c \
 ../oled_ui.c \
 ../pid.c \
-../straight_control.c \
 ../track_sensor.c 
 
 GEN_CMDS += \
@@ -43,13 +43,13 @@ C_DEPS += \
 ./ti_msp_dl_config.d \
 ./startup_mspm0g350x_ticlang.d \
 ./encoder.d \
+./imu.d \
 ./key.d \
 ./menu.d \
 ./motor.d \
 ./oled.d \
 ./oled_ui.d \
 ./pid.d \
-./straight_control.d \
 ./track_sensor.d 
 
 GEN_OPTS += \
@@ -64,13 +64,13 @@ OBJS += \
 ./ti_msp_dl_config.o \
 ./startup_mspm0g350x_ticlang.o \
 ./encoder.o \
+./imu.o \
 ./key.o \
 ./menu.o \
 ./motor.o \
 ./oled.o \
 ./oled_ui.o \
 ./pid.o \
-./straight_control.o \
 ./track_sensor.o 
 
 GEN_MISC_FILES += \
@@ -87,13 +87,13 @@ OBJS__QUOTED += \
 "ti_msp_dl_config.o" \
 "startup_mspm0g350x_ticlang.o" \
 "encoder.o" \
+"imu.o" \
 "key.o" \
 "menu.o" \
 "motor.o" \
 "oled.o" \
 "oled_ui.o" \
 "pid.o" \
-"straight_control.o" \
 "track_sensor.o" 
 
 GEN_MISC_FILES__QUOTED += \
@@ -110,13 +110,13 @@ C_DEPS__QUOTED += \
 "ti_msp_dl_config.d" \
 "startup_mspm0g350x_ticlang.d" \
 "encoder.d" \
+"imu.d" \
 "key.d" \
 "menu.d" \
 "motor.d" \
 "oled.d" \
 "oled_ui.d" \
 "pid.d" \
-"straight_control.d" \
 "track_sensor.d" 
 
 GEN_FILES__QUOTED += \
@@ -133,13 +133,13 @@ C_SRCS__QUOTED += \
 "./ti_msp_dl_config.c" \
 "C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/m0p/startup_system_files/ticlang/startup_mspm0g350x_ticlang.c" \
 "../encoder.c" \
+"../imu.c" \
 "../key.c" \
 "../menu.c" \
 "../motor.c" \
 "../oled.c" \
 "../oled_ui.c" \
 "../pid.c" \
-"../straight_control.c" \
 "../track_sensor.c" 
 
 SYSCFG_SRCS__QUOTED += \

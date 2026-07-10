@@ -10,6 +10,9 @@
 #endif
 
 #define CAR_CONTROLLER_PERIOD_MS    (20U)
+#define RECOVER_DIRECTION_NONE      (0)
+#define RECOVER_DIRECTION_LEFT      (-1)
+#define RECOVER_DIRECTION_RIGHT     (1)
 
 AppRuntime g_appRuntime;
 
@@ -42,6 +45,15 @@ static void set_output_speed(int16_t leftSpeed, int16_t rightSpeed)
     Motor_SetSpeed(g_appRuntime.left_speed, g_appRuntime.right_speed);
 }
 
+static void update_recover_direction_from_error(int16_t error)
+{
+    if (error < 0) {
+        g_appRuntime.recover_direction = RECOVER_DIRECTION_LEFT;
+    } else if (error > 0) {
+        g_appRuntime.recover_direction = RECOVER_DIRECTION_RIGHT;
+    }
+}
+
 static void handle_seek_line(void)
 {
     if (TrackSensor_IsLineLost(g_appRuntime.sensor_raw)) {
@@ -54,6 +66,7 @@ static void handle_seek_line(void)
     g_appRuntime.has_seen_line = 1;
     g_appRuntime.last_error = g_appRuntime.line_error;
     g_appRuntime.last_valid_error = g_appRuntime.line_error;
+    update_recover_direction_from_error(g_appRuntime.line_error);
     g_appRuntime.lost_count = 0;
     g_appRuntime.run_mode = TRACK_MODE_FOLLOW_LINE;
 }
@@ -76,16 +89,19 @@ static void handle_follow_line(void)
 
     error = g_appRuntime.line_error;
     g_appRuntime.last_valid_error = error;
+    update_recover_direction_from_error(error);
 
     turn = TrackSensor_DetectTurn(g_appRuntime.sensor_raw, error);
     if (turn == TRACK_TURN_LEFT_90) {
         g_appRuntime.turn_elapsed_ms = 0;
+        g_appRuntime.recover_direction = RECOVER_DIRECTION_LEFT;
         g_appRuntime.run_mode = TRACK_MODE_TURN_LEFT_90;
         g_appRuntime.correction = 0;
         return;
     }
     if (turn == TRACK_TURN_RIGHT_90) {
         g_appRuntime.turn_elapsed_ms = 0;
+        g_appRuntime.recover_direction = RECOVER_DIRECTION_RIGHT;
         g_appRuntime.run_mode = TRACK_MODE_TURN_RIGHT_90;
         g_appRuntime.correction = 0;
         return;
@@ -117,13 +133,12 @@ static void handle_follow_line(void)
 
 static void handle_lost_recover(void)
 {
-    uint8_t searchLeft;
-
     if (!TrackSensor_IsLineLost(g_appRuntime.sensor_raw)) {
         g_appRuntime.lost_count = 0;
         g_appRuntime.lost_elapsed_ms = 0;
         g_appRuntime.last_error = g_appRuntime.line_error;
         g_appRuntime.last_valid_error = g_appRuntime.line_error;
+        update_recover_direction_from_error(g_appRuntime.line_error);
         g_appRuntime.run_mode = TRACK_MODE_FOLLOW_LINE;
         return;
     }
@@ -146,12 +161,12 @@ static void handle_lost_recover(void)
         return;
     }
 
-    searchLeft = (g_appRuntime.last_valid_error < 0) ? 1U : 0U;
-
-    if (searchLeft) {
+    if (g_appRuntime.recover_direction == RECOVER_DIRECTION_LEFT) {
         set_output_speed(0, g_appConfig.recover_speed);
-    } else {
+    } else if (g_appRuntime.recover_direction == RECOVER_DIRECTION_RIGHT) {
         set_output_speed(g_appConfig.recover_speed, 0);
+    } else {
+        set_output_speed(g_appConfig.recover_speed, g_appConfig.recover_speed);
     }
 }
 
@@ -167,6 +182,7 @@ static void handle_turn_90(uint8_t turnLeft)
         if (TrackSensor_IsCenterDetected(g_appRuntime.sensor_raw)) {
             g_appRuntime.last_error = g_appRuntime.line_error;
             g_appRuntime.last_valid_error = g_appRuntime.line_error;
+            update_recover_direction_from_error(g_appRuntime.line_error);
             g_appRuntime.run_mode = TRACK_MODE_FOLLOW_LINE;
             g_appRuntime.turn_elapsed_ms = 0;
             return;
@@ -201,6 +217,7 @@ void CarController_ResetRuntime(void)
     g_appRuntime.line_error = 0;
     g_appRuntime.last_error = 0;
     g_appRuntime.last_valid_error = 0;
+    g_appRuntime.recover_direction = RECOVER_DIRECTION_NONE;
     g_appRuntime.correction = 0;
     g_appRuntime.left_speed = 0;
     g_appRuntime.right_speed = 0;

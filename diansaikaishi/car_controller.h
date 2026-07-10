@@ -21,6 +21,7 @@ typedef struct {
     int16_t line_error;
     int16_t last_error;
     int16_t last_valid_error;
+    int8_t recover_direction;
     int16_t correction;
 
     int16_t left_speed;

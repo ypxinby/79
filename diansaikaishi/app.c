@@ -1,14 +1,15 @@
 #include "app.h"
 
 #include "app_config.h"
+#include "app_features.h"
 #include "car_controller.h"
 #include "car_state.h"
 #include "encoder.h"
+#include "imu.h"
 #include "key.h"
 #include "menu.h"
 #include "motor.h"
 #include "oled_ui.h"
-#include "straight_control.h"
 #include "track_sensor.h"
 
 volatile uint8_t g_trackRaw;
@@ -25,8 +26,10 @@ void App_Init(void)
 {
     Motor_Init();
     Encoder_Reset();
-    StraightControl_Init();
     AppConfig_InitDefault();
+#if ENABLE_IMU
+    (void)Imu_Init();
+#endif
     CarState_Init();
     Menu_Init();
     TrackSensor_Init();
@@ -38,6 +41,10 @@ void App_Init(void)
 
 void App_Update_20ms(void)
 {
+#if ENABLE_IMU
+    Imu_Update(0.02f);
+#endif
+
     Key_Update_20ms();
     {
         KeyEvent event = Key_GetEvent();
