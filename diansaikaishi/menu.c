@@ -42,9 +42,6 @@ static void menu_adjust_param(int8_t direction)
         case PARAM_BASE_SPEED:
             g_appConfig.base_speed += (int16_t)(direction * 10);
             break;
-        case PARAM_MOTOR_BALANCE:
-            g_appConfig.motor_balance += (int16_t)(direction * 5);
-            break;
         case PARAM_MAX_CORRECTION:
             g_appConfig.max_correction += (int16_t)(direction * 10);
             break;
@@ -172,8 +169,6 @@ const char *Menu_ParamItemToString(ParamItem item)
             return "KD";
         case PARAM_BASE_SPEED:
             return "SPD";
-        case PARAM_MOTOR_BALANCE:
-            return "TRIM";
         case PARAM_MAX_CORRECTION:
             return "MAX";
         case PARAM_START_LINE_THRESHOLD:
@@ -196,8 +191,6 @@ int16_t Menu_GetParamValue(ParamItem item)
             return g_appConfig.track_kd;
         case PARAM_BASE_SPEED:
             return g_appConfig.base_speed;
-        case PARAM_MOTOR_BALANCE:
-            return g_appConfig.motor_balance;
         case PARAM_MAX_CORRECTION:
             return g_appConfig.max_correction;
         case PARAM_START_LINE_THRESHOLD:

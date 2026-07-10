@@ -143,7 +143,7 @@ all: $(OBJS) $(GEN_CMDS)
 diansaikaishi.out: $(OBJS) $(GEN_CMDS)
 	@echo 'Building target: "$@"'
 	@echo 'Invoking: Arm Linker'
-	"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/bin/tiarmclang.exe" @"device.opt"  -march=thumbv6m -mcpu=cortex-m0plus -mfloat-abi=soft -mlittle-endian -mthumb -O2 -gdwarf-3 -Wall -Wl,-m"diansaikaishi.map" -Wl,-i"C:/TI/mspm0_sdk_2_05_01_00/source" -Wl,-i"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi" -Wl,-i"D:/selfthings/github_project/work_ti/TIIIWORK/diansaikaishi/Debug/syscfg" -Wl,-i"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib" -Wl,--diag_wrap=off -Wl,--display_error_number -Wl,--warn_sections -Wl,--xml_link_info="diansaikaishi_linkInfo.xml" -Wl,--rom_model -o "diansaikaishi.out" $(ORDERED_OBJS)
+	"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/bin/tiarmclang.exe" @"device.opt"  -march=thumbv6m -mcpu=cortex-m0plus -mfloat-abi=soft -mlittle-endian -mthumb -O2 -gdwarf-3 -Wall -Wl,-m"diansaikaishi.map" -Wl,-i"C:/TI/mspm0_sdk_2_05_01_00/source" -Wl,-i"D:/selfthings/github_project/work_ti/79/diansaikaishi" -Wl,-i"D:/selfthings/github_project/work_ti/79/diansaikaishi/Debug/syscfg" -Wl,-i"D:/TI/CCS/ccs/tools/compiler/ti-cgt-armllvm_4.0.4.LTS/lib" -Wl,--diag_wrap=off -Wl,--display_error_number -Wl,--warn_sections -Wl,--xml_link_info="diansaikaishi_linkInfo.xml" -Wl,--rom_model -o "diansaikaishi.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: "$@"'
 	@echo ' '
 

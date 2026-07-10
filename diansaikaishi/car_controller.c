@@ -10,7 +10,6 @@
 #endif
 
 #define CAR_CONTROLLER_PERIOD_MS    (20U)
-#define LOST_SWEEP_INTERVAL_MS      (160U)
 
 AppRuntime g_appRuntime;
 
@@ -43,18 +42,11 @@ static void set_output_speed(int16_t leftSpeed, int16_t rightSpeed)
     Motor_SetSpeed(g_appRuntime.left_speed, g_appRuntime.right_speed);
 }
 
-static void set_balanced_forward_speed(int16_t leftSpeed, int16_t rightSpeed)
-{
-    set_output_speed(
-        (int16_t)((int32_t)leftSpeed + g_appConfig.motor_balance),
-        (int16_t)((int32_t)rightSpeed - g_appConfig.motor_balance));
-}
-
 static void handle_seek_line(void)
 {
     if (TrackSensor_IsLineLost(g_appRuntime.sensor_raw)) {
         g_appRuntime.correction = 0;
-        set_balanced_forward_speed(g_appConfig.search_speed,
+        set_output_speed(g_appConfig.search_speed,
             g_appConfig.search_speed);
         return;
     }
@@ -125,7 +117,6 @@ static void handle_follow_line(void)
 
 static void handle_lost_recover(void)
 {
-    uint16_t sweepPhase;
     uint8_t searchLeft;
 
     if (!TrackSensor_IsLineLost(g_appRuntime.sensor_raw)) {
@@ -155,12 +146,7 @@ static void handle_lost_recover(void)
         return;
     }
 
-    sweepPhase = (uint16_t)(g_appRuntime.lost_elapsed_ms /
-        LOST_SWEEP_INTERVAL_MS);
     searchLeft = (g_appRuntime.last_valid_error < 0) ? 1U : 0U;
-    if ((sweepPhase & 1U) != 0U) {
-        searchLeft = (uint8_t)!searchLeft;
-    }
 
     if (searchLeft) {
         set_output_speed(0, g_appConfig.recover_speed);

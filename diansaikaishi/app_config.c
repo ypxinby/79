@@ -35,10 +35,6 @@ void AppConfig_InitDefault(void)
     g_appConfig.min_base_speed = 100;
     g_appConfig.max_base_speed = 700;
 
-    g_appConfig.motor_balance = 0;
-    g_appConfig.min_motor_balance = -80;
-    g_appConfig.max_motor_balance = 80;
-
     g_appConfig.search_speed = 100;
     g_appConfig.min_search_speed = 50;
     g_appConfig.max_search_speed = 300;
@@ -74,9 +70,6 @@ void AppConfig_LimitAll(void)
 
     g_appConfig.base_speed = clamp_i16(g_appConfig.base_speed,
         g_appConfig.min_base_speed, g_appConfig.max_base_speed);
-
-    g_appConfig.motor_balance = clamp_i16(g_appConfig.motor_balance,
-        g_appConfig.min_motor_balance, g_appConfig.max_motor_balance);
 
     g_appConfig.search_speed = clamp_i16(g_appConfig.search_speed,
         g_appConfig.min_search_speed, g_appConfig.max_search_speed);
