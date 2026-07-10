@@ -143,7 +143,12 @@ static int16_t update_seek_heading_correction(void)
 
     heading = HeadingControl_GetRuntime();
     if (!heading->target_locked) {
-        HeadingControl_LockCurrentYaw(Imu_GetYaw());
+        if (g_appRuntime.seek_heading_mode == SEEK_HEADING_TARGET) {
+            HeadingControl_SetTargetYaw(g_appRuntime.seek_target_yaw_deg);
+        } else {
+            HeadingControl_SetTargetYaw(Imu_GetYaw() +
+                (float)g_appConfig.seek_heading_offset_deg);
+        }
         HeadingControl_Enable(true);
     }
 
@@ -335,6 +340,8 @@ void CarController_ResetRuntime(void)
     g_appRuntime.line_error = 0;
     g_appRuntime.last_error = 0;
     g_appRuntime.last_valid_error = 0;
+    g_appRuntime.seek_heading_mode = SEEK_HEADING_CURRENT;
+    g_appRuntime.seek_target_yaw_deg = 0.0f;
     g_appRuntime.recover_direction = RECOVER_DIRECTION_NONE;
     g_appRuntime.correction = 0;
     g_appRuntime.heading_correction = 0;
@@ -347,6 +354,20 @@ void CarController_ResetRuntime(void)
     g_appRuntime.lap_cooldown_ms = 0;
     reset_heading_control_runtime();
     Motor_Stop();
+}
+
+void CarController_UseCurrentHeadingForSeek(void)
+{
+    g_appRuntime.seek_heading_mode = SEEK_HEADING_CURRENT;
+    g_appRuntime.seek_target_yaw_deg = 0.0f;
+    reset_heading_control_runtime();
+}
+
+void CarController_SetSeekTargetYaw(float target_yaw_deg)
+{
+    g_appRuntime.seek_heading_mode = SEEK_HEADING_TARGET;
+    g_appRuntime.seek_target_yaw_deg = target_yaw_deg;
+    reset_heading_control_runtime();
 }
 
 void CarController_Update_20ms(void)

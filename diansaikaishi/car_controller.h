@@ -11,6 +11,11 @@ typedef enum {
     TRACK_MODE_LOST_RECOVER
 } TrackRunMode;
 
+typedef enum {
+    SEEK_HEADING_CURRENT = 0,
+    SEEK_HEADING_TARGET
+} SeekHeadingMode;
+
 typedef struct {
     uint8_t current_lap;
     uint8_t sensor_raw;
@@ -21,6 +26,8 @@ typedef struct {
     int16_t line_error;
     int16_t last_error;
     int16_t last_valid_error;
+    SeekHeadingMode seek_heading_mode;
+    float seek_target_yaw_deg;
     int8_t recover_direction;
     int16_t correction;
     int16_t heading_correction;
@@ -40,6 +47,8 @@ extern AppRuntime g_appRuntime;
 void CarController_Init(void);
 void CarController_ResetRuntime(void);
 void CarController_Update_20ms(void);
+void CarController_UseCurrentHeadingForSeek(void);
+void CarController_SetSeekTargetYaw(float target_yaw_deg);
 TrackRunMode CarController_GetRunMode(void);
 const char *CarController_RunModeToString(TrackRunMode mode);
 

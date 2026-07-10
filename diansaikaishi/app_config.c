@@ -70,6 +70,7 @@ void AppConfig_InitDefault(void)
     g_appConfig.heading_enable_error = 50;
     g_appConfig.heading_enable_derivative = 100;
     g_appConfig.heading_lock_delay_ms = 100;
+    g_appConfig.seek_heading_offset_deg = 0;
 }
 
 void AppConfig_LimitAll(void)
@@ -137,6 +138,8 @@ void AppConfig_LimitAll(void)
     if (g_appConfig.heading_lock_delay_ms > 2000U) {
         g_appConfig.heading_lock_delay_ms = 2000U;
     }
+    g_appConfig.seek_heading_offset_deg =
+        clamp_i16(g_appConfig.seek_heading_offset_deg, -45, 45);
 }
 
 void AppConfig_IncreaseTargetLap(void)

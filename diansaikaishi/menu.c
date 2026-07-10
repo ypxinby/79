@@ -57,6 +57,10 @@ static void menu_adjust_param(int8_t direction)
             g_appConfig.lost_line_threshold =
                 (uint8_t)(g_appConfig.lost_line_threshold + direction);
             break;
+        case PARAM_SEEK_HEADING_OFFSET:
+            g_appConfig.seek_heading_offset_deg +=
+                (int16_t)(direction * 5);
+            break;
         default:
             break;
     }
@@ -179,6 +183,8 @@ const char *Menu_ParamItemToString(ParamItem item)
             return "START";
         case PARAM_LOST_LINE_THRESHOLD:
             return "LOST";
+        case PARAM_SEEK_HEADING_OFFSET:
+            return "YAW";
         default:
             return "ERR";
     }
@@ -201,6 +207,8 @@ int16_t Menu_GetParamValue(ParamItem item)
             return (int16_t)g_appConfig.start_line_threshold;
         case PARAM_LOST_LINE_THRESHOLD:
             return (int16_t)g_appConfig.lost_line_threshold;
+        case PARAM_SEEK_HEADING_OFFSET:
+            return g_appConfig.seek_heading_offset_deg;
         default:
             return 0;
     }
