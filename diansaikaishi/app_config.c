@@ -70,8 +70,8 @@ void AppConfig_InitDefault(void)
     g_appConfig.heading_enable_error = 50;
     g_appConfig.heading_enable_derivative = 100;
     g_appConfig.heading_lock_delay_ms = 100;
-    g_appConfig.seek_heading_offset_deg = 0;
-    g_appConfig.second_seek_angle_deg = 160;
+    g_appConfig.seek_heading_offset_deg = -1;
+    g_appConfig.second_seek_angle_deg = 215;
 }
 
 void AppConfig_LimitAll(void)

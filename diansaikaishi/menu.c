@@ -69,7 +69,7 @@ static void menu_adjust_param(int8_t direction)
             g_appConfig.seek_heading_offset_deg += direction;
             break;
         case PARAM_SECOND_SEEK_ANGLE:
-            g_appConfig.second_seek_angle_deg += direction;
+            g_appConfig.second_seek_angle_deg += (int16_t)(direction * 5);
             break;
         default:
             break;
