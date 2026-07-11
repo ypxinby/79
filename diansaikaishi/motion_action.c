@@ -92,8 +92,6 @@ void MotionAction_Init(void)
 bool MotionAction_Start(const MotionAction *action,
     float mission_start_yaw_deg)
 {
-    (void)mission_start_yaw_deg;
-
     MotionAction_Init();
 
     if (action == (const MotionAction *)0) {

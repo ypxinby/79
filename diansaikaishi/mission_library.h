@@ -41,6 +41,20 @@
         } \
     }
 
+#define ACTION_SEEK_MISSION_YAW(yaw_deg, timeout) \
+    { \
+        .type = MOTION_ACTION_SEEK_LINE, \
+        .timeout_ms = (uint32_t)(timeout), \
+        .max_retries = 1U, \
+        .params.seek_line = { \
+            .yaw = { \
+                .reference = YAW_REFERENCE_MISSION_START, \
+                .angle_deg = (float)(yaw_deg) \
+            }, \
+            .speed_override = MOTION_USE_GLOBAL_SPEED \
+        } \
+    }
+
 #define ACTION_FOLLOW_FOREVER(timeout) \
     { \
         .type = MOTION_ACTION_FOLLOW_LINE, \
