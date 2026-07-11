@@ -1,5 +1,6 @@
 #include "motion_action.h"
 
+#include "app_config.h"
 #include "car_controller.h"
 #include "car_state.h"
 #include "imu.h"
@@ -29,15 +30,22 @@ static bool motion_action_car_is_error(void)
 static float motion_action_resolve_yaw_target(const MotionYawTarget *target,
     float mission_start_yaw_deg)
 {
+    float resolved_yaw;
+
     switch (target->reference) {
         case YAW_REFERENCE_CURRENT:
-            return g_motionActionStartYawDeg + target->angle_deg;
+            resolved_yaw = g_motionActionStartYawDeg + target->angle_deg;
+            break;
         case YAW_REFERENCE_MISSION_START:
-            return mission_start_yaw_deg + target->angle_deg;
+            resolved_yaw = mission_start_yaw_deg + target->angle_deg;
+            break;
         case YAW_REFERENCE_ABSOLUTE:
         default:
-            return target->angle_deg;
+            resolved_yaw = target->angle_deg;
+            break;
     }
+
+    return resolved_yaw + (float)g_appConfig.seek_heading_offset_deg;
 }
 
 static bool motion_action_check_timeout(void)

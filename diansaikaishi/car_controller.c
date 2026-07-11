@@ -13,6 +13,7 @@
 #endif
 
 #define CAR_CONTROLLER_PERIOD_MS    (20U)
+#define SEEK_HEADING_DEADBAND_DEG   (1.0f)
 #define RECOVER_DIRECTION_NONE      (0)
 #define RECOVER_DIRECTION_LEFT      (-1)
 #define RECOVER_DIRECTION_RIGHT     (1)
@@ -33,6 +34,11 @@ static int16_t clamp_i16(int32_t value, int16_t minValue, int16_t maxValue)
 static int16_t abs_i16(int16_t value)
 {
     return (value < 0) ? (int16_t)-value : value;
+}
+
+static float abs_float(float value)
+{
+    return (value < 0.0f) ? -value : value;
 }
 
 static void update_sensor_runtime(void)
@@ -123,6 +129,7 @@ static int16_t update_heading_control_correction(int16_t error,
     g_appRuntime.heading_correction =
         HeadingControl_Update(Imu_GetYaw(), Imu_GetCorrectedGyroZDps(),
             0.02f);
+
     return g_appRuntime.heading_correction;
 #else
     (void)error;
@@ -155,6 +162,11 @@ static int16_t update_seek_heading_correction(void)
     g_appRuntime.heading_correction =
         HeadingControl_Update(Imu_GetYaw(), Imu_GetCorrectedGyroZDps(),
             0.02f);
+
+    if (abs_float(heading->heading_error_deg) <= SEEK_HEADING_DEADBAND_DEG) {
+        g_appRuntime.heading_correction = 0;
+    }
+
     return g_appRuntime.heading_correction;
 #else
     return 0;
