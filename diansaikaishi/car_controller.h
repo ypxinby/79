@@ -46,7 +46,13 @@ extern AppRuntime g_appRuntime;
 
 void CarController_Init(void);
 void CarController_ResetRuntime(void);
+void CarController_ResetTransientState(void);
 void CarController_Update_20ms(void);
+void CarController_Stop(void);
+void CarController_StartSeekLine(float target_yaw_deg);
+void CarController_StartFollowLine(void);
+void CarController_StartTurnLeft90(void);
+void CarController_StartTurnRight90(void);
 void CarController_UseCurrentHeadingForSeek(void);
 void CarController_SetSeekTargetYaw(float target_yaw_deg);
 TrackRunMode CarController_GetRunMode(void);

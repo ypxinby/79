@@ -356,6 +356,62 @@ void CarController_ResetRuntime(void)
     Motor_Stop();
 }
 
+void CarController_ResetTransientState(void)
+{
+    g_appRuntime.last_error = 0;
+    g_appRuntime.last_valid_error = 0;
+    g_appRuntime.correction = 0;
+    g_appRuntime.heading_correction = 0;
+    g_appRuntime.lost_count = 0;
+    g_appRuntime.lost_elapsed_ms = 0;
+    g_appRuntime.turn_elapsed_ms = 0;
+    g_appRuntime.heading_straight_elapsed_ms = 0;
+    reset_heading_control_runtime();
+}
+
+void CarController_Stop(void)
+{
+    Motor_Stop();
+    g_appRuntime.left_speed = 0;
+    g_appRuntime.right_speed = 0;
+    g_appRuntime.correction = 0;
+    reset_heading_control_runtime();
+}
+
+void CarController_StartSeekLine(float target_yaw_deg)
+{
+    CarController_ResetRuntime();
+    CarController_SetSeekTargetYaw(target_yaw_deg);
+    g_appRuntime.run_mode = TRACK_MODE_SEEK_LINE;
+    CarState_Set(CAR_STATE_RUNNING);
+}
+
+void CarController_StartFollowLine(void)
+{
+    CarController_ResetTransientState();
+    g_appRuntime.has_seen_line = 1;
+    g_appRuntime.last_error = g_appRuntime.line_error;
+    g_appRuntime.last_valid_error = g_appRuntime.line_error;
+    g_appRuntime.run_mode = TRACK_MODE_FOLLOW_LINE;
+    CarState_Set(CAR_STATE_RUNNING);
+}
+
+void CarController_StartTurnLeft90(void)
+{
+    CarController_ResetTransientState();
+    g_appRuntime.recover_direction = RECOVER_DIRECTION_LEFT;
+    g_appRuntime.run_mode = TRACK_MODE_TURN_LEFT_90;
+    CarState_Set(CAR_STATE_RUNNING);
+}
+
+void CarController_StartTurnRight90(void)
+{
+    CarController_ResetTransientState();
+    g_appRuntime.recover_direction = RECOVER_DIRECTION_RIGHT;
+    g_appRuntime.run_mode = TRACK_MODE_TURN_RIGHT_90;
+    CarState_Set(CAR_STATE_RUNNING);
+}
+
 void CarController_UseCurrentHeadingForSeek(void)
 {
     g_appRuntime.seek_heading_mode = SEEK_HEADING_CURRENT;

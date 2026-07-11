@@ -21,6 +21,9 @@ C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/m0p/startup_system_files/ticlan
 ../imu.c \
 ../key.c \
 ../menu.c \
+../mission_library.c \
+../mission_manager.c \
+../motion_action.c \
 ../motor.c \
 ../oled.c \
 ../oled_ui.c \
@@ -48,6 +51,9 @@ C_DEPS += \
 ./imu.d \
 ./key.d \
 ./menu.d \
+./mission_library.d \
+./mission_manager.d \
+./motion_action.d \
 ./motor.d \
 ./oled.d \
 ./oled_ui.d \
@@ -70,6 +76,9 @@ OBJS += \
 ./imu.o \
 ./key.o \
 ./menu.o \
+./mission_library.o \
+./mission_manager.o \
+./motion_action.o \
 ./motor.o \
 ./oled.o \
 ./oled_ui.o \
@@ -94,6 +103,9 @@ OBJS__QUOTED += \
 "imu.o" \
 "key.o" \
 "menu.o" \
+"mission_library.o" \
+"mission_manager.o" \
+"motion_action.o" \
 "motor.o" \
 "oled.o" \
 "oled_ui.o" \
@@ -118,6 +130,9 @@ C_DEPS__QUOTED += \
 "imu.d" \
 "key.d" \
 "menu.d" \
+"mission_library.d" \
+"mission_manager.d" \
+"motion_action.d" \
 "motor.d" \
 "oled.d" \
 "oled_ui.d" \
@@ -142,6 +157,9 @@ C_SRCS__QUOTED += \
 "../imu.c" \
 "../key.c" \
 "../menu.c" \
+"../mission_library.c" \
+"../mission_manager.c" \
+"../motion_action.c" \
 "../motor.c" \
 "../oled.c" \
 "../oled_ui.c" \

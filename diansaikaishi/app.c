@@ -9,6 +9,7 @@
 #include "imu.h"
 #include "key.h"
 #include "menu.h"
+#include "mission_manager.h"
 #include "motor.h"
 #include "oled_ui.h"
 #include "track_sensor.h"
@@ -57,6 +58,7 @@ void App_Init(void)
     HeadingControl_Init();
     CarState_Init();
     Menu_Init();
+    MissionManager_Init();
     TrackSensor_Init();
     CarController_Init();
     Key_Init();
@@ -80,6 +82,7 @@ void App_Update_20ms(void)
         }
     }
 
+    MissionManager_Update_20ms();
     CarController_Update_20ms();
 
     g_trackRaw = g_appRuntime.sensor_raw;

@@ -2,6 +2,7 @@
 #include "app_config.h"
 #include "car_controller.h"
 #include "car_state.h"
+#include "mission_manager.h"
 
 static OledPage g_oledPage;
 static ParamItem g_paramItem;
@@ -23,13 +24,20 @@ static void menu_next_param(void)
 {
     g_paramItem = (ParamItem)(g_paramItem + 1);
     if (g_paramItem >= PARAM_COUNT) {
-        g_paramItem = PARAM_TARGET_LAPS;
+        g_paramItem = PARAM_TASK;
     }
 }
 
 static void menu_adjust_param(int8_t direction)
 {
     switch (g_paramItem) {
+        case PARAM_TASK:
+            if (direction > 0) {
+                (void)MissionManager_SelectNext();
+            } else {
+                (void)MissionManager_SelectPrevious();
+            }
+            break;
         case PARAM_TARGET_LAPS:
             if (direction > 0) {
                 AppConfig_IncreaseTargetLap();
@@ -82,14 +90,13 @@ static void menu_handle_status_key(KeyEvent event)
         case KEY2_SHORT:
             switch (state) {
                 case CAR_STATE_READY:
-                    CarController_ResetRuntime();
-                    CarState_Set(CAR_STATE_RUNNING);
+                    (void)MissionManager_Start();
                     break;
                 case CAR_STATE_RUNNING:
-                    CarState_Set(CAR_STATE_PAUSED);
+                    MissionManager_Pause();
                     break;
                 case CAR_STATE_PAUSED:
-                    CarState_Set(CAR_STATE_RUNNING);
+                    MissionManager_Resume();
                     break;
                 default:
                     break;
@@ -97,15 +104,15 @@ static void menu_handle_status_key(KeyEvent event)
             break;
         case KEY2_LONG:
             if (state == CAR_STATE_PAUSED) {
-                CarState_Set(CAR_STATE_RUNNING);
+                MissionManager_Resume();
             }
             break;
         case KEY3_SHORT:
-            CarState_Set(CAR_STATE_READY);
+            MissionManager_Cancel();
             break;
         case KEY3_LONG:
             CarController_ResetRuntime();
-            CarState_Set(CAR_STATE_READY);
+            MissionManager_Reset();
             g_oledPage = OLED_PAGE_STATUS;
             break;
         default:
@@ -139,7 +146,7 @@ static void menu_handle_param_key(KeyEvent event)
 void Menu_Init(void)
 {
     g_oledPage = OLED_PAGE_STATUS;
-    g_paramItem = PARAM_TARGET_LAPS;
+    g_paramItem = PARAM_TASK;
 }
 
 void Menu_HandleKeyEvent(KeyEvent event)
@@ -168,6 +175,8 @@ ParamItem Menu_GetParamItem(void)
 const char *Menu_ParamItemToString(ParamItem item)
 {
     switch (item) {
+        case PARAM_TASK:
+            return "TASK";
         case PARAM_TARGET_LAPS:
             return "LAP";
         case PARAM_KP:
@@ -192,6 +201,8 @@ const char *Menu_ParamItemToString(ParamItem item)
 int16_t Menu_GetParamValue(ParamItem item)
 {
     switch (item) {
+        case PARAM_TASK:
+            return (int16_t)MissionManager_GetSelectedMissionId();
         case PARAM_TARGET_LAPS:
             return (int16_t)g_appConfig.target_laps;
         case PARAM_KP:

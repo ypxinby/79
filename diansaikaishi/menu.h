@@ -14,7 +14,8 @@ typedef enum {
 } OledPage;
 
 typedef enum {
-    PARAM_TARGET_LAPS = 0,
+    PARAM_TASK = 0,
+    PARAM_TARGET_LAPS,
     PARAM_KP,
     PARAM_KD,
     PARAM_BASE_SPEED,
