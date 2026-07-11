@@ -23,7 +23,7 @@ static const MotionAction g_missionLegacy[] = {
 static const MotionAction g_missionTestSeekFollow[] = {
     ACTION_SEEK_MISSION_YAW(0.0f, 0U),
     ACTION_FOLLOW_UNTIL_LINE_LOST(0U),
-    ACTION_SEEK_MISSION_YAW(180.0f, 0U),
+    ACTION_SEEK_SECOND_CONFIG(0U),
     ACTION_FOLLOW_UNTIL_LINE_LOST(0U),
     ACTION_STOP()
 };

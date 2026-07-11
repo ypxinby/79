@@ -55,6 +55,20 @@
         } \
     }
 
+#define ACTION_SEEK_SECOND_CONFIG(timeout) \
+    { \
+        .type = MOTION_ACTION_SEEK_LINE, \
+        .timeout_ms = (uint32_t)(timeout), \
+        .max_retries = 1U, \
+        .params.seek_line = { \
+            .yaw = { \
+                .reference = YAW_REFERENCE_SECOND_SEEK_CONFIG, \
+                .angle_deg = 0.0f \
+            }, \
+            .speed_override = MOTION_USE_GLOBAL_SPEED \
+        } \
+    }
+
 #define ACTION_FOLLOW_FOREVER(timeout) \
     { \
         .type = MOTION_ACTION_FOLLOW_LINE, \

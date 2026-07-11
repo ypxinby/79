@@ -49,6 +49,7 @@ typedef struct {
     int16_t heading_enable_derivative;
     uint16_t heading_lock_delay_ms;
     int16_t seek_heading_offset_deg;
+    int16_t second_seek_angle_deg;
 } AppConfig;
 
 extern AppConfig g_appConfig;

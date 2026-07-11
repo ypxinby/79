@@ -68,6 +68,9 @@ static void menu_adjust_param(int8_t direction)
         case PARAM_SEEK_HEADING_OFFSET:
             g_appConfig.seek_heading_offset_deg += direction;
             break;
+        case PARAM_SECOND_SEEK_ANGLE:
+            g_appConfig.second_seek_angle_deg += direction;
+            break;
         default:
             break;
     }
@@ -193,6 +196,8 @@ const char *Menu_ParamItemToString(ParamItem item)
             return "LOST";
         case PARAM_SEEK_HEADING_OFFSET:
             return "YAW";
+        case PARAM_SECOND_SEEK_ANGLE:
+            return "REV";
         default:
             return "ERR";
     }
@@ -219,6 +224,8 @@ int16_t Menu_GetParamValue(ParamItem item)
             return (int16_t)g_appConfig.lost_line_threshold;
         case PARAM_SEEK_HEADING_OFFSET:
             return g_appConfig.seek_heading_offset_deg;
+        case PARAM_SECOND_SEEK_ANGLE:
+            return g_appConfig.second_seek_angle_deg;
         default:
             return 0;
     }

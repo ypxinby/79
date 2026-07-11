@@ -43,7 +43,8 @@ typedef enum {
 typedef enum {
     YAW_REFERENCE_CURRENT = 0,
     YAW_REFERENCE_MISSION_START,
-    YAW_REFERENCE_ABSOLUTE
+    YAW_REFERENCE_ABSOLUTE,
+    YAW_REFERENCE_SECOND_SEEK_CONFIG
 } YawReferenceType;
 
 typedef enum {

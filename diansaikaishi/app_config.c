@@ -71,6 +71,7 @@ void AppConfig_InitDefault(void)
     g_appConfig.heading_enable_derivative = 100;
     g_appConfig.heading_lock_delay_ms = 100;
     g_appConfig.seek_heading_offset_deg = 0;
+    g_appConfig.second_seek_angle_deg = 160;
 }
 
 void AppConfig_LimitAll(void)
@@ -140,6 +141,8 @@ void AppConfig_LimitAll(void)
     }
     g_appConfig.seek_heading_offset_deg =
         clamp_i16(g_appConfig.seek_heading_offset_deg, -45, 45);
+    g_appConfig.second_seek_angle_deg =
+        clamp_i16(g_appConfig.second_seek_angle_deg, 120, 220);
 }
 
 void AppConfig_IncreaseTargetLap(void)

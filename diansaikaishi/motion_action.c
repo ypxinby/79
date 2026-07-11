@@ -39,6 +39,12 @@ static float motion_action_resolve_yaw_target(const MotionYawTarget *target,
         case YAW_REFERENCE_MISSION_START:
             resolved_yaw = mission_start_yaw_deg + target->angle_deg;
             break;
+        case YAW_REFERENCE_SECOND_SEEK_CONFIG:
+            resolved_yaw =
+                mission_start_yaw_deg +
+                (float)g_appConfig.second_seek_angle_deg +
+                target->angle_deg;
+            break;
         case YAW_REFERENCE_ABSOLUTE:
         default:
             resolved_yaw = target->angle_deg;
