@@ -91,8 +91,8 @@ void App_Update_20ms(void)
         }
     }
 
-    ObstacleSafety_Update_20ms();
     MissionManager_Update_20ms();
+    ObstacleSafety_Update_20ms();
     CarController_Update_20ms();
 
     g_trackRaw = g_appRuntime.sensor_raw;
