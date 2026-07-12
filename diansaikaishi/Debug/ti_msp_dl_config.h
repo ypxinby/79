@@ -182,6 +182,15 @@ extern "C" {
 /* Defines for IMU_SCL: GPIOA.11 with pinCMx 22 on package pin 57 */
 #define GPIO_IMU_IMU_SCL_PIN                                    (DL_GPIO_PIN_11)
 #define GPIO_IMU_IMU_SCL_IOMUX                                   (IOMUX_PINCM22)
+/* Port definition for Pin Group GPIO_ULTRASONIC */
+#define GPIO_ULTRASONIC_PORT                                             (GPIOA)
+
+/* Defines for HC_TRIG: GPIOA.8 with pinCMx 19 on package pin 54 */
+#define GPIO_ULTRASONIC_HC_TRIG_PIN                              (DL_GPIO_PIN_8)
+#define GPIO_ULTRASONIC_HC_TRIG_IOMUX                            (IOMUX_PINCM19)
+/* Defines for HC_ECHO: GPIOA.9 with pinCMx 20 on package pin 55 */
+#define GPIO_ULTRASONIC_HC_ECHO_PIN                              (DL_GPIO_PIN_9)
+#define GPIO_ULTRASONIC_HC_ECHO_IOMUX                            (IOMUX_PINCM20)
 
 /* clang-format on */
 

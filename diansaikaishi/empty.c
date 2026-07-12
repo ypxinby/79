@@ -10,6 +10,7 @@
 #include "encoder.h"
 #include "motor.h"
 #include "ti_msp_dl_config.h"
+#include "ultrasonic.h"
 
 #define APP_TICK_HZ             (10000U)
 #define APP_TICKS_PER_MS        (APP_TICK_HZ / 1000U)
@@ -41,6 +42,7 @@ void SysTick_Handler(void)
     static uint8_t controlMsCount;
 
     Motor_PwmTick100us();
+    Ultrasonic_Tick100us();
 
     tick100usCount++;
     if (tick100usCount >= APP_TICKS_PER_MS) {

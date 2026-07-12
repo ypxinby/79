@@ -13,6 +13,7 @@
 #include "motor.h"
 #include "oled_ui.h"
 #include "track_sensor.h"
+#include "ultrasonic.h"
 
 volatile uint8_t g_trackRaw;
 volatile uint8_t g_trackBlackCount;
@@ -60,6 +61,7 @@ void App_Init(void)
     Menu_Init();
     MissionManager_Init();
     TrackSensor_Init();
+    Ultrasonic_Init();
     CarController_Init();
     Key_Init();
     OledUi_Init();
@@ -72,6 +74,8 @@ void App_Update_20ms(void)
     Imu_Update(0.02f);
 #endif
     App_UpdateHeadingObserver();
+
+    Ultrasonic_Update_20ms();
 
     Key_Update_20ms();
     {

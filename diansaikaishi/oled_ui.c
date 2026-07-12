@@ -10,6 +10,7 @@
 #include "motion_action.h"
 #include "oled.h"
 #include "track_sensor.h"
+#include "ultrasonic.h"
 
 static int16_t clamp_display_i16(int32_t value)
 {
@@ -67,6 +68,7 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
     const MissionRuntime *mission = MissionManager_GetRuntime();
     const MotionActionRuntime *action = MotionAction_GetRuntime();
     const char *actionName = "NONE";
+    const UltrasonicFeedback *ultrasonic = Ultrasonic_GetFeedback();
     uint16_t actionIndex = 0U;
     uint16_t actionCount = 0U;
     uint32_t actionTimeS = action->elapsed_ms / 1000U;
@@ -107,10 +109,16 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
     OLED_PrintBinary7((uint8_t)(raw & TRACK_RAW_VALID_MASK));
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("TIME:");
+    OLED_PrintString("T:");
     OLED_PrintInt16(clamp_display_i16((int32_t)actionTimeS));
     OLED_PrintString(" M:");
     OLED_PrintString(CarController_RunModeToString(CarController_GetRunMode()));
+    OLED_PrintString(" U:");
+    if (ultrasonic->measurement_valid) {
+        OLED_PrintInt16((int16_t)ultrasonic->distance_cm);
+    } else {
+        OLED_PrintInt16(0);
+    }
 }
 
 static void print_param_page(uint8_t keyEvent)

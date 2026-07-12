@@ -19,6 +19,7 @@ const GPIO5  = GPIO.addInstance();
 const GPIO6  = GPIO.addInstance();
 const GPIO7  = GPIO.addInstance();
 const GPIO8  = GPIO.addInstance();
+const GPIO9  = GPIO.addInstance();
 
 /**
  * Write custom configuration values to the imported modules.
@@ -145,3 +146,13 @@ GPIO8.associatedPins[0].initialValue     = "SET";
 GPIO8.associatedPins[1].$name            = "IMU_SCL";
 GPIO8.associatedPins[1].assignedPin      = "11";
 GPIO8.associatedPins[1].initialValue     = "SET";
+
+GPIO9.$name                              = "GPIO_ULTRASONIC";
+GPIO9.port                               = "PORTA";
+GPIO9.associatedPins.create(2);
+GPIO9.associatedPins[0].$name            = "HC_TRIG";
+GPIO9.associatedPins[0].assignedPin      = "8";
+GPIO9.associatedPins[0].initialValue     = "CLEARED";
+GPIO9.associatedPins[1].$name            = "HC_ECHO";
+GPIO9.associatedPins[1].assignedPin      = "9";
+GPIO9.associatedPins[1].direction        = "INPUT";

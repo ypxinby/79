@@ -18,6 +18,7 @@
 "./oled_ui.o"
 "./pid.o"
 "./track_sensor.o"
+"./ultrasonic.o"
 -l"./device_linker.cmd"
 -ldevice.cmd.genlibs
 -llibc.a

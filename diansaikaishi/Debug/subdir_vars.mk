@@ -28,7 +28,8 @@ C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/m0p/startup_system_files/ticlan
 ../oled.c \
 ../oled_ui.c \
 ../pid.c \
-../track_sensor.c 
+../track_sensor.c \
+../ultrasonic.c 
 
 GEN_CMDS += \
 ./device_linker.cmd 
@@ -58,7 +59,8 @@ C_DEPS += \
 ./oled.d \
 ./oled_ui.d \
 ./pid.d \
-./track_sensor.d 
+./track_sensor.d \
+./ultrasonic.d 
 
 GEN_OPTS += \
 ./device.opt 
@@ -83,7 +85,8 @@ OBJS += \
 ./oled.o \
 ./oled_ui.o \
 ./pid.o \
-./track_sensor.o 
+./track_sensor.o \
+./ultrasonic.o 
 
 GEN_MISC_FILES += \
 ./device.cmd.genlibs \
@@ -110,7 +113,8 @@ OBJS__QUOTED += \
 "oled.o" \
 "oled_ui.o" \
 "pid.o" \
-"track_sensor.o" 
+"track_sensor.o" \
+"ultrasonic.o" 
 
 GEN_MISC_FILES__QUOTED += \
 "device.cmd.genlibs" \
@@ -137,7 +141,8 @@ C_DEPS__QUOTED += \
 "oled.d" \
 "oled_ui.d" \
 "pid.d" \
-"track_sensor.d" 
+"track_sensor.d" \
+"ultrasonic.d" 
 
 GEN_FILES__QUOTED += \
 "device_linker.cmd" \
@@ -164,7 +169,8 @@ C_SRCS__QUOTED += \
 "../oled.c" \
 "../oled_ui.c" \
 "../pid.c" \
-"../track_sensor.c" 
+"../track_sensor.c" \
+"../ultrasonic.c" 
 
 SYSCFG_SRCS__QUOTED += \
 "../empty.syscfg" 
