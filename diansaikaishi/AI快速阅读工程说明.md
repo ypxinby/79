@@ -332,6 +332,8 @@ MISSION_ID_LEGACY     = 0
 MISSION_ID_TEST_SF    = 1
 MISSION_ID_TEST_R90   = 2
 MISSION_ID_TEST_RSTOP = 3
+MISSION_ID_TEST_SEEK_FOLLOW = 4
+MISSION_ID_TEST_SEEK_STOP   = 5
 ```
 
 ### LEGACY
@@ -427,6 +429,37 @@ static const MotionAction g_missionTestRight90Stop[] = {
 停车
 ```
 
+### TEST-SK-L
+
+用于粗略验证“SEEK 找到线后继续循迹”：
+
+```c
+static const MotionAction g_missionTestSeekThenFollow[] = {
+    ACTION_SEEK_MISSION_YAW(0.0f, 0U),
+    ACTION_FOLLOW_FOREVER(0U),
+    ACTION_STOP()
+};
+```
+
+### TEST-SK-S
+
+用于粗略验证“SEEK 找到线后停车”：
+
+```c
+static const MotionAction g_missionTestSeekThenStop[] = {
+    ACTION_SEEK_MISSION_YAW(0.0f, 0U),
+    ACTION_STOP()
+};
+```
+
+注意：
+
+```text
+当前 SEEK 找到线后底层仍会短暂切入 FOLLOW_LINE。
+如果下一个任务动作是 STOP，下一周期会停车。
+后续建议实现 SEEK_COMPLETE_REPORT_ONLY，让 SEEK 后续行为完全由任务层决定。
+```
+
 ## 10. OLED / 按键操作
 
 页面循环：
@@ -482,7 +515,7 @@ K3：减少
 当前参数菜单项：
 
 ```text
-TASK   当前任务 ID，0=LEGACY，1=TEST-SF，2=TEST-R90，3=TEST-RSTOP
+TASK   当前任务 ID，0=LEGACY，1=TEST-SF，2=TEST-R90，3=TEST-RSTOP，4=TEST-SK-L，5=TEST-SK-S
 SPD
 YAW    全局 SEEK 航向微调，默认 -1，每次 1 度
 REV    第二次 SEEK 反向角，默认 215，每次 5 度

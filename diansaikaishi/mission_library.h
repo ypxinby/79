@@ -11,6 +11,8 @@
 #define MISSION_ID_TEST_SF      (1U)
 #define MISSION_ID_TEST_R90     (2U)
 #define MISSION_ID_TEST_RSTOP   (3U)
+#define MISSION_ID_TEST_SEEK_FOLLOW (4U)
+#define MISSION_ID_TEST_SEEK_STOP   (5U)
 
 #define ACTION_STOP() \
     { \
