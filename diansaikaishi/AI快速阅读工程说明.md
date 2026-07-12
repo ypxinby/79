@@ -1,60 +1,141 @@
 # AI 快速阅读工程说明
 
-> 目的：让后续 AI 或开发者快速理解当前工程结构、控制主线和关键注意事项。
+> 目的：让后续 AI 或开发者快速理解当前工程结构、控制主线、任务层设计和后续改进方向。
 
-## 1. 先看这些文件
+## 1. 当前工程定位
 
-建议阅读顺序：
+这是一个 TI CCS / MSPM0G3507 嵌入式循迹小车工程。
+
+当前主线：
+
+```text
+七路灰度循迹 + MPU6050 航向辅助 + 静态任务动作编排
+```
+
+底层运控仍由 `CarController` 统一控制电机输出；新增的 `MissionManager` / `MotionAction` / `MissionLibrary` 只负责描述和调度任务，不直接控制电机。
+
+## 2. 建议阅读顺序
+
+如果从零理解当前工程，建议按这个顺序看：
 
 ```text
 1. app_features.h
 2. app_config.h / app_config.c
 3. app.c
 4. car_controller.h / car_controller.c
-5. track_sensor.h / track_sensor.c
-6. imu.h / imu.c
-7. heading_control.h / heading_control.c
-8. menu.c / oled_ui.c
+5. motion_types.h
+6. motion_action.h / motion_action.c
+7. mission_manager.h / mission_manager.c
+8. mission_library.h / mission_library.c
+9. menu.c / oled_ui.c
+10. track_sensor.c / imu.c / heading_control.c / motor.c
 ```
 
-如果只想理解运控，重点看：
+如果只看底层运控：
 
 ```text
 car_controller.c
 track_sensor.c
 heading_control.c
 imu.c
+motor.c
 ```
 
-## 2. 当前工程主线
-
-当前系统是：
+如果只看任务层：
 
 ```text
-七路灰度循迹 + MPU6050 航向辅助
+motion_types.h
+motion_action.c
+mission_manager.c
+mission_library.c
+menu.c
 ```
 
-控制周期：
+## 3. 20ms 调度主线
+
+入口在 `empty.c`。
 
 ```text
-SysTick 每 100us 跑软件 PWM
-累计 20ms 后主循环执行 App_Update_20ms()
+SysTick 每 100us 调用 Motor_PwmTick100us()
+累计 20ms 后主循环调用 App_Update_20ms()
 ```
 
-`App_Update_20ms()` 顺序：
+当前 `App_Update_20ms()` 顺序：
 
 ```text
 1. Imu_Update(0.02f)
-2. 按键扫描
-3. 菜单处理
-4. CarController_Update_20ms()
-5. 更新调试变量
-6. OLED 刷新
+2. App_UpdateHeadingObserver()
+3. Key_Update_20ms()
+4. Key_GetEvent()
+5. Menu_HandleKeyEvent()
+6. MissionManager_Update_20ms()
+7. CarController_Update_20ms()
+8. 更新调试变量
+9. OledUi_Update_20ms()
 ```
 
-## 3. 状态机
+注意：
 
-运控状态在 `car_controller.h`：
+```text
+MissionManager 在 CarController 前更新。
+MissionManager/MotionAction 只设置动作目标。
+CarController 仍是唯一实际输出电机速度的运控层。
+```
+
+## 4. 当前文件结构
+
+核心应用层：
+
+```text
+app.c / app.h
+app_config.c / app_config.h
+app_features.h
+car_state.c / car_state.h
+```
+
+任务层：
+
+```text
+motion_types.h
+motion_action.c / motion_action.h
+mission_manager.c / mission_manager.h
+mission_library.c / mission_library.h
+```
+
+底层运控：
+
+```text
+car_controller.c / car_controller.h
+track_sensor.c / track_sensor.h
+heading_control.c / heading_control.h
+imu.c / imu.h
+motor.c / motor.h
+encoder.c / encoder.h
+pid.c / pid.h
+```
+
+人机交互：
+
+```text
+key.c / key.h
+menu.c / menu.h
+oled.c / oled.h
+oled_ui.c / oled_ui.h
+```
+
+工程/生成文件：
+
+```text
+empty.c
+empty.syscfg
+.ccsproject / .cproject / .project
+Debug/                 CCS 编译产物，不建议手改
+targetConfigs/
+```
+
+## 5. 底层运控状态机
+
+状态定义在 `car_controller.h`：
 
 ```c
 typedef enum {
@@ -69,26 +150,74 @@ typedef enum {
 含义：
 
 ```text
-SEEK_LINE       启动后找黑线
-FOLLOW_LINE     正常循迹
+SEEK_LINE       没看到线时按目标 yaw 直线找线
+FOLLOW_LINE     正常灰度循迹
 TURN_LEFT_90    左 90 度单轮转弯
 TURN_RIGHT_90   右 90 度单轮转弯
-LOST_RECOVER    丢线后按最后明确方向找线
+LOST_RECOVER    丢线后按最后方向找线
 ```
 
-## 4. 关键控制逻辑
+关键接口：
 
-### SEEK_LINE
+```c
+void CarController_ResetRuntime(void);
+void CarController_ResetTransientState(void);
+void CarController_Update_20ms(void);
+void CarController_Stop(void);
+void CarController_StartSeekLine(float target_yaw_deg);
+void CarController_StartFollowLine(void);
+void CarController_StartTurnLeft90(void);
+void CarController_StartTurnRight90(void);
+void CarController_UseCurrentHeadingForSeek(void);
+void CarController_SetSeekTargetYaw(float target_yaw_deg);
+TrackRunMode CarController_GetRunMode(void);
+```
 
-没看到黑线时，按目标 yaw 直线找线：
+## 6. SEEK 直线找线逻辑
+
+`SEEK_LINE` 没看到黑线时：
 
 ```text
-target_yaw = 当前 yaw + seek_heading_offset_deg
 left  = search_speed + heading_correction
 right = search_speed - heading_correction
 ```
 
-如果 IMU 不 ready，退回左右同速。
+任务层可以指定 SEEK 目标 yaw。
+
+当前任务 SEEK 目标角计算：
+
+```text
+普通任务 SEEK:
+target_yaw = mission_start_yaw + action_angle + YAW
+
+第二次 SEEK:
+target_yaw = mission_start_yaw + REV + YAW
+```
+
+其中：
+
+```text
+mission_start_yaw = 任务启动瞬间 Imu_GetYaw()
+YAW = g_appConfig.seek_heading_offset_deg
+REV = g_appConfig.second_seek_angle_deg
+```
+
+当前现场标定默认值：
+
+```text
+YAW = -1
+REV = 215
+```
+
+SEEK 航向修正有 1 度死区：
+
+```text
+abs(heading_error_deg) <= 1.0 时，heading_correction = 0
+```
+
+这样避免目标误差接近 0 时，仅由陀螺仪 D 项造成固定偏转。
+
+## 7. FOLLOW / TURN / LOST 行为
 
 ### FOLLOW_LINE
 
@@ -98,17 +227,11 @@ right = search_speed - heading_correction
 line_correction = KP * error + KD * derivative
 ```
 
-直线段额外叠加小幅航向修正：
-
-```text
-final_correction = line_correction + heading_correction
-```
-
-航向修正只在误差较小、变化较小、黑线数量较少时启用。
+稳定直线段可叠加小幅航向辅助。
 
 ### TURN_90
 
-当前 90 度转弯不使用 IMU，仍使用单轮转弯：
+90 度转弯继续使用当前稳定的单轮转弯方案，不接 IMU：
 
 ```text
 L90: left = 0,          right = turn_speed
@@ -124,9 +247,7 @@ turn_elapsed_ms >= turn_min_ms
 
 ### LOST_RECOVER
 
-不再左右扫线。
-
-根据 `recover_direction` 单方向找线：
+丢线恢复不左右扫线，而是按最后明确方向找线：
 
 ```text
 LEFT:  left = 0,             right = recover_speed
@@ -134,7 +255,161 @@ RIGHT: left = recover_speed, right = 0
 NONE:  left = recover_speed, right = recover_speed
 ```
 
-## 5. IMU 模块
+注意：
+
+```text
+在任务动作 FOLLOW_END_LINE_LOST 中，
+CarController 进入 TRACK_MODE_LOST_RECOVER 会被 MotionAction 视为“FOLLOW 动作成功完成”，
+用于表达“出循迹路段”。
+```
+
+## 8. 任务层结构
+
+任务层分三部分：
+
+```text
+motion_types.h       定义动作类型、结果、yaw 参考系
+motion_action.c      执行一个动作，并判断动作完成
+mission_manager.c    管理任务、动作索引、暂停/继续/取消
+mission_library.c    静态任务数组和任务注册表
+```
+
+当前动作类型：
+
+```c
+typedef enum {
+    MOTION_ACTION_SEEK_LINE = 0,
+    MOTION_ACTION_FOLLOW_LINE,
+    MOTION_ACTION_TURN_LEFT_90,
+    MOTION_ACTION_TURN_RIGHT_90,
+    MOTION_ACTION_WAIT,
+    MOTION_ACTION_STOP
+} MotionActionType;
+```
+
+当前支持的动作：
+
+```text
+SEEK_LINE
+FOLLOW_LINE，支持 FOLLOW_END_DURATION / FOLLOW_END_LINE_LOST
+TURN_LEFT_90
+TURN_RIGHT_90
+WAIT
+STOP
+```
+
+`timeout_ms = 0U` 表示不启用超时。
+
+## 9. 当前任务库
+
+任务 ID：
+
+```text
+MISSION_ID_LEGACY  = 0
+MISSION_ID_TEST_SF = 1
+```
+
+### LEGACY
+
+接近旧版启动行为：
+
+```c
+static const MotionAction g_missionLegacy[] = {
+    ACTION_SEEK_MISSION_YAW(0.0f, 0U),
+    ACTION_FOLLOW_FOREVER(0U),
+    ACTION_STOP()
+};
+```
+
+含义：
+
+```text
+按任务起点方向找线
+找到线后持续循迹
+```
+
+### TEST-SF
+
+当前现场测试任务：
+
+```c
+static const MotionAction g_missionTestSeekFollow[] = {
+    ACTION_SEEK_MISSION_YAW(0.0f, 0U),
+    ACTION_FOLLOW_UNTIL_LINE_LOST(0U),
+    ACTION_SEEK_SECOND_CONFIG(0U),
+    ACTION_FOLLOW_UNTIL_LINE_LOST(0U),
+    ACTION_STOP()
+};
+```
+
+含义：
+
+```text
+1. 第一次直线 SEEK，目标 = mission_start_yaw + 0 + YAW
+2. 循迹，直到出循迹/丢线
+3. 第二次直线 SEEK，目标 = mission_start_yaw + REV + YAW
+4. 再次循迹，直到出循迹/丢线
+5. 停车
+```
+
+当前现场标定：
+
+```text
+YAW = -1
+REV = 215
+```
+
+## 10. OLED / 按键操作
+
+页面循环：
+
+```text
+STATUS -> SENSOR -> IMU -> HEAD -> STATUS
+```
+
+按键：
+
+```text
+K1 短按：切换 OLED 页面
+K1 长按：进入参数菜单
+
+K2 短按：
+    READY  -> 启动当前任务
+    RUNNING -> 暂停任务
+    PAUSED -> 继续任务
+
+K3 短按：取消任务，回 READY
+K3 长按：重置任务和底层运行态，回 STATUS/READY
+```
+
+参数菜单：
+
+```text
+K1 短按：下一个参数
+K1 长按：退出参数菜单
+K2：增加
+K3：减少
+```
+
+当前参数菜单项：
+
+```text
+TASK   当前任务 ID，0=LEGACY，1=TEST-SF
+SPD
+YAW    全局 SEEK 航向微调，默认 -1，每次 1 度
+REV    第二次 SEEK 反向角，默认 215，每次 5 度
+KP
+KD
+MAX
+```
+
+`REV` 范围：
+
+```text
+120 ~ 220
+```
+
+## 11. IMU 模块
 
 文件：
 
@@ -171,48 +446,12 @@ HeadingControl 负责：
 输出 heading_correction
 ```
 
-## 6. 重要接口
-
-### CarController
-
-```c
-void CarController_ResetRuntime(void);
-void CarController_Update_20ms(void);
-void CarController_UseCurrentHeadingForSeek(void);
-void CarController_SetSeekTargetYaw(float target_yaw_deg);
-```
-
-说明：
-
-- `CarController_UseCurrentHeadingForSeek()`：SEEK 使用 `当前 yaw + YAW参数`。
-- `CarController_SetSeekTargetYaw()`：后续任务层可指定 SEEK 目标 yaw。
-
-### IMU
-
-```c
-bool Imu_Init(void);
-bool Imu_CalibrateGyroBias(uint16_t sample_count);
-void Imu_Update(float dt_s);
-float Imu_GetYaw(void);
-float Imu_GetCorrectedGyroZDps(void);
-bool Imu_IsReady(void);
-```
-
-### HeadingControl
-
-```c
-void HeadingControl_Reset(void);
-void HeadingControl_LockCurrentYaw(float current_yaw_deg);
-void HeadingControl_SetTargetYaw(float target_yaw_deg);
-int16_t HeadingControl_Update(float current_yaw_deg, float gyro_z_dps,
-    float dt_s);
-```
-
-## 7. 当前可调参数
+## 12. 当前可调参数
 
 在 `app_config.c/h`：
 
 ```text
+target_laps
 base_speed
 search_speed
 recover_speed
@@ -221,97 +460,109 @@ max_correction
 track_kp
 track_kd
 track_scale
+start_line_threshold
+lost_line_threshold
+lap_cooldown_ms
+lost_recover_max_ms
 turn_min_ms
 turn_max_ms
 gyro_deadband_dps
 heading_kp
 heading_kd
+heading_scale
 heading_max_correction
 heading_enable_error
 heading_enable_derivative
 heading_lock_delay_ms
-seek_heading_offset_deg
+seek_heading_offset_deg      当前默认 -1
+second_seek_angle_deg        当前默认 215
 ```
 
-OLED 参数菜单当前可调：
-
-```text
-LAP
-KP
-KD
-SPD
-MAX
-START
-LOST
-YAW
-```
-
-`YAW` 当前每次调整 1 度，用于 SEEK 找线目标航向微调。
-
-## 8. OLED 调试页
-
-页面循环：
-
-```text
-STATUS -> SENSOR -> IMU -> HEAD -> STATUS
-```
-
-重点：
-
-```text
-IMU 页：
-C   IMU 错误码
-b   I2C 总线状态
-ID  WHO_AM_I
-R   原始 gyro z
-BI  零偏
-G   校准后角速度
-Y   yaw
-
-HEAD 页：
-Y    当前 yaw
-T    目标 yaw
-E10  航向误差 * 10
-D10  角速度项 * 10
-C    航向修正量
-LK   是否锁定目标
-```
-
-## 9. 不要轻易改的点
+## 13. 不要轻易改的点
 
 - 不要恢复 `motor_balance` / `TRIM` 固定补偿。
+- 不要让任务层直接调用 `Motor_SetSpeed()`。
 - 不要把 IMU 航向控制接入 90 度转弯，当前 90 度转弯已稳定。
 - 不要在 `LOST_RECOVER` 中恢复左右扫线。
-- 不要把任务目标角直接硬编码进 SEEK；任务动作应单独封装。
-- 不要把 `-30°` 这类任务目标关系直接等同于小车行走航向。
+- 不要把地图任务硬编码进 `car_controller.c`。
+- 不要把现场微调角 `YAW` 和任务结构角 `REV` 混为一个概念。
+- 不要把 `Debug/` 下的 CCS 编译产物当作源码手改。
 
-## 10. 后续推荐封装方向
+## 14. 后续推荐改进方向
 
-建议新增：
+### P0：继续完善任务可观测性
 
-```text
-motion_task.c
-motion_task.h
-```
-
-用于处理：
+建议下一步优先加 OLED 任务状态页：
 
 ```text
-任务类型
-起点 yaw
-目标 yaw
-目标点/目标线
-什么时候调用 CarController_SetSeekTargetYaw()
-什么时候恢复 CarController_UseCurrentHeadingForSeek()
+TASK : 1
+STEP : 2/5
+ACT  : SEEK / LINE / STOP
+TIME : 当前动作运行时间
 ```
 
-当前底层能力已经具备：
+现在已经有 `MissionRuntime` 和 `MotionActionRuntime`，显示这些信息不难。
+
+### P1：拆分路口检测和转弯策略
+
+当前 `CarController` 在 FOLLOW 中检测到 90 度路口会自动进入转弯。
+
+后续建议实现：
 
 ```text
-SEEK 可以按目标 yaw 直走找线
-FOLLOW_LINE 可以直线段航向辅助
-TURN_90 保持稳定单轮转弯
-LOST_RECOVER 按明确方向找线
+TURN_POLICY_AUTO
+TURN_POLICY_REPORT_ONLY
+TURN_POLICY_IGNORE
 ```
 
-后续重点应是任务层，而不是继续在底层控制逻辑里硬编码比赛动作。
+这样任务层可以决定：
+
+```text
+检测到路口后左转 / 右转 / 继续 / 停车 / 计数
+```
+
+### P2：给任务库增加更多地图任务
+
+建议新地图只改：
+
+```text
+mission_library.c
+```
+
+用动作数组描述：
+
+```text
+SEEK
+FOLLOW_UNTIL_LINE_LOST
+FOLLOW_FOR_TIME
+TURN_LEFT_90
+TURN_RIGHT_90
+WAIT
+STOP
+```
+
+### P3：参数持久化
+
+当前 `YAW=-1`、`REV=215` 是写在默认配置里的。
+
+后续可考虑 Flash 保存：
+
+```text
+KP / KD / SPD / YAW / REV / TASK
+```
+
+但不要在任务框架还没完全稳定时同时做 Flash。
+
+### P4：更高级运动能力
+
+最后再考虑：
+
+```text
+编码器速度闭环
+按距离行驶
+IMU 指定角度转弯
+任务 Profile
+运行统计和故障码页
+```
+
+这些不要和任务框架重构混在一起做，否则现场问题会很难定位。

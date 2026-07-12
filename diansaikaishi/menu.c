@@ -38,12 +38,14 @@ static void menu_adjust_param(int8_t direction)
                 (void)MissionManager_SelectPrevious();
             }
             break;
-        case PARAM_TARGET_LAPS:
-            if (direction > 0) {
-                AppConfig_IncreaseTargetLap();
-            } else {
-                AppConfig_DecreaseTargetLap();
-            }
+        case PARAM_BASE_SPEED:
+            g_appConfig.base_speed += (int16_t)(direction * 10);
+            break;
+        case PARAM_SEEK_HEADING_OFFSET:
+            g_appConfig.seek_heading_offset_deg += direction;
+            break;
+        case PARAM_SECOND_SEEK_ANGLE:
+            g_appConfig.second_seek_angle_deg += (int16_t)(direction * 5);
             break;
         case PARAM_KP:
             g_appConfig.track_kp += direction;
@@ -51,25 +53,8 @@ static void menu_adjust_param(int8_t direction)
         case PARAM_KD:
             g_appConfig.track_kd += direction;
             break;
-        case PARAM_BASE_SPEED:
-            g_appConfig.base_speed += (int16_t)(direction * 10);
-            break;
         case PARAM_MAX_CORRECTION:
             g_appConfig.max_correction += (int16_t)(direction * 10);
-            break;
-        case PARAM_START_LINE_THRESHOLD:
-            g_appConfig.start_line_threshold =
-                (uint8_t)(g_appConfig.start_line_threshold + direction);
-            break;
-        case PARAM_LOST_LINE_THRESHOLD:
-            g_appConfig.lost_line_threshold =
-                (uint8_t)(g_appConfig.lost_line_threshold + direction);
-            break;
-        case PARAM_SEEK_HEADING_OFFSET:
-            g_appConfig.seek_heading_offset_deg += direction;
-            break;
-        case PARAM_SECOND_SEEK_ANGLE:
-            g_appConfig.second_seek_angle_deg += (int16_t)(direction * 5);
             break;
         default:
             break;
@@ -180,24 +165,18 @@ const char *Menu_ParamItemToString(ParamItem item)
     switch (item) {
         case PARAM_TASK:
             return "TASK";
-        case PARAM_TARGET_LAPS:
-            return "LAP";
-        case PARAM_KP:
-            return "KP";
-        case PARAM_KD:
-            return "KD";
         case PARAM_BASE_SPEED:
             return "SPD";
-        case PARAM_MAX_CORRECTION:
-            return "MAX";
-        case PARAM_START_LINE_THRESHOLD:
-            return "START";
-        case PARAM_LOST_LINE_THRESHOLD:
-            return "LOST";
         case PARAM_SEEK_HEADING_OFFSET:
             return "YAW";
         case PARAM_SECOND_SEEK_ANGLE:
             return "REV";
+        case PARAM_KP:
+            return "KP";
+        case PARAM_KD:
+            return "KD";
+        case PARAM_MAX_CORRECTION:
+            return "MAX";
         default:
             return "ERR";
     }
@@ -208,24 +187,18 @@ int16_t Menu_GetParamValue(ParamItem item)
     switch (item) {
         case PARAM_TASK:
             return (int16_t)MissionManager_GetSelectedMissionId();
-        case PARAM_TARGET_LAPS:
-            return (int16_t)g_appConfig.target_laps;
-        case PARAM_KP:
-            return g_appConfig.track_kp;
-        case PARAM_KD:
-            return g_appConfig.track_kd;
         case PARAM_BASE_SPEED:
             return g_appConfig.base_speed;
-        case PARAM_MAX_CORRECTION:
-            return g_appConfig.max_correction;
-        case PARAM_START_LINE_THRESHOLD:
-            return (int16_t)g_appConfig.start_line_threshold;
-        case PARAM_LOST_LINE_THRESHOLD:
-            return (int16_t)g_appConfig.lost_line_threshold;
         case PARAM_SEEK_HEADING_OFFSET:
             return g_appConfig.seek_heading_offset_deg;
         case PARAM_SECOND_SEEK_ANGLE:
             return g_appConfig.second_seek_angle_deg;
+        case PARAM_KP:
+            return g_appConfig.track_kp;
+        case PARAM_KD:
+            return g_appConfig.track_kd;
+        case PARAM_MAX_CORRECTION:
+            return g_appConfig.max_correction;
         default:
             return 0;
     }
