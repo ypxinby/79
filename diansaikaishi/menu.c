@@ -53,7 +53,7 @@ static void menu_adjust_param(int8_t direction)
             g_appConfig.max_correction += (int16_t)(direction * 10);
             break;
         case PARAM_SERVO_ANGLE:
-            g_appConfig.servo_angle_deg += (int16_t)(direction * 5);
+            g_appConfig.servo_angle_deg += (int16_t)(direction * 15);
             break;
         default:
             break;
