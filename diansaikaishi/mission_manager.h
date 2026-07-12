@@ -43,5 +43,7 @@ void MissionManager_Reset(void);
 void MissionManager_Update_20ms(void);
 const MissionRuntime *MissionManager_GetRuntime(void);
 uint8_t MissionManager_GetSelectedMissionId(void);
+uint16_t MissionManager_GetSelectedMissionIndex(void);
+uint16_t MissionManager_GetMissionCount(void);
 
 #endif

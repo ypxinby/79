@@ -299,3 +299,13 @@ uint8_t MissionManager_GetSelectedMissionId(void)
 
     return g_missionRuntime.definition->mission_id;
 }
+
+uint16_t MissionManager_GetSelectedMissionIndex(void)
+{
+    return mission_get_current_registry_index();
+}
+
+uint16_t MissionManager_GetMissionCount(void)
+{
+    return MissionLibrary_GetCount();
+}

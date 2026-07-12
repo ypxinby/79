@@ -116,6 +116,9 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
 static void print_param_page(uint8_t keyEvent)
 {
     ParamItem item = Menu_GetParamItem();
+    uint16_t missionIndex;
+    uint16_t missionCount;
+    const MissionDefinition *nextMission;
 
     OLED_SetCursor(0, 0);
     OLED_PrintString("PARAM");
@@ -129,10 +132,32 @@ static void print_param_page(uint8_t keyEvent)
     OLED_PrintInt16(Menu_GetParamValue(item));
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("C:");
-    OLED_PrintInt16(g_appRuntime.correction);
-    OLED_PrintString(" K:");
-    OLED_PrintInt16((int16_t)keyEvent);
+    if (item == PARAM_TASK) {
+        missionIndex = MissionManager_GetSelectedMissionIndex();
+        missionCount = MissionManager_GetMissionCount();
+        nextMission = (const MissionDefinition *)0;
+
+        if (missionCount > 0U) {
+            nextMission = MissionLibrary_GetByIndex(
+                (uint16_t)((missionIndex + 1U) % missionCount));
+        }
+
+        OLED_PrintString("I:");
+        OLED_PrintInt16((int16_t)(missionIndex + 1U));
+        OLED_PrintString(" N:");
+        OLED_PrintInt16((int16_t)missionCount);
+        OLED_PrintString(" NX:");
+        if (nextMission != (const MissionDefinition *)0) {
+            OLED_PrintInt16((int16_t)nextMission->mission_id);
+        } else {
+            OLED_PrintInt16(0);
+        }
+    } else {
+        OLED_PrintString("C:");
+        OLED_PrintInt16(g_appRuntime.correction);
+        OLED_PrintString(" K:");
+        OLED_PrintInt16((int16_t)keyEvent);
+    }
 }
 
 static void print_sensor_page(uint8_t raw, uint8_t blackCount, int16_t error)
