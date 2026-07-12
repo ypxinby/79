@@ -12,6 +12,7 @@
 #include "mission_manager.h"
 #include "motor.h"
 #include "obstacle_monitor.h"
+#include "obstacle_scanner.h"
 #include "obstacle_safety.h"
 #include "oled_ui.h"
 #include "servo.h"
@@ -67,6 +68,7 @@ void App_Init(void)
     Ultrasonic_Init();
     ObstacleMonitor_Init();
     ObstacleSafety_Init();
+    ObstacleScanner_Init();
     Servo_Init();
     CarController_Init();
     Key_Init();
@@ -83,7 +85,13 @@ void App_Update_20ms(void)
 
     Ultrasonic_Update_20ms();
     ObstacleMonitor_Update_20ms();
-    Servo_SetAngleDeg(g_appConfig.servo_angle_deg);
+    {
+        const ObstacleScanFeedback *scan = ObstacleScanner_GetFeedback();
+
+        if (!scan->active && !scan->complete) {
+            Servo_SetAngleDeg(g_appConfig.servo_angle_deg);
+        }
+    }
 
     Key_Update_20ms();
     {
@@ -96,6 +104,7 @@ void App_Update_20ms(void)
 
     MissionManager_Update_20ms();
     ObstacleSafety_Update_20ms();
+    ObstacleScanner_Update_20ms();
     CarController_Update_20ms();
 
     g_trackRaw = g_appRuntime.sensor_raw;

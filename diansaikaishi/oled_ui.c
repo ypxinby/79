@@ -9,6 +9,7 @@
 #include "mission_manager.h"
 #include "motion_action.h"
 #include "obstacle_monitor.h"
+#include "obstacle_scanner.h"
 #include "obstacle_safety.h"
 #include "oled.h"
 #include "track_sensor.h"
@@ -72,6 +73,7 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
     const char *actionName = "NONE";
     const UltrasonicFeedback *ultrasonic = Ultrasonic_GetFeedback();
     const ObstacleFeedback *obstacle = ObstacleMonitor_GetFeedback();
+    const ObstacleScanFeedback *scan = ObstacleScanner_GetFeedback();
     uint32_t actionTimeS = action->elapsed_ms / 1000U;
 
     (void)error;
@@ -102,13 +104,23 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
     OLED_PrintInt16((int16_t)ObstacleSafety_IsHolding());
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("TIME:");
-    OLED_PrintInt16(clamp_display_i16((int32_t)actionTimeS));
-    OLED_PrintString(" U:");
-    if (ultrasonic->measurement_valid) {
-        OLED_PrintInt16((int16_t)ultrasonic->distance_cm);
+    if (scan->active || scan->complete) {
+        OLED_PrintString("L:");
+        OLED_PrintInt16((int16_t)scan->left_distance_cm);
+        OLED_PrintString(" R:");
+        OLED_PrintInt16((int16_t)scan->right_distance_cm);
+        OLED_PrintString(" D:");
+        OLED_PrintString(ObstacleScanner_DirectionToString(
+            scan->recommended_direction));
     } else {
-        OLED_PrintInt16(0);
+        OLED_PrintString("TIME:");
+        OLED_PrintInt16(clamp_display_i16((int32_t)actionTimeS));
+        OLED_PrintString(" U:");
+        if (ultrasonic->measurement_valid) {
+            OLED_PrintInt16((int16_t)ultrasonic->distance_cm);
+        } else {
+            OLED_PrintInt16(0);
+        }
     }
 }
 

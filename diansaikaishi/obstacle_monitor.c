@@ -1,5 +1,7 @@
 #include "obstacle_monitor.h"
 
+#include "app_config.h"
+#include "servo.h"
 #include "ultrasonic.h"
 
 #define OBSTACLE_BLOCK_DISTANCE_CM       (20U)
@@ -8,6 +10,13 @@
 #define OBSTACLE_CLEAR_CONFIRM_COUNT     (3U)
 
 static ObstacleFeedback g_obstacleFeedback;
+
+static bool obstacle_monitor_servo_is_centered(void)
+{
+    const ServoFeedback *servo = Servo_GetFeedback();
+
+    return servo->target_angle_deg == g_appConfig.servo_angle_deg;
+}
 
 static void obstacle_set_clear(void)
 {
@@ -43,6 +52,10 @@ void ObstacleMonitor_Update_20ms(void)
     }
 
     g_obstacleFeedback.distance_cm = ultrasonic->distance_cm;
+
+    if (!obstacle_monitor_servo_is_centered()) {
+        return;
+    }
 
     if (g_obstacleFeedback.state == OBSTACLE_STATE_BLOCKED) {
         if (ultrasonic->distance_cm >= OBSTACLE_CLEAR_DISTANCE_CM) {

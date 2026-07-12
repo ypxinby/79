@@ -16,6 +16,7 @@
 "./motor.o"
 "./obstacle_monitor.o"
 "./obstacle_safety.o"
+"./obstacle_scanner.o"
 "./oled.o"
 "./oled_ui.o"
 "./pid.o"
