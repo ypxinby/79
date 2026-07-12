@@ -346,6 +346,32 @@ MISSION_ID_TEST_R90   = 2
 MISSION_ID_TEST_RSTOP = 3
 MISSION_ID_TEST_SEEK_FOLLOW = 4
 MISSION_ID_TEST_SEEK_STOP   = 5
+
+MISSION_ID_MAP_A = 10
+MISSION_ID_MAP_B = 11
+MISSION_ID_MAP_C = 12
+```
+
+ID 分区：
+
+```text
+0~9     调试/验证任务
+10~99   正式地图任务
+```
+
+`mission_library.c` 当前按三块组织：
+
+```text
+Test missions
+Competition missions
+Mission registry
+```
+
+后续新增正式地图任务时，原则上只改 `mission_library.c`：
+
+```text
+1. 在 Competition missions 区新增一个 MotionAction 数组
+2. 在 Mission registry 中新增一个注册表条目
 ```
 
 ### LEGACY
@@ -472,6 +498,52 @@ static const MotionAction g_missionTestSeekThenStop[] = {
 后续建议实现 SEEK_COMPLETE_REPORT_ONLY，让 SEEK 后续行为完全由任务层决定。
 ```
 
+### MAP-A
+
+正式模板任务：右转再左转。
+
+```c
+static const MotionAction g_missionMapA[] = {
+    ACTION_SEEK_MISSION_YAW(0.0f, 0U),
+    ACTION_FOLLOW_UNTIL_RIGHT_90(0U),
+    ACTION_TURN_RIGHT_90(0U),
+    ACTION_FOLLOW_UNTIL_LEFT_90(0U),
+    ACTION_TURN_LEFT_90(0U),
+    ACTION_FOLLOW_UNTIL_LINE_LOST(0U),
+    ACTION_STOP()
+};
+```
+
+### MAP-B
+
+正式模板任务：左转再右转。
+
+```c
+static const MotionAction g_missionMapB[] = {
+    ACTION_SEEK_MISSION_YAW(0.0f, 0U),
+    ACTION_FOLLOW_UNTIL_LEFT_90(0U),
+    ACTION_TURN_LEFT_90(0U),
+    ACTION_FOLLOW_UNTIL_RIGHT_90(0U),
+    ACTION_TURN_RIGHT_90(0U),
+    ACTION_FOLLOW_UNTIL_LINE_LOST(0U),
+    ACTION_STOP()
+};
+```
+
+### MAP-C
+
+正式模板任务：连续循迹出线后反向找线，等价于 `TEST-SF` 的正式版。
+
+```c
+static const MotionAction g_missionMapC[] = {
+    ACTION_SEEK_MISSION_YAW(0.0f, 0U),
+    ACTION_FOLLOW_UNTIL_LINE_LOST(0U),
+    ACTION_SEEK_SECOND_CONFIG(0U),
+    ACTION_FOLLOW_UNTIL_LINE_LOST(0U),
+    ACTION_STOP()
+};
+```
+
 ## 10. OLED / 按键操作
 
 页面循环：
@@ -527,7 +599,7 @@ K3：减少
 当前参数菜单项：
 
 ```text
-TASK   当前任务 ID，0=LEGACY，1=TEST-SF，2=TEST-R90，3=TEST-RSTOP，4=TEST-SK-L，5=TEST-SK-S
+TASK   当前任务 ID，0=LEGACY，1=TEST-SF，2=TEST-R90，3=TEST-RSTOP，4=TEST-SK-L，5=TEST-SK-S，10=MAP-A，11=MAP-B，12=MAP-C
 SPD
 YAW    全局 SEEK 航向微调，默认 -1，每次 1 度
 REV    第二次 SEEK 反向角，默认 215，每次 5 度

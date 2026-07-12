@@ -14,45 +14,123 @@ typedef enum {
     MISSION_VALIDATE_TOO_MANY_RETRIES
 } MissionValidateError;
 
+/*
+ * Test missions.
+ *
+ * Keep these missions for validating one behavior at a time:
+ * - LEGACY: close to the old run mode.
+ * - TEST-SF: seek, follow until line lost, reverse seek, follow until lost.
+ * - TEST-R90 / TEST-RSTOP: same right-90 detection, different decisions.
+ * - TEST-SK-L / TEST-SK-S: same seek-line event, different decisions.
+ */
 static const MotionAction g_missionLegacy[] = {
+    /* Find the first line using the mission start yaw. */
     ACTION_SEEK_MISSION_YAW(0.0f, 0U),
+    /* Follow forever after the line is found. */
     ACTION_FOLLOW_FOREVER(0U),
     ACTION_STOP()
 };
 
 static const MotionAction g_missionTestSeekFollow[] = {
+    /* First straight seek. Target = mission_start_yaw + 0 + YAW. */
     ACTION_SEEK_MISSION_YAW(0.0f, 0U),
+    /* Leave the first line segment. */
     ACTION_FOLLOW_UNTIL_LINE_LOST(0U),
+    /* Second straight seek. Target = mission_start_yaw + REV + YAW. */
     ACTION_SEEK_SECOND_CONFIG(0U),
+    /* Leave the second line segment, then stop. */
     ACTION_FOLLOW_UNTIL_LINE_LOST(0U),
     ACTION_STOP()
 };
 
 static const MotionAction g_missionTestRight90Turn[] = {
+    /* Find line, then follow until a right-90 event is reported. */
     ACTION_SEEK_MISSION_YAW(0.0f, 0U),
     ACTION_FOLLOW_UNTIL_RIGHT_90(0U),
+    /* The task layer decides to turn right after the event. */
     ACTION_TURN_RIGHT_90(0U),
+    /* Continue line following after the turn. */
     ACTION_FOLLOW_FOREVER(0U),
     ACTION_STOP()
 };
 
 static const MotionAction g_missionTestRight90Stop[] = {
+    /* Same right-90 event as TEST-R90, but this task stops instead. */
     ACTION_SEEK_MISSION_YAW(0.0f, 0U),
     ACTION_FOLLOW_UNTIL_RIGHT_90(0U),
     ACTION_STOP()
 };
 
 static const MotionAction g_missionTestSeekThenFollow[] = {
+    /* Seek until a line is found, then continue following it. */
     ACTION_SEEK_MISSION_YAW(0.0f, 0U),
     ACTION_FOLLOW_FOREVER(0U),
     ACTION_STOP()
 };
 
 static const MotionAction g_missionTestSeekThenStop[] = {
+    /* Seek until a line is found, then stop. */
     ACTION_SEEK_MISSION_YAW(0.0f, 0U),
     ACTION_STOP()
 };
 
+/*
+ * Competition missions.
+ *
+ * Add formal map tasks here. New map work should normally only add:
+ * 1. A static MotionAction array in this section.
+ * 2. One entry in g_missionRegistry below.
+ */
+static const MotionAction g_missionMapA[] = {
+    /* Find the first line using mission_start_yaw + 0 + YAW. */
+    ACTION_SEEK_MISSION_YAW(0.0f, 0U),
+    /* Follow until the right-90 event is reported. This does not auto-turn. */
+    ACTION_FOLLOW_UNTIL_RIGHT_90(0U),
+    /* The task explicitly decides to turn right. */
+    ACTION_TURN_RIGHT_90(0U),
+    /* Follow until the left-90 event is reported. This does not auto-turn. */
+    ACTION_FOLLOW_UNTIL_LEFT_90(0U),
+    /* The task explicitly decides to turn left. */
+    ACTION_TURN_LEFT_90(0U),
+    /* Follow until leaving the final line segment, then stop. */
+    ACTION_FOLLOW_UNTIL_LINE_LOST(0U),
+    ACTION_STOP()
+};
+
+static const MotionAction g_missionMapB[] = {
+    /* Find the first line using mission_start_yaw + 0 + YAW. */
+    ACTION_SEEK_MISSION_YAW(0.0f, 0U),
+    /* Follow until the left-90 event is reported. This does not auto-turn. */
+    ACTION_FOLLOW_UNTIL_LEFT_90(0U),
+    /* The task explicitly decides to turn left. */
+    ACTION_TURN_LEFT_90(0U),
+    /* Follow until the right-90 event is reported. This does not auto-turn. */
+    ACTION_FOLLOW_UNTIL_RIGHT_90(0U),
+    /* The task explicitly decides to turn right. */
+    ACTION_TURN_RIGHT_90(0U),
+    /* Follow until leaving the final line segment, then stop. */
+    ACTION_FOLLOW_UNTIL_LINE_LOST(0U),
+    ACTION_STOP()
+};
+
+static const MotionAction g_missionMapC[] = {
+    /* First straight seek. Target = mission_start_yaw + 0 + YAW. */
+    ACTION_SEEK_MISSION_YAW(0.0f, 0U),
+    /* Leave the first line segment. */
+    ACTION_FOLLOW_UNTIL_LINE_LOST(0U),
+    /* Second straight seek. Target = mission_start_yaw + REV + YAW. */
+    ACTION_SEEK_SECOND_CONFIG(0U),
+    /* Leave the second line segment, then stop. */
+    ACTION_FOLLOW_UNTIL_LINE_LOST(0U),
+    ACTION_STOP()
+};
+
+/*
+ * Mission registry.
+ *
+ * TASK values shown on OLED are mission_id values. Keep test missions in
+ * 0~9 and competition missions in 10~99.
+ */
 static const MissionDefinition g_missionRegistry[] = {
     {
         .mission_id = MISSION_ID_LEGACY,
@@ -94,6 +172,27 @@ static const MissionDefinition g_missionRegistry[] = {
         .name = "TEST-SK-S",
         .actions = g_missionTestSeekThenStop,
         .action_count = ARRAY_SIZE(g_missionTestSeekThenStop),
+        .control_profile_id = 0U
+    },
+    {
+        .mission_id = MISSION_ID_MAP_A,
+        .name = "MAP-A",
+        .actions = g_missionMapA,
+        .action_count = ARRAY_SIZE(g_missionMapA),
+        .control_profile_id = 0U
+    },
+    {
+        .mission_id = MISSION_ID_MAP_B,
+        .name = "MAP-B",
+        .actions = g_missionMapB,
+        .action_count = ARRAY_SIZE(g_missionMapB),
+        .control_profile_id = 0U
+    },
+    {
+        .mission_id = MISSION_ID_MAP_C,
+        .name = "MAP-C",
+        .actions = g_missionMapC,
+        .action_count = ARRAY_SIZE(g_missionMapC),
         .control_profile_id = 0U
     }
 };

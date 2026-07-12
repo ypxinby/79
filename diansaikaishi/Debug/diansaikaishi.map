@@ -1,7 +1,7 @@
 ******************************************************************************
             TI ARM Clang Linker PC v4.0.4                      
 ******************************************************************************
->> Linked Sun Jul 12 19:30:00 2026
+>> Linked Sun Jul 12 19:46:19 2026
 
 OUTPUT FILE NAME:   <diansaikaishi.out>
 ENTRY POINT SYMBOL: "_c_int00_noargs"  address: 00003bc5
@@ -11,7 +11,7 @@ MEMORY CONFIGURATION
 
          name            origin    length      used     unused   attr    fill
 ----------------------  --------  ---------  --------  --------  ----  --------
-  FLASH                 00000000   00020000  00004510  0001baf0  R  X
+  FLASH                 00000000   00020000  00004738  0001b8c8  R  X
   SRAM                  20200000   00008000  0000031b  00007ce5  RW X
   BCR_CONFIG            41c00000   000000ff  00000000  000000ff  R   
   BSL_CONFIG            41c00100   00000080  00000000  00000080  R   
@@ -21,11 +21,11 @@ SEGMENT ALLOCATION MAP
 
 run origin  load origin   length   init length attrs members
 ----------  ----------- ---------- ----------- ----- -------
-00000000    00000000    00004510   00004510    r-x
+00000000    00000000    00004738   00004738    r-x
   00000000    00000000    000000c0   000000c0    r-- .intvecs
   000000c0    000000c0    00003e80   00003e80    r-x .text
-  00003f40    00003f40    000005a0   000005a0    r-- .rodata
-  000044e0    000044e0    00000030   00000030    r-- .cinit
+  00003f40    00003f40    000007c8   000007c8    r-- .rodata
+  00004708    00004708    00000030   00000030    r-- .cinit
 20200000    20200000    0000011b   00000000    rw-
   20200000    20200000    0000011a   00000000    rw- .bss
   2020011a    2020011a    00000001   00000000    rw- .data
@@ -182,128 +182,134 @@ section   page    origin      length       input sections
                   00003f3a    00000004     libc.a : pre_init.c.obj (.text._system_pre_init)
                   00003f3e    00000002     --HOLE-- [fill = 0]
 
-.cinit     0    000044e0    00000030     
-                  000044e0    0000000c     (__TI_handler_table)
-                  000044ec    00000008     (.cinit..bss.load) [load image, compression = zero_init]
-                  000044f4    00000005     (.cinit..data.load) [load image, compression = lzss]
-                  000044f9    00000003     --HOLE-- [fill = 0]
-                  000044fc    00000010     (__TI_cinit_table)
-                  0000450c    00000004     --HOLE-- [fill = 0]
+.cinit     0    00004708    00000030     
+                  00004708    0000000c     (__TI_handler_table)
+                  00004714    00000008     (.cinit..bss.load) [load image, compression = zero_init]
+                  0000471c    00000005     (.cinit..data.load) [load image, compression = lzss]
+                  00004721    00000003     --HOLE-- [fill = 0]
+                  00004724    00000010     (__TI_cinit_table)
+                  00004734    00000004     --HOLE-- [fill = 0]
 
-.rodata    0    00003f40    000005a0     
+.rodata    0    00003f40    000007c8     
                   00003f40    000000d8     oled.o (.rodata..Lswitch.table.OLED_PrintChar)
-                  00004018    00000078     mission_library.o (.rodata.g_missionTestRight90Turn)
-                  00004090    00000078     mission_library.o (.rodata.g_missionTestSeekFollow)
-                  00004108    00000060     mission_library.o (.rodata.g_missionRegistry)
-                  00004168    00000048     mission_library.o (.rodata.g_missionLegacy)
-                  000041b0    00000048     mission_library.o (.rodata.g_missionTestRight90Stop)
-                  000041f8    00000048     mission_library.o (.rodata.g_missionTestSeekThenFollow)
-                  00004240    00000030     mission_library.o (.rodata.g_missionTestSeekThenStop)
-                  00004270    0000001c     menu.o (.rodata..Lswitch.table.Menu_ParamItemToString)
-                  0000428c    00000018     mission_library.o (.rodata..Lswitch.table.MissionLibrary_FindById)
-                  000042a4    00000018     oled_ui.o (.rodata..Lswitch.table.OledUi_Update_20ms.42)
-                  000042bc    00000018     oled_ui.o (.rodata..Lswitch.table.OledUi_Update_20ms)
-                  000042d4    00000014     car_controller.o (.rodata..Lswitch.table.CarController_RunModeToString)
-                  000042e8    0000000b     mission_library.o (.rodata.str1.1440970855772709381.1)
-                  000042f3    0000000a     mission_library.o (.rodata.str1.11682660667400632204.1)
-                  000042fd    0000000a     mission_library.o (.rodata.str1.15604890807705439409.1)
-                  00004307    00000009     mission_library.o (.rodata.str1.15668266851434757964.1)
-                  00004310    00000009     oled_ui.o (.rodata.str1.3455423528827705371.1)
-                  00004319    00000008     mission_library.o (.rodata.str1.13636476544574750902.1)
-                  00004321    00000007     mission_library.o (.rodata.str1.199678142196697465.1)
-                  00004328    00000007     oled_ui.o (.rodata.str1.8426569189266129334.1)
-                  0000432f    00000006     oled_ui.o (.rodata.str1.1108652269057166745.1)
-                  00004335    00000006     oled_ui.o (.rodata.str1.1445687256832830955.1)
-                  0000433b    00000006     oled_ui.o (.rodata.str1.15008238333949226094.1)
-                  00004341    00000006     oled_ui.o (.rodata.str1.15817398807211891688.1)
-                  00004347    00000006     oled_ui.o (.rodata.str1.16526439943277383452.1)
-                  0000434d    00000006     oled_ui.o (.rodata.str1.3025253791635144717.1)
-                  00004353    00000006     oled_ui.o (.rodata.str1.5853739094453432564.1)
-                  00004359    00000006     oled_ui.o (.rodata.str1.7219546930854689545.1)
-                  0000435f    00000005     oled.o (.rodata.oled_get_glyph.colon)
-                  00004364    00000005     oled.o (.rodata.oled_get_glyph.eight)
-                  00004369    00000005     oled.o (.rodata.oled_get_glyph.five)
-                  0000436e    00000005     oled.o (.rodata.oled_get_glyph.four)
-                  00004373    00000005     oled.o (.rodata.oled_get_glyph.glyphA)
-                  00004378    00000005     oled.o (.rodata.oled_get_glyph.glyphB)
-                  0000437d    00000005     oled.o (.rodata.oled_get_glyph.glyphC)
-                  00004382    00000005     oled.o (.rodata.oled_get_glyph.glyphD)
-                  00004387    00000005     oled.o (.rodata.oled_get_glyph.glyphE)
-                  0000438c    00000005     oled.o (.rodata.oled_get_glyph.glyphG)
-                  00004391    00000005     oled.o (.rodata.oled_get_glyph.glyphH)
-                  00004396    00000005     oled.o (.rodata.oled_get_glyph.glyphI)
-                  0000439b    00000005     oled.o (.rodata.oled_get_glyph.glyphK)
-                  000043a0    00000005     oled.o (.rodata.oled_get_glyph.glyphL)
-                  000043a5    00000005     oled.o (.rodata.oled_get_glyph.glyphM)
-                  000043aa    00000005     oled.o (.rodata.oled_get_glyph.glyphN)
-                  000043af    00000005     oled.o (.rodata.oled_get_glyph.glyphO)
-                  000043b4    00000005     oled.o (.rodata.oled_get_glyph.glyphP)
-                  000043b9    00000005     oled.o (.rodata.oled_get_glyph.glyphR)
-                  000043be    00000005     oled.o (.rodata.oled_get_glyph.glyphS)
-                  000043c3    00000005     oled.o (.rodata.oled_get_glyph.glyphT)
-                  000043c8    00000005     oled.o (.rodata.oled_get_glyph.glyphU)
-                  000043cd    00000005     oled.o (.rodata.oled_get_glyph.glyphV)
-                  000043d2    00000005     oled.o (.rodata.oled_get_glyph.glyphW)
-                  000043d7    00000005     oled.o (.rodata.oled_get_glyph.glyphX)
-                  000043dc    00000005     oled.o (.rodata.oled_get_glyph.glyphY)
-                  000043e1    00000005     oled.o (.rodata.oled_get_glyph.glyphb)
-                  000043e6    00000005     oled.o (.rodata.oled_get_glyph.gt)
-                  000043eb    00000005     oled.o (.rodata.oled_get_glyph.minus)
-                  000043f0    00000005     oled.o (.rodata.oled_get_glyph.nine)
-                  000043f5    00000005     oled.o (.rodata.oled_get_glyph.one)
-                  000043fa    00000005     oled.o (.rodata.oled_get_glyph.seven)
-                  000043ff    00000005     oled.o (.rodata.oled_get_glyph.six)
-                  00004404    00000005     oled.o (.rodata.oled_get_glyph.space)
-                  00004409    00000005     oled.o (.rodata.oled_get_glyph.three)
-                  0000440e    00000005     oled.o (.rodata.oled_get_glyph.two)
-                  00004413    00000005     oled.o (.rodata.oled_get_glyph.zero)
-                  00004418    00000005     oled_ui.o (.rodata.str1.10416366799939242409.1)
-                  0000441d    00000005     oled_ui.o (.rodata.str1.130772507669342127.1)
-                  00004422    00000005     oled_ui.o (.rodata.str1.13790669171379415506.1)
-                  00004427    00000005     oled_ui.o (.rodata.str1.14134189893851348960.1)
-                  0000442c    00000005     oled_ui.o (.rodata.str1.14556837007311414654.1)
-                  00004431    00000005     oled_ui.o (.rodata.str1.17274519358952562110.1)
-                  00004436    00000005     oled_ui.o (.rodata.str1.17540787658903907660.1)
-                  0000443b    00000005     oled_ui.o (.rodata.str1.17884296644359297425.1)
-                  00004440    00000005     car_controller.o (.rodata.str1.18191498530309206443.1)
-                  00004445    00000005     oled_ui.o (.rodata.str1.18266126048138325213.1)
-                  0000444a    00000005     oled_ui.o (.rodata.str1.270145429241168923.1)
-                  0000444f    00000005     oled_ui.o (.rodata.str1.3407221357956504873.1)
-                  00004454    00000005     car_controller.o (.rodata.str1.4164979912472006574.1)
-                  00004459    00000005     oled_ui.o (.rodata.str1.4581472623415959594.1)
-                  0000445e    00000005     menu.o (.rodata.str1.4862307748908978627.1)
-                  00004463    00000005     oled_ui.o (.rodata.str1.8236579331345056500.1)
-                  00004468    00000005     oled_ui.o (.rodata.str1.8783421139296713095.1)
-                  0000446d    00000005     oled_ui.o (.rodata.str1.9544068167406571052.1)
-                  00004472    00000005     car_controller.o (.rodata.str1.9981487771679760427.1)
-                  00004477    00000004     oled_ui.o (.rodata.str1.11232419324784801130.1)
-                  0000447b    00000004     menu.o (.rodata.str1.12110183915172842339.1)
-                  0000447f    00000004     car_controller.o (.rodata.str1.12442237994239546032.1)
-                  00004483    00000004     menu.o (.rodata.str1.13124720451672825294.1)
-                  00004487    00000004     oled_ui.o (.rodata.str1.13244290092665904221.1)
-                  0000448b    00000004     oled_ui.o (.rodata.str1.13567883086814673087.1)
-                  0000448f    00000004     oled_ui.o (.rodata.str1.13882251010780863896.1)
-                  00004493    00000004     menu.o (.rodata.str1.14098755746347272832.1)
-                  00004497    00000004     oled_ui.o (.rodata.str1.14358698208395374265.1)
-                  0000449b    00000004     oled_ui.o (.rodata.str1.15917848551323629232.1)
-                  0000449f    00000004     menu.o (.rodata.str1.16312125044762562515.1)
-                  000044a3    00000004     oled_ui.o (.rodata.str1.16849766574302683489.1)
-                  000044a7    00000004     oled_ui.o (.rodata.str1.16931641404301806744.1)
-                  000044ab    00000004     menu.o (.rodata.str1.17041139162815566052.1)
-                  000044af    00000004     car_controller.o (.rodata.str1.17172356789460551389.1)
-                  000044b3    00000004     oled_ui.o (.rodata.str1.17812014771544466701.1)
-                  000044b7    00000004     oled_ui.o (.rodata.str1.3702290527496711532.1)
-                  000044bb    00000004     oled_ui.o (.rodata.str1.4402311448527872260.1)
-                  000044bf    00000004     oled_ui.o (.rodata.str1.5965450730569173784.1)
-                  000044c3    00000004     car_controller.o (.rodata.str1.9234375891235759983.1)
-                  000044c7    00000004     oled_ui.o (.rodata.str1.967006512144173535.1)
-                  000044cb    00000003     oled_ui.o (.rodata.str1.1019225241002246410.1)
-                  000044ce    00000003     oled_ui.o (.rodata.str1.2308938766145545715.1)
-                  000044d1    00000003     menu.o (.rodata.str1.4646809750356241979.1)
-                  000044d4    00000003     menu.o (.rodata.str1.6857549598058878762.1)
-                  000044d7    00000003     oled_ui.o (.rodata.str1.9159586779647977165.1)
-                  000044da    00000003     oled_ui.o (.rodata.str1.9854382722193312766.1)
-                  000044dd    00000003     --HOLE-- [fill = 0]
+                  00004018    000000a8     mission_library.o (.rodata.g_missionMapA)
+                  000040c0    000000a8     mission_library.o (.rodata.g_missionMapB)
+                  00004168    00000090     mission_library.o (.rodata.g_missionRegistry)
+                  000041f8    00000078     mission_library.o (.rodata.g_missionMapC)
+                  00004270    00000078     mission_library.o (.rodata.g_missionTestRight90Turn)
+                  000042e8    00000078     mission_library.o (.rodata.g_missionTestSeekFollow)
+                  00004360    00000048     mission_library.o (.rodata.g_missionLegacy)
+                  000043a8    00000048     mission_library.o (.rodata.g_missionTestRight90Stop)
+                  000043f0    00000048     mission_library.o (.rodata.g_missionTestSeekThenFollow)
+                  00004438    00000034     mission_library.o (.rodata..Lswitch.table.MissionLibrary_FindById)
+                  0000446c    00000030     mission_library.o (.rodata.g_missionTestSeekThenStop)
+                  0000449c    0000001c     menu.o (.rodata..Lswitch.table.Menu_ParamItemToString)
+                  000044b8    00000018     oled_ui.o (.rodata..Lswitch.table.OledUi_Update_20ms.42)
+                  000044d0    00000018     oled_ui.o (.rodata..Lswitch.table.OledUi_Update_20ms)
+                  000044e8    00000014     car_controller.o (.rodata..Lswitch.table.CarController_RunModeToString)
+                  000044fc    0000000b     mission_library.o (.rodata.str1.1440970855772709381.1)
+                  00004507    0000000a     mission_library.o (.rodata.str1.11682660667400632204.1)
+                  00004511    0000000a     mission_library.o (.rodata.str1.15604890807705439409.1)
+                  0000451b    00000009     mission_library.o (.rodata.str1.15668266851434757964.1)
+                  00004524    00000009     oled_ui.o (.rodata.str1.3455423528827705371.1)
+                  0000452d    00000008     mission_library.o (.rodata.str1.13636476544574750902.1)
+                  00004535    00000007     mission_library.o (.rodata.str1.199678142196697465.1)
+                  0000453c    00000007     oled_ui.o (.rodata.str1.8426569189266129334.1)
+                  00004543    00000006     oled_ui.o (.rodata.str1.1108652269057166745.1)
+                  00004549    00000006     oled_ui.o (.rodata.str1.1445687256832830955.1)
+                  0000454f    00000006     oled_ui.o (.rodata.str1.15008238333949226094.1)
+                  00004555    00000006     oled_ui.o (.rodata.str1.15817398807211891688.1)
+                  0000455b    00000006     mission_library.o (.rodata.str1.1642528554392422750.1)
+                  00004561    00000006     oled_ui.o (.rodata.str1.16526439943277383452.1)
+                  00004567    00000006     oled_ui.o (.rodata.str1.3025253791635144717.1)
+                  0000456d    00000006     mission_library.o (.rodata.str1.4251661066630729623.1)
+                  00004573    00000006     mission_library.o (.rodata.str1.4392264057376583881.1)
+                  00004579    00000006     oled_ui.o (.rodata.str1.5853739094453432564.1)
+                  0000457f    00000006     oled_ui.o (.rodata.str1.7219546930854689545.1)
+                  00004585    00000005     oled.o (.rodata.oled_get_glyph.colon)
+                  0000458a    00000005     oled.o (.rodata.oled_get_glyph.eight)
+                  0000458f    00000005     oled.o (.rodata.oled_get_glyph.five)
+                  00004594    00000005     oled.o (.rodata.oled_get_glyph.four)
+                  00004599    00000005     oled.o (.rodata.oled_get_glyph.glyphA)
+                  0000459e    00000005     oled.o (.rodata.oled_get_glyph.glyphB)
+                  000045a3    00000005     oled.o (.rodata.oled_get_glyph.glyphC)
+                  000045a8    00000005     oled.o (.rodata.oled_get_glyph.glyphD)
+                  000045ad    00000005     oled.o (.rodata.oled_get_glyph.glyphE)
+                  000045b2    00000005     oled.o (.rodata.oled_get_glyph.glyphG)
+                  000045b7    00000005     oled.o (.rodata.oled_get_glyph.glyphH)
+                  000045bc    00000005     oled.o (.rodata.oled_get_glyph.glyphI)
+                  000045c1    00000005     oled.o (.rodata.oled_get_glyph.glyphK)
+                  000045c6    00000005     oled.o (.rodata.oled_get_glyph.glyphL)
+                  000045cb    00000005     oled.o (.rodata.oled_get_glyph.glyphM)
+                  000045d0    00000005     oled.o (.rodata.oled_get_glyph.glyphN)
+                  000045d5    00000005     oled.o (.rodata.oled_get_glyph.glyphO)
+                  000045da    00000005     oled.o (.rodata.oled_get_glyph.glyphP)
+                  000045df    00000005     oled.o (.rodata.oled_get_glyph.glyphR)
+                  000045e4    00000005     oled.o (.rodata.oled_get_glyph.glyphS)
+                  000045e9    00000005     oled.o (.rodata.oled_get_glyph.glyphT)
+                  000045ee    00000005     oled.o (.rodata.oled_get_glyph.glyphU)
+                  000045f3    00000005     oled.o (.rodata.oled_get_glyph.glyphV)
+                  000045f8    00000005     oled.o (.rodata.oled_get_glyph.glyphW)
+                  000045fd    00000005     oled.o (.rodata.oled_get_glyph.glyphX)
+                  00004602    00000005     oled.o (.rodata.oled_get_glyph.glyphY)
+                  00004607    00000005     oled.o (.rodata.oled_get_glyph.glyphb)
+                  0000460c    00000005     oled.o (.rodata.oled_get_glyph.gt)
+                  00004611    00000005     oled.o (.rodata.oled_get_glyph.minus)
+                  00004616    00000005     oled.o (.rodata.oled_get_glyph.nine)
+                  0000461b    00000005     oled.o (.rodata.oled_get_glyph.one)
+                  00004620    00000005     oled.o (.rodata.oled_get_glyph.seven)
+                  00004625    00000005     oled.o (.rodata.oled_get_glyph.six)
+                  0000462a    00000005     oled.o (.rodata.oled_get_glyph.space)
+                  0000462f    00000005     oled.o (.rodata.oled_get_glyph.three)
+                  00004634    00000005     oled.o (.rodata.oled_get_glyph.two)
+                  00004639    00000005     oled.o (.rodata.oled_get_glyph.zero)
+                  0000463e    00000005     oled_ui.o (.rodata.str1.10416366799939242409.1)
+                  00004643    00000005     oled_ui.o (.rodata.str1.130772507669342127.1)
+                  00004648    00000005     oled_ui.o (.rodata.str1.13790669171379415506.1)
+                  0000464d    00000005     oled_ui.o (.rodata.str1.14134189893851348960.1)
+                  00004652    00000005     oled_ui.o (.rodata.str1.14556837007311414654.1)
+                  00004657    00000005     oled_ui.o (.rodata.str1.17274519358952562110.1)
+                  0000465c    00000005     oled_ui.o (.rodata.str1.17540787658903907660.1)
+                  00004661    00000005     oled_ui.o (.rodata.str1.17884296644359297425.1)
+                  00004666    00000005     car_controller.o (.rodata.str1.18191498530309206443.1)
+                  0000466b    00000005     oled_ui.o (.rodata.str1.18266126048138325213.1)
+                  00004670    00000005     oled_ui.o (.rodata.str1.270145429241168923.1)
+                  00004675    00000005     oled_ui.o (.rodata.str1.3407221357956504873.1)
+                  0000467a    00000005     car_controller.o (.rodata.str1.4164979912472006574.1)
+                  0000467f    00000005     oled_ui.o (.rodata.str1.4581472623415959594.1)
+                  00004684    00000005     menu.o (.rodata.str1.4862307748908978627.1)
+                  00004689    00000005     oled_ui.o (.rodata.str1.8236579331345056500.1)
+                  0000468e    00000005     oled_ui.o (.rodata.str1.8783421139296713095.1)
+                  00004693    00000005     oled_ui.o (.rodata.str1.9544068167406571052.1)
+                  00004698    00000005     car_controller.o (.rodata.str1.9981487771679760427.1)
+                  0000469d    00000004     oled_ui.o (.rodata.str1.11232419324784801130.1)
+                  000046a1    00000004     menu.o (.rodata.str1.12110183915172842339.1)
+                  000046a5    00000004     car_controller.o (.rodata.str1.12442237994239546032.1)
+                  000046a9    00000004     menu.o (.rodata.str1.13124720451672825294.1)
+                  000046ad    00000004     oled_ui.o (.rodata.str1.13244290092665904221.1)
+                  000046b1    00000004     oled_ui.o (.rodata.str1.13567883086814673087.1)
+                  000046b5    00000004     oled_ui.o (.rodata.str1.13882251010780863896.1)
+                  000046b9    00000004     menu.o (.rodata.str1.14098755746347272832.1)
+                  000046bd    00000004     oled_ui.o (.rodata.str1.14358698208395374265.1)
+                  000046c1    00000004     oled_ui.o (.rodata.str1.15917848551323629232.1)
+                  000046c5    00000004     menu.o (.rodata.str1.16312125044762562515.1)
+                  000046c9    00000004     oled_ui.o (.rodata.str1.16849766574302683489.1)
+                  000046cd    00000004     oled_ui.o (.rodata.str1.16931641404301806744.1)
+                  000046d1    00000004     menu.o (.rodata.str1.17041139162815566052.1)
+                  000046d5    00000004     car_controller.o (.rodata.str1.17172356789460551389.1)
+                  000046d9    00000004     oled_ui.o (.rodata.str1.17812014771544466701.1)
+                  000046dd    00000004     oled_ui.o (.rodata.str1.3702290527496711532.1)
+                  000046e1    00000004     oled_ui.o (.rodata.str1.4402311448527872260.1)
+                  000046e5    00000004     oled_ui.o (.rodata.str1.5965450730569173784.1)
+                  000046e9    00000004     car_controller.o (.rodata.str1.9234375891235759983.1)
+                  000046ed    00000004     oled_ui.o (.rodata.str1.967006512144173535.1)
+                  000046f1    00000003     oled_ui.o (.rodata.str1.1019225241002246410.1)
+                  000046f4    00000003     oled_ui.o (.rodata.str1.2308938766145545715.1)
+                  000046f7    00000003     menu.o (.rodata.str1.4646809750356241979.1)
+                  000046fa    00000003     menu.o (.rodata.str1.6857549598058878762.1)
+                  000046fd    00000003     oled_ui.o (.rodata.str1.9159586779647977165.1)
+                  00004700    00000003     oled_ui.o (.rodata.str1.9854382722193312766.1)
+                  00004703    00000005     --HOLE-- [fill = 0]
 
 .init_array 
 *          0    00000000    00000000     UNINITIALIZED
@@ -367,8 +373,8 @@ MODULE SUMMARY
        oled.o                         2088    401       1      
        car_controller.o               2076    47        55     
        oled_ui.o                      1208    251       1      
+       mission_library.o              172     1229      0      
        mission_manager.o              1044    0         28     
-       mission_library.o              172     679       0      
        app_config.o                   672     0         76     
        menu.o                         560     59        2      
        motion_action.o                568     0         16     
@@ -383,7 +389,7 @@ MODULE SUMMARY
        encoder.o                      144     0         8      
        car_state.o                    36      0         1      
     +--+------------------------------+-------+---------+---------+
-       Total:                         14228   1629      283    
+       Total:                         14228   2179      283    
                                                                
     C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/lib/ticlang/m0p/mspm0g1x0x_g3x0x/driverlib.a
        dl_common.o                    10      0         0      
@@ -430,19 +436,19 @@ MODULE SUMMARY
        Stack:                         0       0         512    
        Linker Generated:              0       41        0      
     +--+------------------------------+-------+---------+---------+
-       Grand Total:                   15982   1670      795    
+       Grand Total:                   15982   2220      795    
 
 
 LINKER GENERATED COPY TABLES
 
-__TI_cinit_table @ 000044fc records: 2, size/record: 8, table size: 16
-	.bss: load addr=000044ec, load size=00000008 bytes, run addr=20200000, run size=0000011a bytes, compression=zero_init
-	.data: load addr=000044f4, load size=00000005 bytes, run addr=2020011a, run size=00000001 bytes, compression=lzss
+__TI_cinit_table @ 00004724 records: 2, size/record: 8, table size: 16
+	.bss: load addr=00004714, load size=00000008 bytes, run addr=20200000, run size=0000011a bytes, compression=zero_init
+	.data: load addr=0000471c, load size=00000005 bytes, run addr=2020011a, run size=00000001 bytes, compression=lzss
 
 
 LINKER GENERATED HANDLER TABLE
 
-__TI_handler_table @ 000044e0 records: 3, size/record: 4, table size: 12
+__TI_handler_table @ 00004708 records: 3, size/record: 4, table size: 12
 	index: 0, handler: __TI_decompress_lzss
 	index: 1, handler: __TI_decompress_none
 	index: 2, handler: __TI_zero_init
@@ -586,11 +592,11 @@ address   name
 00000000  __TI_ATRegion2_region_sz           
 00000000  __TI_ATRegion2_src_addr            
 00000000  __TI_ATRegion2_trg_addr            
-000044fc  __TI_CINIT_Base                    
-0000450c  __TI_CINIT_Limit                   
-0000450c  __TI_CINIT_Warm                    
-000044e0  __TI_Handler_Table_Base            
-000044ec  __TI_Handler_Table_Limit           
+00004724  __TI_CINIT_Base                    
+00004734  __TI_CINIT_Limit                   
+00004734  __TI_CINIT_Warm                    
+00004708  __TI_Handler_Table_Base            
+00004714  __TI_Handler_Table_Limit           
 00003929  __TI_auto_init_nobinit_nopinit     
 00003005  __TI_decompress_lzss               
 00003e25  __TI_decompress_none               
@@ -855,11 +861,11 @@ address   name
 00003f33  MissionLibrary_GetCount            
 00003f37  Reset_Handler                      
 00003f3b  _system_pre_init                   
-000044e0  __TI_Handler_Table_Base            
-000044ec  __TI_Handler_Table_Limit           
-000044fc  __TI_CINIT_Base                    
-0000450c  __TI_CINIT_Limit                   
-0000450c  __TI_CINIT_Warm                    
+00004708  __TI_Handler_Table_Base            
+00004714  __TI_Handler_Table_Limit           
+00004724  __TI_CINIT_Base                    
+00004734  __TI_CINIT_Limit                   
+00004734  __TI_CINIT_Warm                    
 20200000  __start___llvm_prf_bits            
 20200000  __start___llvm_prf_cnts            
 20200000  __stop___llvm_prf_bits             

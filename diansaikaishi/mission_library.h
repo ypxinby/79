@@ -6,13 +6,20 @@
 
 #include "motion_types.h"
 
-#define MISSION_MAX_ACTIONS     (32U)
-#define MISSION_ID_LEGACY       (0U)
-#define MISSION_ID_TEST_SF      (1U)
-#define MISSION_ID_TEST_R90     (2U)
-#define MISSION_ID_TEST_RSTOP   (3U)
-#define MISSION_ID_TEST_SEEK_FOLLOW (4U)
-#define MISSION_ID_TEST_SEEK_STOP   (5U)
+#define MISSION_MAX_ACTIONS             (32U)
+
+/* 0~9: debug and validation missions. */
+#define MISSION_ID_LEGACY               (0U)
+#define MISSION_ID_TEST_SF              (1U)
+#define MISSION_ID_TEST_R90             (2U)
+#define MISSION_ID_TEST_RSTOP           (3U)
+#define MISSION_ID_TEST_SEEK_FOLLOW     (4U)
+#define MISSION_ID_TEST_SEEK_STOP       (5U)
+
+/* 10~99: competition map missions. */
+#define MISSION_ID_MAP_A                (10U)
+#define MISSION_ID_MAP_B                (11U)
+#define MISSION_ID_MAP_C                (12U)
 
 #define ACTION_STOP() \
     { \
