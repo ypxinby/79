@@ -17,6 +17,9 @@
 #define ULTRASONIC_TRIGGER_PERIOD_TICKS  (5U)
 #define ULTRASONIC_TRIG_PULSE_TICKS      (1U)
 #define ULTRASONIC_ECHO_TIMEOUT_TICKS    (300U)
+#define ULTRASONIC_MIN_DISTANCE_CM       (3U)
+#define ULTRASONIC_MAX_DISTANCE_CM       (250U)
+#define ULTRASONIC_FILTER_SAMPLE_COUNT   (3U)
 
 typedef enum {
     ULTRASONIC_STATE_IDLE = 0,
@@ -32,6 +35,9 @@ static volatile bool g_triggerRequest;
 static UltrasonicState g_ultrasonicState;
 static uint16_t g_stateTicks;
 static uint16_t g_echoTicks;
+static uint16_t g_distanceSamples[ULTRASONIC_FILTER_SAMPLE_COUNT];
+static uint8_t g_distanceSampleIndex;
+static uint8_t g_distanceSampleCount;
 
 static bool ultrasonic_echo_is_high(void)
 {
@@ -45,7 +51,6 @@ static void ultrasonic_start_trigger(void)
     g_ultrasonicState = ULTRASONIC_STATE_TRIGGER;
     g_stateTicks = 0U;
     g_echoTicks = 0U;
-    g_ultrasonicFeedback.measurement_valid = false;
     DL_GPIO_setPins(GPIO_ULTRASONIC_PORT, GPIO_ULTRASONIC_HC_TRIG_PIN);
 
     if (g_ultrasonicFeedback.trigger_count < UINT16_MAX) {
@@ -53,12 +58,57 @@ static void ultrasonic_start_trigger(void)
     }
 }
 
+static uint16_t ultrasonic_median3(uint16_t a, uint16_t b, uint16_t c)
+{
+    if (a > b) {
+        uint16_t temp = a;
+        a = b;
+        b = temp;
+    }
+    if (b > c) {
+        uint16_t temp = b;
+        b = c;
+        c = temp;
+    }
+    if (a > b) {
+        b = a;
+    }
+
+    return b;
+}
+
+static void ultrasonic_filter_distance(uint16_t distanceCm)
+{
+    g_distanceSamples[g_distanceSampleIndex] = distanceCm;
+    g_distanceSampleIndex++;
+    if (g_distanceSampleIndex >= ULTRASONIC_FILTER_SAMPLE_COUNT) {
+        g_distanceSampleIndex = 0U;
+    }
+    if (g_distanceSampleCount < ULTRASONIC_FILTER_SAMPLE_COUNT) {
+        g_distanceSampleCount++;
+    }
+
+    if (g_distanceSampleCount >= ULTRASONIC_FILTER_SAMPLE_COUNT) {
+        g_ultrasonicFeedback.distance_cm =
+            ultrasonic_median3(g_distanceSamples[0],
+                g_distanceSamples[1], g_distanceSamples[2]);
+        g_ultrasonicFeedback.measurement_valid = true;
+    }
+}
+
 static void ultrasonic_finish_measurement(uint16_t echoTicks)
 {
+    uint16_t distanceCm;
+
     g_ultrasonicFeedback.echo_ticks_100us = echoTicks;
-    g_ultrasonicFeedback.distance_cm =
-        (uint16_t)(((uint32_t)echoTicks * 100U + 29U) / 58U);
-    g_ultrasonicFeedback.measurement_valid = true;
+    distanceCm = (uint16_t)(((uint32_t)echoTicks * 100U + 29U) / 58U);
+    g_ultrasonicFeedback.raw_distance_cm = distanceCm;
+
+    if ((distanceCm >= ULTRASONIC_MIN_DISTANCE_CM) &&
+        (distanceCm <= ULTRASONIC_MAX_DISTANCE_CM)) {
+        ultrasonic_filter_distance(distanceCm);
+    }
+
     g_ultrasonicState = ULTRASONIC_STATE_DONE;
     g_stateTicks = 0U;
 }
@@ -67,7 +117,10 @@ static void ultrasonic_finish_timeout(void)
 {
     g_ultrasonicFeedback.measurement_valid = false;
     g_ultrasonicFeedback.echo_ticks_100us = 0U;
+    g_ultrasonicFeedback.raw_distance_cm = 0U;
     g_ultrasonicFeedback.distance_cm = 0U;
+    g_distanceSampleIndex = 0U;
+    g_distanceSampleCount = 0U;
     g_ultrasonicState = ULTRASONIC_STATE_TIMEOUT;
     g_stateTicks = 0U;
 }
@@ -86,6 +139,7 @@ void Ultrasonic_Init(void)
     g_ultrasonicFeedback.echo_high = false;
     g_ultrasonicFeedback.measurement_valid = false;
     g_ultrasonicFeedback.distance_cm = 0U;
+    g_ultrasonicFeedback.raw_distance_cm = 0U;
     g_ultrasonicFeedback.echo_ticks_100us = 0U;
     g_ultrasonicFeedback.trigger_count = 0U;
     g_ultrasonicFeedback.update_count = 0U;
@@ -94,6 +148,8 @@ void Ultrasonic_Init(void)
     g_ultrasonicState = ULTRASONIC_STATE_IDLE;
     g_stateTicks = 0U;
     g_echoTicks = 0U;
+    g_distanceSampleIndex = 0U;
+    g_distanceSampleCount = 0U;
 
     DL_GPIO_clearPins(GPIO_ULTRASONIC_PORT, GPIO_ULTRASONIC_HC_TRIG_PIN);
     DL_GPIO_enableOutput(GPIO_ULTRASONIC_PORT,

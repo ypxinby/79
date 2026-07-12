@@ -8,6 +8,7 @@ typedef struct {
     bool echo_high;
     bool measurement_valid;
     uint16_t distance_cm;
+    uint16_t raw_distance_cm;
     uint16_t echo_ticks_100us;
     uint16_t trigger_count;
     uint16_t update_count;
