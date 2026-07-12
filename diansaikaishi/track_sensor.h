@@ -13,6 +13,8 @@
 #define TRACK_LEFT_EDGE_MASK    ((uint8_t)((1U << 0) | (1U << 1)))
 #define TRACK_RIGHT_EDGE_MASK   ((uint8_t)((1U << 5) | (1U << 6)))
 #define TRACK_CENTER_MASK       ((uint8_t)((1U << 2) | (1U << 3) | (1U << 4)))
+#define TRACK_TURN_MIN_BLACK_COUNT  (3U)
+#define TRACK_TURN_MIN_ABS_ERROR    (200)
 
 typedef enum {
     TRACK_TURN_NONE = 0,

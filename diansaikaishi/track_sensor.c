@@ -103,12 +103,20 @@ TrackTurnType TrackSensor_DetectTurn(uint8_t raw, int16_t error)
 {
     uint8_t leftEdge = (uint8_t)(raw & TRACK_LEFT_EDGE_MASK);
     uint8_t rightEdge = (uint8_t)(raw & TRACK_RIGHT_EDGE_MASK);
+    uint8_t center = (uint8_t)(raw & TRACK_CENTER_MASK);
+    uint8_t blackCount = TrackSensor_CountBlack(raw);
 
-    if ((leftEdge != 0U) && (rightEdge == 0U) && (error <= -200)) {
+    if ((blackCount < TRACK_TURN_MIN_BLACK_COUNT) || (center == 0U)) {
+        return TRACK_TURN_NONE;
+    }
+
+    if ((leftEdge != 0U) && (rightEdge == 0U) &&
+        (error <= (int16_t)-TRACK_TURN_MIN_ABS_ERROR)) {
         return TRACK_TURN_LEFT_90;
     }
 
-    if ((rightEdge != 0U) && (leftEdge == 0U) && (error >= 200)) {
+    if ((rightEdge != 0U) && (leftEdge == 0U) &&
+        (error >= TRACK_TURN_MIN_ABS_ERROR)) {
         return TRACK_TURN_RIGHT_90;
     }
 

@@ -193,6 +193,18 @@ CAR_TURN_POLICY_REPORT_ONLY  只上报路口，不自动转弯
 CAR_TURN_POLICY_IGNORE       忽略路口检测
 ```
 
+当前 90 度路口检测在 `track_sensor.c`：
+
+```text
+左/右边缘传感器看到线
+中间 S3/S4/S5 至少一个看到线
+黑线数量 >= TRACK_TURN_MIN_BLACK_COUNT，当前为 3
+误差方向达到 TRACK_TURN_MIN_ABS_ERROR，当前为 200
+对侧边缘没有看到线
+```
+
+这样比旧逻辑更不容易把普通大弯误判为 90 度路口。
+
 ## 6. SEEK 直线找线逻辑
 
 `SEEK_LINE` 没看到黑线时：
