@@ -8,8 +8,10 @@
 #define OBSTACLE_CLEAR_DISTANCE_CM       (25U)
 #define OBSTACLE_STOP_CONFIRM_COUNT      (3U)
 #define OBSTACLE_CLEAR_CONFIRM_COUNT     (3U)
+#define OBSTACLE_CENTER_SETTLE_TICKS     (20U)
 
 static ObstacleFeedback g_obstacleFeedback;
+static uint8_t g_centerSettleTicks;
 
 static bool obstacle_monitor_servo_is_centered(void)
 {
@@ -38,6 +40,7 @@ void ObstacleMonitor_Init(void)
 {
     g_obstacleFeedback.distance_valid = false;
     g_obstacleFeedback.distance_cm = 0U;
+    g_centerSettleTicks = 0U;
     obstacle_set_clear();
 }
 
@@ -54,6 +57,11 @@ void ObstacleMonitor_Update_20ms(void)
     g_obstacleFeedback.distance_cm = ultrasonic->distance_cm;
 
     if (!obstacle_monitor_servo_is_centered()) {
+        g_centerSettleTicks = 0U;
+        return;
+    }
+    if (g_centerSettleTicks < OBSTACLE_CENTER_SETTLE_TICKS) {
+        g_centerSettleTicks++;
         return;
     }
 

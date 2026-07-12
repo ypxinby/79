@@ -231,6 +231,16 @@ void Ultrasonic_Update_20ms(void)
     }
 }
 
+void Ultrasonic_ResetFilter(void)
+{
+    g_ultrasonicFeedback.measurement_valid = false;
+    g_ultrasonicFeedback.distance_cm = 0U;
+    g_ultrasonicFeedback.raw_distance_cm = 0U;
+    g_ultrasonicFeedback.echo_ticks_100us = 0U;
+    g_distanceSampleIndex = 0U;
+    g_distanceSampleCount = 0U;
+}
+
 const UltrasonicFeedback *Ultrasonic_GetFeedback(void)
 {
     return &g_ultrasonicFeedback;

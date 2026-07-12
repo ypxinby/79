@@ -7,7 +7,7 @@
 
 #define OBSTACLE_SCAN_LEFT_ANGLE_DEG         (145)
 #define OBSTACLE_SCAN_RIGHT_ANGLE_DEG        (35)
-#define OBSTACLE_SCAN_SETTLE_TICKS           (15U)
+#define OBSTACLE_SCAN_SETTLE_TICKS           (30U)
 #define OBSTACLE_SCAN_DIRECTION_MARGIN_CM    (10U)
 #define OBSTACLE_SCAN_MIN_CLEAR_CM           (25U)
 
@@ -22,8 +22,14 @@ static void scanner_set_state(ObstacleScanState state)
 
 static void scanner_set_servo(int16_t angle_deg)
 {
+    const ServoFeedback *servo = Servo_GetFeedback();
+    bool angleChanged = (servo->target_angle_deg != angle_deg);
+
     g_obstacleScanFeedback.servo_target_angle_deg = angle_deg;
     Servo_SetAngleDeg(angle_deg);
+    if (angleChanged) {
+        Ultrasonic_ResetFilter();
+    }
 }
 
 static uint16_t scanner_get_distance(bool *valid)

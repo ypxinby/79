@@ -18,6 +18,7 @@ typedef struct {
 void Ultrasonic_Init(void);
 void Ultrasonic_Tick100us(void);
 void Ultrasonic_Update_20ms(void);
+void Ultrasonic_ResetFilter(void);
 const UltrasonicFeedback *Ultrasonic_GetFeedback(void);
 
 #endif
