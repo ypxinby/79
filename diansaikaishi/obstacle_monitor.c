@@ -2,10 +2,10 @@
 
 #include "ultrasonic.h"
 
-#define OBSTACLE_STOP_DISTANCE_CM        (25U)
-#define OBSTACLE_CLEAR_DISTANCE_CM       (40U)
+#define OBSTACLE_BLOCK_DISTANCE_CM       (20U)
+#define OBSTACLE_CLEAR_DISTANCE_CM       (25U)
 #define OBSTACLE_STOP_CONFIRM_COUNT      (3U)
-#define OBSTACLE_CLEAR_CONFIRM_COUNT     (5U)
+#define OBSTACLE_CLEAR_CONFIRM_COUNT     (3U)
 
 static ObstacleFeedback g_obstacleFeedback;
 
@@ -45,7 +45,7 @@ void ObstacleMonitor_Update_20ms(void)
     g_obstacleFeedback.distance_cm = ultrasonic->distance_cm;
 
     if (g_obstacleFeedback.state == OBSTACLE_STATE_BLOCKED) {
-        if (ultrasonic->distance_cm > OBSTACLE_CLEAR_DISTANCE_CM) {
+        if (ultrasonic->distance_cm >= OBSTACLE_CLEAR_DISTANCE_CM) {
             if (g_obstacleFeedback.clear_confirm_count < UINT8_MAX) {
                 g_obstacleFeedback.clear_confirm_count++;
             }
@@ -59,7 +59,7 @@ void ObstacleMonitor_Update_20ms(void)
         return;
     }
 
-    if (ultrasonic->distance_cm < OBSTACLE_STOP_DISTANCE_CM) {
+    if (ultrasonic->distance_cm < OBSTACLE_BLOCK_DISTANCE_CM) {
         if (g_obstacleFeedback.block_confirm_count < UINT8_MAX) {
             g_obstacleFeedback.block_confirm_count++;
         }

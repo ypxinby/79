@@ -21,6 +21,7 @@
 AppRuntime g_appRuntime;
 static CarControllerFeedback g_carControllerFeedback;
 static CarTurnHandlingPolicy g_followTurnPolicy = CAR_TURN_POLICY_AUTO;
+static bool g_safetyHold;
 
 static int16_t clamp_i16(int32_t value, int16_t minValue, int16_t maxValue)
 {
@@ -72,6 +73,13 @@ static void update_feedback_from_runtime(void)
 
 static void set_output_speed(int16_t leftSpeed, int16_t rightSpeed)
 {
+    if (g_safetyHold) {
+        Motor_Stop();
+        g_appRuntime.left_speed = 0;
+        g_appRuntime.right_speed = 0;
+        return;
+    }
+
     g_appRuntime.left_speed = clamp_i16(leftSpeed, -MOTOR_MAX_DUTY,
         MOTOR_MAX_DUTY);
     g_appRuntime.right_speed = clamp_i16(rightSpeed, -MOTOR_MAX_DUTY,
@@ -396,6 +404,7 @@ void CarController_ResetRuntime(void)
     g_appRuntime.heading_straight_elapsed_ms = 0;
     g_appRuntime.lap_cooldown_ms = 0;
     g_followTurnPolicy = CAR_TURN_POLICY_AUTO;
+    g_safetyHold = false;
     update_feedback_from_runtime();
     reset_heading_control_runtime();
     Motor_Stop();
@@ -475,12 +484,46 @@ void CarController_SetSeekTargetYaw(float target_yaw_deg)
     reset_heading_control_runtime();
 }
 
+void CarController_SetSafetyHold(bool enable)
+{
+    if ((g_safetyHold != enable) && !enable) {
+        g_appRuntime.last_error = g_appRuntime.line_error;
+        g_appRuntime.last_valid_error = g_appRuntime.line_error;
+        g_appRuntime.lost_count = 0U;
+        g_appRuntime.lost_elapsed_ms = 0U;
+        reset_heading_control_runtime();
+    }
+
+    g_safetyHold = enable;
+    if (g_safetyHold) {
+        Motor_Stop();
+        g_appRuntime.left_speed = 0;
+        g_appRuntime.right_speed = 0;
+        g_appRuntime.correction = 0;
+        reset_heading_control_runtime();
+    }
+}
+
+bool CarController_IsSafetyHoldActive(void)
+{
+    return g_safetyHold;
+}
+
 void CarController_Update_20ms(void)
 {
     update_sensor_runtime();
     update_feedback_from_runtime();
 
     if (CarState_Get() != CAR_STATE_RUNNING) {
+        Motor_Stop();
+        g_appRuntime.left_speed = 0;
+        g_appRuntime.right_speed = 0;
+        g_appRuntime.correction = 0;
+        update_feedback_from_runtime();
+        reset_heading_control_runtime();
+        return;
+    }
+    if (g_safetyHold) {
         Motor_Stop();
         g_appRuntime.left_speed = 0;
         g_appRuntime.right_speed = 0;

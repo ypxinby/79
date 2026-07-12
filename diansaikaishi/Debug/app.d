@@ -4,7 +4,8 @@ app.o: ../app.c ../app.h ../app_config.h ../app_features.h \
  ../car_controller.h ../track_sensor.h ../car_state.h ../encoder.h \
  ../heading_control.h ../imu.h ../key.h ../menu.h ../mission_manager.h \
  ../mission_library.h ../motion_types.h ../motor.h \
- ../obstacle_monitor.h ../oled_ui.h ../ultrasonic.h
+ ../obstacle_monitor.h ../obstacle_safety.h ../oled_ui.h \
+ ../ultrasonic.h
 ../app.h:
 ../app_config.h:
 ../app_features.h:
@@ -21,5 +22,6 @@ app.o: ../app.c ../app.h ../app_config.h ../app_features.h \
 ../motion_types.h:
 ../motor.h:
 ../obstacle_monitor.h:
+../obstacle_safety.h:
 ../oled_ui.h:
 ../ultrasonic.h:

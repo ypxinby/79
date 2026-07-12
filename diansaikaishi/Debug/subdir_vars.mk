@@ -26,6 +26,7 @@ C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/m0p/startup_system_files/ticlan
 ../motion_action.c \
 ../motor.c \
 ../obstacle_monitor.c \
+../obstacle_safety.c \
 ../oled.c \
 ../oled_ui.c \
 ../pid.c \
@@ -58,6 +59,7 @@ C_DEPS += \
 ./motion_action.d \
 ./motor.d \
 ./obstacle_monitor.d \
+./obstacle_safety.d \
 ./oled.d \
 ./oled_ui.d \
 ./pid.d \
@@ -85,6 +87,7 @@ OBJS += \
 ./motion_action.o \
 ./motor.o \
 ./obstacle_monitor.o \
+./obstacle_safety.o \
 ./oled.o \
 ./oled_ui.o \
 ./pid.o \
@@ -114,6 +117,7 @@ OBJS__QUOTED += \
 "motion_action.o" \
 "motor.o" \
 "obstacle_monitor.o" \
+"obstacle_safety.o" \
 "oled.o" \
 "oled_ui.o" \
 "pid.o" \
@@ -143,6 +147,7 @@ C_DEPS__QUOTED += \
 "motion_action.d" \
 "motor.d" \
 "obstacle_monitor.d" \
+"obstacle_safety.d" \
 "oled.d" \
 "oled_ui.d" \
 "pid.d" \
@@ -172,6 +177,7 @@ C_SRCS__QUOTED += \
 "../motion_action.c" \
 "../motor.c" \
 "../obstacle_monitor.c" \
+"../obstacle_safety.c" \
 "../oled.c" \
 "../oled_ui.c" \
 "../pid.c" \

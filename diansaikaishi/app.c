@@ -12,6 +12,7 @@
 #include "mission_manager.h"
 #include "motor.h"
 #include "obstacle_monitor.h"
+#include "obstacle_safety.h"
 #include "oled_ui.h"
 #include "track_sensor.h"
 #include "ultrasonic.h"
@@ -64,6 +65,7 @@ void App_Init(void)
     TrackSensor_Init();
     Ultrasonic_Init();
     ObstacleMonitor_Init();
+    ObstacleSafety_Init();
     CarController_Init();
     Key_Init();
     OledUi_Init();
@@ -89,6 +91,7 @@ void App_Update_20ms(void)
         }
     }
 
+    ObstacleSafety_Update_20ms();
     MissionManager_Update_20ms();
     CarController_Update_20ms();
 

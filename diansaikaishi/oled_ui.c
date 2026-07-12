@@ -9,6 +9,7 @@
 #include "mission_manager.h"
 #include "motion_action.h"
 #include "obstacle_monitor.h"
+#include "obstacle_safety.h"
 #include "oled.h"
 #include "track_sensor.h"
 #include "ultrasonic.h"
@@ -111,6 +112,8 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
     OLED_PrintBinary7((uint8_t)(raw & TRACK_RAW_VALID_MASK));
     OLED_PrintString(" O:");
     OLED_PrintInt16((int16_t)obstacle->blocked);
+    OLED_PrintString(" H:");
+    OLED_PrintInt16((int16_t)ObstacleSafety_IsHolding());
 
     OLED_SetCursor(6, 0);
     OLED_PrintString("T:");

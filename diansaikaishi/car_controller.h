@@ -80,6 +80,8 @@ void CarController_StartTurnLeft90(void);
 void CarController_StartTurnRight90(void);
 void CarController_UseCurrentHeadingForSeek(void);
 void CarController_SetSeekTargetYaw(float target_yaw_deg);
+void CarController_SetSafetyHold(bool enable);
+bool CarController_IsSafetyHoldActive(void);
 TrackRunMode CarController_GetRunMode(void);
 const CarControllerFeedback *CarController_GetFeedback(void);
 const char *CarController_RunModeToString(TrackRunMode mode);

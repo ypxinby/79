@@ -22,6 +22,7 @@ static void mission_reset_runtime_counters(void)
     g_missionRuntime.action_elapsed_ms = 0U;
     g_missionRuntime.mission_start_yaw = Imu_GetYaw();
     g_missionRuntime.last_action_result = MOTION_RESULT_IDLE;
+    g_missionRuntime.external_hold = false;
 }
 
 static uint16_t mission_get_current_registry_index(void)
@@ -217,6 +218,9 @@ void MissionManager_Update_20ms(void)
     if (g_missionRuntime.status != MISSION_STATUS_RUNNING) {
         return;
     }
+    if (g_missionRuntime.external_hold) {
+        return;
+    }
 
     if ((g_missionRuntime.definition == (const MissionDefinition *)0) ||
         (g_missionRuntime.current_action_index >=
@@ -308,4 +312,14 @@ uint16_t MissionManager_GetSelectedMissionIndex(void)
 uint16_t MissionManager_GetMissionCount(void)
 {
     return MissionLibrary_GetCount();
+}
+
+void MissionManager_SetExternalHold(bool enable)
+{
+    g_missionRuntime.external_hold = enable;
+}
+
+bool MissionManager_IsExternallyHeld(void)
+{
+    return g_missionRuntime.external_hold;
 }

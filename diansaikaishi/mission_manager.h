@@ -29,6 +29,7 @@ typedef struct {
 
     MotionActionResult last_action_result;
     uint16_t last_error_code;
+    bool external_hold;
 } MissionRuntime;
 
 void MissionManager_Init(void);
@@ -45,5 +46,7 @@ const MissionRuntime *MissionManager_GetRuntime(void);
 uint8_t MissionManager_GetSelectedMissionId(void);
 uint16_t MissionManager_GetSelectedMissionIndex(void);
 uint16_t MissionManager_GetMissionCount(void);
+void MissionManager_SetExternalHold(bool enable);
+bool MissionManager_IsExternallyHeld(void);
 
 #endif
