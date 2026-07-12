@@ -6,6 +6,8 @@
 #include "heading_control.h"
 #include "imu.h"
 #include "menu.h"
+#include "mission_manager.h"
+#include "motion_action.h"
 #include "oled.h"
 #include "track_sensor.h"
 
@@ -20,31 +22,95 @@ static int16_t clamp_display_i16(int32_t value)
     return (int16_t)value;
 }
 
+static const char *motion_action_type_to_string(MotionActionType type)
+{
+    switch (type) {
+        case MOTION_ACTION_SEEK_LINE:
+            return "SEEK";
+        case MOTION_ACTION_FOLLOW_LINE:
+            return "LINE";
+        case MOTION_ACTION_TURN_LEFT_90:
+            return "L90";
+        case MOTION_ACTION_TURN_RIGHT_90:
+            return "R90";
+        case MOTION_ACTION_WAIT:
+            return "WAIT";
+        case MOTION_ACTION_STOP:
+            return "STOP";
+        default:
+            return "NONE";
+    }
+}
+
+static const char *mission_status_to_string(MissionStatus status)
+{
+    switch (status) {
+        case MISSION_STATUS_IDLE:
+            return "IDLE";
+        case MISSION_STATUS_READY:
+            return "READY";
+        case MISSION_STATUS_RUNNING:
+            return "RUN";
+        case MISSION_STATUS_PAUSED:
+            return "PAUSE";
+        case MISSION_STATUS_DONE:
+            return "DONE";
+        case MISSION_STATUS_ERROR:
+            return "ERR";
+        default:
+            return "ERR";
+    }
+}
+
 static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
 {
+    const MissionRuntime *mission = MissionManager_GetRuntime();
+    const MotionActionRuntime *action = MotionAction_GetRuntime();
+    const char *actionName = "NONE";
+    uint16_t actionIndex = 0U;
+    uint16_t actionCount = 0U;
+    uint32_t actionTimeS = action->elapsed_ms / 1000U;
+
     (void)error;
+    (void)keyEvent;
+
+    if (mission->definition != (const MissionDefinition *)0) {
+        actionCount = mission->definition->action_count;
+        if (actionCount > 0U) {
+            actionIndex = (uint16_t)(mission->current_action_index + 1U);
+            if (actionIndex > actionCount) {
+                actionIndex = actionCount;
+            }
+        }
+    }
+
+    if (action->action != (const MotionAction *)0) {
+        actionName = motion_action_type_to_string(action->action->type);
+    }
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("ST:");
-    OLED_PrintString(CarState_ToString(CarState_Get()));
-    OLED_PrintString(" M:");
-    OLED_PrintString(CarController_RunModeToString(CarController_GetRunMode()));
+    OLED_PrintString("TASK:");
+    OLED_PrintInt16((int16_t)MissionManager_GetSelectedMissionId());
+    OLED_PrintChar(' ');
+    OLED_PrintString(mission_status_to_string(mission->status));
 
     OLED_SetCursor(2, 0);
-    OLED_PrintString("LAP:");
-    OLED_PrintInt16((int16_t)g_appConfig.target_laps);
-    OLED_PrintString(" K:");
-    OLED_PrintInt16((int16_t)keyEvent);
+    OLED_PrintString("ACT:");
+    OLED_PrintString(actionName);
+    OLED_PrintString(" S:");
+    OLED_PrintInt16((int16_t)actionIndex);
+    OLED_PrintString(" T:");
+    OLED_PrintInt16((int16_t)actionCount);
 
     OLED_SetCursor(4, 0);
     OLED_PrintString("RAW:");
     OLED_PrintBinary7((uint8_t)(raw & TRACK_RAW_VALID_MASK));
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("L:");
-    OLED_PrintInt16(g_appRuntime.left_speed);
-    OLED_PrintString(" R:");
-    OLED_PrintInt16(g_appRuntime.right_speed);
+    OLED_PrintString("TIME:");
+    OLED_PrintInt16(clamp_display_i16((int32_t)actionTimeS));
+    OLED_PrintString(" M:");
+    OLED_PrintString(CarController_RunModeToString(CarController_GetRunMode()));
 }
 
 static void print_param_page(uint8_t keyEvent)

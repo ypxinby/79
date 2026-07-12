@@ -364,7 +364,27 @@ REV = 215
 页面循环：
 
 ```text
-STATUS -> SENSOR -> IMU -> HEAD -> STATUS
+STATUS -> HEAD -> STATUS
+```
+
+`SENSOR` / `IMU` 页面代码仍保留在 `oled_ui.c` 中，但默认不放进普通 K1 页面循环。
+
+STATUS 页当前显示：
+
+```text
+TASK:<id> <mission_status>
+ACT:<action> S:<step> T:<total>
+RAW:<7路灰度>
+TIME:<当前动作秒数> M:<car_controller_mode>
+```
+
+这页用于现场快速判断：
+
+```text
+当前任务
+当前动作
+灰度传感器状态
+当前动作运行时间和底层运控模式
 ```
 
 按键：
