@@ -22,6 +22,20 @@ static void motion_action_stop_car(void)
     CarController_Stop();
 }
 
+static CarTurnHandlingPolicy motion_action_map_turn_policy(
+    TurnHandlingPolicy policy)
+{
+    switch (policy) {
+        case TURN_POLICY_REPORT_ONLY:
+            return CAR_TURN_POLICY_REPORT_ONLY;
+        case TURN_POLICY_IGNORE:
+            return CAR_TURN_POLICY_IGNORE;
+        case TURN_POLICY_AUTO:
+        default:
+            return CAR_TURN_POLICY_AUTO;
+    }
+}
+
 static bool motion_action_car_is_error(void)
 {
     return CarState_Get() == CAR_STATE_ERROR;
@@ -129,7 +143,9 @@ bool MotionAction_Start(const MotionAction *action,
             return true;
 
         case MOTION_ACTION_FOLLOW_LINE:
-            CarController_StartFollowLine();
+            CarController_StartFollowLine(
+                motion_action_map_turn_policy(
+                    action->params.follow_line.turn_policy));
             motion_action_set_result(MOTION_RESULT_RUNNING,
                 MOTION_ERROR_NONE);
             return true;
@@ -207,9 +223,34 @@ MotionActionResult MotionAction_Update_20ms(void)
             break;
 
         case MOTION_ACTION_FOLLOW_LINE:
+        {
+            const CarControllerFeedback *feedback =
+                CarController_GetFeedback();
+
             if ((action->params.follow_line.end_condition ==
                     FOLLOW_END_LINE_LOST) &&
-                (CarController_GetRunMode() == TRACK_MODE_LOST_RECOVER)) {
+                feedback->line_lost) {
+                motion_action_set_result(MOTION_RESULT_SUCCESS,
+                    MOTION_ERROR_NONE);
+                break;
+            }
+            if ((action->params.follow_line.end_condition ==
+                    FOLLOW_END_LEFT_90_DETECTED) &&
+                (feedback->detected_turn == TRACK_TURN_LEFT_90)) {
+                motion_action_set_result(MOTION_RESULT_SUCCESS,
+                    MOTION_ERROR_NONE);
+                break;
+            }
+            if ((action->params.follow_line.end_condition ==
+                    FOLLOW_END_RIGHT_90_DETECTED) &&
+                (feedback->detected_turn == TRACK_TURN_RIGHT_90)) {
+                motion_action_set_result(MOTION_RESULT_SUCCESS,
+                    MOTION_ERROR_NONE);
+                break;
+            }
+            if ((action->params.follow_line.end_condition ==
+                    FOLLOW_END_ANY_90_DETECTED) &&
+                (feedback->detected_turn != TRACK_TURN_NONE)) {
                 motion_action_set_result(MOTION_RESULT_SUCCESS,
                     MOTION_ERROR_NONE);
                 break;
@@ -228,32 +269,41 @@ MotionActionResult MotionAction_Update_20ms(void)
                 }
             }
             break;
+        }
 
         case MOTION_ACTION_TURN_LEFT_90:
-            if (motion_action_car_is_error() ||
-                (CarController_GetRunMode() == TRACK_MODE_LOST_RECOVER)) {
+        {
+            const CarControllerFeedback *feedback =
+                CarController_GetFeedback();
+
+            if (motion_action_car_is_error() || feedback->operation_failed) {
                 motion_action_set_result(MOTION_RESULT_FAILED,
                     MOTION_ERROR_LINE_LOST);
                 break;
             }
-            if (CarController_GetRunMode() == TRACK_MODE_FOLLOW_LINE) {
+            if (feedback->turn_completed) {
                 motion_action_set_result(MOTION_RESULT_SUCCESS,
                     MOTION_ERROR_NONE);
             }
             break;
+        }
 
         case MOTION_ACTION_TURN_RIGHT_90:
-            if (motion_action_car_is_error() ||
-                (CarController_GetRunMode() == TRACK_MODE_LOST_RECOVER)) {
+        {
+            const CarControllerFeedback *feedback =
+                CarController_GetFeedback();
+
+            if (motion_action_car_is_error() || feedback->operation_failed) {
                 motion_action_set_result(MOTION_RESULT_FAILED,
                     MOTION_ERROR_LINE_LOST);
                 break;
             }
-            if (CarController_GetRunMode() == TRACK_MODE_FOLLOW_LINE) {
+            if (feedback->turn_completed) {
                 motion_action_set_result(MOTION_RESULT_SUCCESS,
                     MOTION_ERROR_NONE);
             }
             break;
+        }
 
         case MOTION_ACTION_WAIT:
             motion_action_stop_car();

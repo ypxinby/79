@@ -165,12 +165,32 @@ void CarController_ResetTransientState(void);
 void CarController_Update_20ms(void);
 void CarController_Stop(void);
 void CarController_StartSeekLine(float target_yaw_deg);
-void CarController_StartFollowLine(void);
+void CarController_StartFollowLine(CarTurnHandlingPolicy turn_policy);
 void CarController_StartTurnLeft90(void);
 void CarController_StartTurnRight90(void);
 void CarController_UseCurrentHeadingForSeek(void);
 void CarController_SetSeekTargetYaw(float target_yaw_deg);
 TrackRunMode CarController_GetRunMode(void);
+const CarControllerFeedback *CarController_GetFeedback(void);
+```
+
+`CarControllerFeedback` 用于给任务层上报底层事件：
+
+```text
+line_found
+line_lost
+center_detected
+detected_turn
+turn_completed
+operation_failed
+```
+
+FOLLOW 的路口处理策略：
+
+```text
+CAR_TURN_POLICY_AUTO         保持旧行为，检测到 90 度后自动转弯
+CAR_TURN_POLICY_REPORT_ONLY  只上报路口，不自动转弯
+CAR_TURN_POLICY_IGNORE       忽略路口检测
 ```
 
 ## 6. SEEK 直线找线逻辑
@@ -291,7 +311,10 @@ typedef enum {
 
 ```text
 SEEK_LINE
-FOLLOW_LINE，支持 FOLLOW_END_DURATION / FOLLOW_END_LINE_LOST
+FOLLOW_LINE，支持 FOLLOW_END_DURATION / FOLLOW_END_LINE_LOST /
+             FOLLOW_END_LEFT_90_DETECTED /
+             FOLLOW_END_RIGHT_90_DETECTED /
+             FOLLOW_END_ANY_90_DETECTED
 TURN_LEFT_90
 TURN_RIGHT_90
 WAIT
@@ -523,19 +546,26 @@ TIME : 当前动作运行时间
 
 现在已经有 `MissionRuntime` 和 `MotionActionRuntime`，显示这些信息不难。
 
-### P1：拆分路口检测和转弯策略
+### P1：继续增强路口检测和转弯策略
 
-当前 `CarController` 在 FOLLOW 中检测到 90 度路口会自动进入转弯。
-
-后续建议实现：
+当前已经完成第一版路口检测和转弯拆分：
 
 ```text
-TURN_POLICY_AUTO
-TURN_POLICY_REPORT_ONLY
-TURN_POLICY_IGNORE
+FOLLOW 可以选择 AUTO / REPORT_ONLY / IGNORE
+任务层可以用 FOLLOW_UNTIL_LEFT_90 / RIGHT_90 / ANY_90 结束动作
+转弯动作仍由 TURN_LEFT_90 / TURN_RIGHT_90 单独执行
 ```
 
-这样任务层可以决定：
+后续可以继续增强：
+
+```text
+路口事件去抖
+路口计数
+左/右/十字路口更细分类
+OLED 显示 detected_turn
+```
+
+目标是让任务层决定：
 
 ```text
 检测到路口后左转 / 右转 / 继续 / 停车 / 计数
@@ -554,6 +584,9 @@ mission_library.c
 ```text
 SEEK
 FOLLOW_UNTIL_LINE_LOST
+FOLLOW_UNTIL_LEFT_90
+FOLLOW_UNTIL_RIGHT_90
+FOLLOW_UNTIL_ANY_90
 FOLLOW_FOR_TIME
 TURN_LEFT_90
 TURN_RIGHT_90

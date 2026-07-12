@@ -111,6 +111,48 @@
         } \
     }
 
+#define ACTION_FOLLOW_UNTIL_LEFT_90(timeout) \
+    { \
+        .type = MOTION_ACTION_FOLLOW_LINE, \
+        .timeout_ms = (uint32_t)(timeout), \
+        .max_retries = 1U, \
+        .params.follow_line = { \
+            .end_condition = FOLLOW_END_LEFT_90_DETECTED, \
+            .turn_policy = TURN_POLICY_REPORT_ONLY, \
+            .duration_ms = 0U, \
+            .target_laps = 0U, \
+            .speed_override = MOTION_USE_GLOBAL_SPEED \
+        } \
+    }
+
+#define ACTION_FOLLOW_UNTIL_RIGHT_90(timeout) \
+    { \
+        .type = MOTION_ACTION_FOLLOW_LINE, \
+        .timeout_ms = (uint32_t)(timeout), \
+        .max_retries = 1U, \
+        .params.follow_line = { \
+            .end_condition = FOLLOW_END_RIGHT_90_DETECTED, \
+            .turn_policy = TURN_POLICY_REPORT_ONLY, \
+            .duration_ms = 0U, \
+            .target_laps = 0U, \
+            .speed_override = MOTION_USE_GLOBAL_SPEED \
+        } \
+    }
+
+#define ACTION_FOLLOW_UNTIL_ANY_90(timeout) \
+    { \
+        .type = MOTION_ACTION_FOLLOW_LINE, \
+        .timeout_ms = (uint32_t)(timeout), \
+        .max_retries = 1U, \
+        .params.follow_line = { \
+            .end_condition = FOLLOW_END_ANY_90_DETECTED, \
+            .turn_policy = TURN_POLICY_REPORT_ONLY, \
+            .duration_ms = 0U, \
+            .target_laps = 0U, \
+            .speed_override = MOTION_USE_GLOBAL_SPEED \
+        } \
+    }
+
 #define ACTION_TURN_LEFT_90(timeout) \
     { \
         .type = MOTION_ACTION_TURN_LEFT_90, \

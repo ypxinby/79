@@ -19,6 +19,8 @@
 #define RECOVER_DIRECTION_RIGHT     (1)
 
 AppRuntime g_appRuntime;
+static CarControllerFeedback g_carControllerFeedback;
+static CarTurnHandlingPolicy g_followTurnPolicy = CAR_TURN_POLICY_AUTO;
 
 static int16_t clamp_i16(int32_t value, int16_t minValue, int16_t maxValue)
 {
@@ -48,6 +50,24 @@ static void update_sensor_runtime(void)
         TrackSensor_CountBlack(g_appRuntime.sensor_raw);
     g_appRuntime.line_error =
         TrackSensor_GetErrorFromRaw(g_appRuntime.sensor_raw);
+}
+
+static void update_feedback_from_runtime(void)
+{
+    g_carControllerFeedback.run_mode = g_appRuntime.run_mode;
+    g_carControllerFeedback.sensor_raw = g_appRuntime.sensor_raw;
+    g_carControllerFeedback.black_count = g_appRuntime.black_count;
+    g_carControllerFeedback.line_error = g_appRuntime.line_error;
+    g_carControllerFeedback.line_found =
+        TrackSensor_IsLineDetected(g_appRuntime.sensor_raw);
+    g_carControllerFeedback.line_lost =
+        TrackSensor_IsLineLost(g_appRuntime.sensor_raw);
+    g_carControllerFeedback.center_detected =
+        TrackSensor_IsCenterDetected(g_appRuntime.sensor_raw);
+    g_carControllerFeedback.detected_turn = TRACK_TURN_NONE;
+    g_carControllerFeedback.turn_completed = false;
+    g_carControllerFeedback.operation_failed = false;
+    g_carControllerFeedback.error_code = 0U;
 }
 
 static void set_output_speed(int16_t leftSpeed, int16_t rightSpeed)
@@ -216,6 +236,15 @@ static void handle_follow_line(void)
     update_recover_direction_from_error(error);
 
     turn = TrackSensor_DetectTurn(g_appRuntime.sensor_raw, error);
+    g_carControllerFeedback.detected_turn = turn;
+
+    if (g_followTurnPolicy == CAR_TURN_POLICY_REPORT_ONLY) {
+        turn = TRACK_TURN_NONE;
+    } else if (g_followTurnPolicy == CAR_TURN_POLICY_IGNORE) {
+        g_carControllerFeedback.detected_turn = TRACK_TURN_NONE;
+        turn = TRACK_TURN_NONE;
+    }
+
     if (turn == TRACK_TURN_LEFT_90) {
         g_appRuntime.turn_elapsed_ms = 0;
         g_appRuntime.recover_direction = RECOVER_DIRECTION_LEFT;
@@ -290,6 +319,7 @@ static void handle_lost_recover(void)
         Motor_Stop();
         g_appRuntime.left_speed = 0;
         g_appRuntime.right_speed = 0;
+        g_carControllerFeedback.operation_failed = true;
         CarState_Set(CAR_STATE_ERROR);
         return;
     }
@@ -319,6 +349,7 @@ static void handle_turn_90(uint8_t turnLeft)
             update_recover_direction_from_error(g_appRuntime.line_error);
             g_appRuntime.run_mode = TRACK_MODE_FOLLOW_LINE;
             g_appRuntime.turn_elapsed_ms = 0;
+            g_carControllerFeedback.turn_completed = true;
             reset_heading_control_runtime();
             return;
         }
@@ -364,6 +395,8 @@ void CarController_ResetRuntime(void)
     g_appRuntime.turn_elapsed_ms = 0;
     g_appRuntime.heading_straight_elapsed_ms = 0;
     g_appRuntime.lap_cooldown_ms = 0;
+    g_followTurnPolicy = CAR_TURN_POLICY_AUTO;
+    update_feedback_from_runtime();
     reset_heading_control_runtime();
     Motor_Stop();
 }
@@ -378,6 +411,7 @@ void CarController_ResetTransientState(void)
     g_appRuntime.lost_elapsed_ms = 0;
     g_appRuntime.turn_elapsed_ms = 0;
     g_appRuntime.heading_straight_elapsed_ms = 0;
+    update_feedback_from_runtime();
     reset_heading_control_runtime();
 }
 
@@ -398,9 +432,10 @@ void CarController_StartSeekLine(float target_yaw_deg)
     CarState_Set(CAR_STATE_RUNNING);
 }
 
-void CarController_StartFollowLine(void)
+void CarController_StartFollowLine(CarTurnHandlingPolicy turn_policy)
 {
     CarController_ResetTransientState();
+    g_followTurnPolicy = turn_policy;
     g_appRuntime.has_seen_line = 1;
     g_appRuntime.last_error = g_appRuntime.line_error;
     g_appRuntime.last_valid_error = g_appRuntime.line_error;
@@ -411,6 +446,7 @@ void CarController_StartFollowLine(void)
 void CarController_StartTurnLeft90(void)
 {
     CarController_ResetTransientState();
+    g_followTurnPolicy = CAR_TURN_POLICY_AUTO;
     g_appRuntime.recover_direction = RECOVER_DIRECTION_LEFT;
     g_appRuntime.run_mode = TRACK_MODE_TURN_LEFT_90;
     CarState_Set(CAR_STATE_RUNNING);
@@ -419,6 +455,7 @@ void CarController_StartTurnLeft90(void)
 void CarController_StartTurnRight90(void)
 {
     CarController_ResetTransientState();
+    g_followTurnPolicy = CAR_TURN_POLICY_AUTO;
     g_appRuntime.recover_direction = RECOVER_DIRECTION_RIGHT;
     g_appRuntime.run_mode = TRACK_MODE_TURN_RIGHT_90;
     CarState_Set(CAR_STATE_RUNNING);
@@ -441,12 +478,14 @@ void CarController_SetSeekTargetYaw(float target_yaw_deg)
 void CarController_Update_20ms(void)
 {
     update_sensor_runtime();
+    update_feedback_from_runtime();
 
     if (CarState_Get() != CAR_STATE_RUNNING) {
         Motor_Stop();
         g_appRuntime.left_speed = 0;
         g_appRuntime.right_speed = 0;
         g_appRuntime.correction = 0;
+        update_feedback_from_runtime();
         reset_heading_control_runtime();
         return;
     }
@@ -473,14 +512,22 @@ void CarController_Update_20ms(void)
             g_appRuntime.right_speed = 0;
             g_appRuntime.correction = 0;
             reset_heading_control_runtime();
+            g_carControllerFeedback.operation_failed = true;
             CarState_Set(CAR_STATE_ERROR);
             break;
     }
+
+    g_carControllerFeedback.run_mode = g_appRuntime.run_mode;
 }
 
 TrackRunMode CarController_GetRunMode(void)
 {
     return g_appRuntime.run_mode;
+}
+
+const CarControllerFeedback *CarController_GetFeedback(void)
+{
+    return &g_carControllerFeedback;
 }
 
 const char *CarController_RunModeToString(TrackRunMode mode)
