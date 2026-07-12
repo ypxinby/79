@@ -9,6 +9,8 @@
 #define MISSION_MAX_ACTIONS     (32U)
 #define MISSION_ID_LEGACY       (0U)
 #define MISSION_ID_TEST_SF      (1U)
+#define MISSION_ID_TEST_R90     (2U)
+#define MISSION_ID_TEST_RSTOP   (3U)
 
 #define ACTION_STOP() \
     { \

@@ -28,6 +28,20 @@ static const MotionAction g_missionTestSeekFollow[] = {
     ACTION_STOP()
 };
 
+static const MotionAction g_missionTestRight90Turn[] = {
+    ACTION_SEEK_MISSION_YAW(0.0f, 0U),
+    ACTION_FOLLOW_UNTIL_RIGHT_90(0U),
+    ACTION_TURN_RIGHT_90(0U),
+    ACTION_FOLLOW_FOREVER(0U),
+    ACTION_STOP()
+};
+
+static const MotionAction g_missionTestRight90Stop[] = {
+    ACTION_SEEK_MISSION_YAW(0.0f, 0U),
+    ACTION_FOLLOW_UNTIL_RIGHT_90(0U),
+    ACTION_STOP()
+};
+
 static const MissionDefinition g_missionRegistry[] = {
     {
         .mission_id = MISSION_ID_LEGACY,
@@ -41,6 +55,20 @@ static const MissionDefinition g_missionRegistry[] = {
         .name = "TEST-SF",
         .actions = g_missionTestSeekFollow,
         .action_count = ARRAY_SIZE(g_missionTestSeekFollow),
+        .control_profile_id = 0U
+    },
+    {
+        .mission_id = MISSION_ID_TEST_R90,
+        .name = "TEST-R90",
+        .actions = g_missionTestRight90Turn,
+        .action_count = ARRAY_SIZE(g_missionTestRight90Turn),
+        .control_profile_id = 0U
+    },
+    {
+        .mission_id = MISSION_ID_TEST_RSTOP,
+        .name = "TEST-RSTOP",
+        .actions = g_missionTestRight90Stop,
+        .action_count = ARRAY_SIZE(g_missionTestRight90Stop),
         .control_profile_id = 0U
     }
 };

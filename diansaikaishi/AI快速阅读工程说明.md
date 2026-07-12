@@ -328,8 +328,10 @@ STOP
 任务 ID：
 
 ```text
-MISSION_ID_LEGACY  = 0
-MISSION_ID_TEST_SF = 1
+MISSION_ID_LEGACY     = 0
+MISSION_ID_TEST_SF    = 1
+MISSION_ID_TEST_R90   = 2
+MISSION_ID_TEST_RSTOP = 3
 ```
 
 ### LEGACY
@@ -380,6 +382,49 @@ static const MotionAction g_missionTestSeekFollow[] = {
 ```text
 YAW = -1
 REV = 215
+```
+
+### TEST-R90
+
+用于验证“检测右 90”和“执行右转”已经分层：
+
+```c
+static const MotionAction g_missionTestRight90Turn[] = {
+    ACTION_SEEK_MISSION_YAW(0.0f, 0U),
+    ACTION_FOLLOW_UNTIL_RIGHT_90(0U),
+    ACTION_TURN_RIGHT_90(0U),
+    ACTION_FOLLOW_FOREVER(0U),
+    ACTION_STOP()
+};
+```
+
+含义：
+
+```text
+找线
+循迹到右 90 路口，只上报路口，不自动转
+任务层启动右 90 转弯
+转完后继续循迹
+```
+
+### TEST-RSTOP
+
+用于验证同一个右 90 路口也可以选择停车：
+
+```c
+static const MotionAction g_missionTestRight90Stop[] = {
+    ACTION_SEEK_MISSION_YAW(0.0f, 0U),
+    ACTION_FOLLOW_UNTIL_RIGHT_90(0U),
+    ACTION_STOP()
+};
+```
+
+含义：
+
+```text
+找线
+循迹到右 90 路口
+停车
 ```
 
 ## 10. OLED / 按键操作
@@ -437,7 +482,7 @@ K3：减少
 当前参数菜单项：
 
 ```text
-TASK   当前任务 ID，0=LEGACY，1=TEST-SF
+TASK   当前任务 ID，0=LEGACY，1=TEST-SF，2=TEST-R90，3=TEST-RSTOP
 SPD
 YAW    全局 SEEK 航向微调，默认 -1，每次 1 度
 REV    第二次 SEEK 反向角，默认 215，每次 5 度
