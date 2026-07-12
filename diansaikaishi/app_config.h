@@ -50,6 +50,10 @@ typedef struct {
     uint16_t heading_lock_delay_ms;
     int16_t seek_heading_offset_deg;
     int16_t second_seek_angle_deg;
+
+    int16_t servo_angle_deg;
+    int16_t min_servo_angle_deg;
+    int16_t max_servo_angle_deg;
 } AppConfig;
 
 extern AppConfig g_appConfig;

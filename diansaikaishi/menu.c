@@ -52,6 +52,9 @@ static void menu_adjust_param(int8_t direction)
         case PARAM_MAX_CORRECTION:
             g_appConfig.max_correction += (int16_t)(direction * 10);
             break;
+        case PARAM_SERVO_ANGLE:
+            g_appConfig.servo_angle_deg += (int16_t)(direction * 5);
+            break;
         default:
             break;
     }
@@ -173,6 +176,8 @@ const char *Menu_ParamItemToString(ParamItem item)
             return "KD";
         case PARAM_MAX_CORRECTION:
             return "MAX";
+        case PARAM_SERVO_ANGLE:
+            return "SV";
         default:
             return "ERR";
     }
@@ -195,6 +200,8 @@ int16_t Menu_GetParamValue(ParamItem item)
             return g_appConfig.track_kd;
         case PARAM_MAX_CORRECTION:
             return g_appConfig.max_correction;
+        case PARAM_SERVO_ANGLE:
+            return g_appConfig.servo_angle_deg;
         default:
             return 0;
     }

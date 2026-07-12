@@ -9,6 +9,7 @@
 #include "app.h"
 #include "encoder.h"
 #include "motor.h"
+#include "servo.h"
 #include "ti_msp_dl_config.h"
 #include "ultrasonic.h"
 
@@ -42,6 +43,7 @@ void SysTick_Handler(void)
     static uint8_t controlMsCount;
 
     Motor_PwmTick100us();
+    Servo_Tick100us();
     Ultrasonic_Tick100us();
 
     tick100usCount++;

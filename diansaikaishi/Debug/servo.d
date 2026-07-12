@@ -1,6 +1,6 @@
 # FIXED
 
-empty.o: ../empty.c ../app.h ../encoder.h ../motor.h ../servo.h \
+servo.o: ../servo.c ../servo.h \
  ti_msp_dl_config.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/msp.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/DeviceFamily.h \
@@ -74,11 +74,7 @@ empty.o: ../empty.c ../app.h ../encoder.h ../motor.h ../servo.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/dl_vref.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/dl_wwdt.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/m0p/dl_interrupt.h \
- C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/m0p/dl_systick.h \
- ../ultrasonic.h
-../app.h:
-../encoder.h:
-../motor.h:
+ C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/m0p/dl_systick.h
 ../servo.h:
 ti_msp_dl_config.h:
 C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/msp.h:
@@ -154,4 +150,3 @@ C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/dl_vref.h:
 C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/dl_wwdt.h:
 C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/m0p/dl_interrupt.h:
 C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/m0p/dl_systick.h:
-../ultrasonic.h:

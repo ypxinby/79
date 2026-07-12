@@ -19,6 +19,7 @@
 "./oled.o"
 "./oled_ui.o"
 "./pid.o"
+"./servo.o"
 "./track_sensor.o"
 "./ultrasonic.o"
 -l"./device_linker.cmd"

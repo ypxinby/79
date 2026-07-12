@@ -191,6 +191,12 @@ extern "C" {
 /* Defines for HC_ECHO: GPIOA.9 with pinCMx 20 on package pin 55 */
 #define GPIO_ULTRASONIC_HC_ECHO_PIN                              (DL_GPIO_PIN_9)
 #define GPIO_ULTRASONIC_HC_ECHO_IOMUX                            (IOMUX_PINCM20)
+/* Port definition for Pin Group GPIO_SERVO */
+#define GPIO_SERVO_PORT                                                  (GPIOB)
+
+/* Defines for SERVO: GPIOB.9 with pinCMx 26 on package pin 61 */
+#define GPIO_SERVO_SERVO_PIN                                     (DL_GPIO_PIN_9)
+#define GPIO_SERVO_SERVO_IOMUX                                   (IOMUX_PINCM26)
 
 /* clang-format on */
 

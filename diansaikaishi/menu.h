@@ -21,6 +21,7 @@ typedef enum {
     PARAM_KP,
     PARAM_KD,
     PARAM_MAX_CORRECTION,
+    PARAM_SERVO_ANGLE,
     PARAM_COUNT
 } ParamItem;
 

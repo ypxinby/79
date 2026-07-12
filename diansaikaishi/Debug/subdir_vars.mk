@@ -30,6 +30,7 @@ C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/m0p/startup_system_files/ticlan
 ../oled.c \
 ../oled_ui.c \
 ../pid.c \
+../servo.c \
 ../track_sensor.c \
 ../ultrasonic.c 
 
@@ -63,6 +64,7 @@ C_DEPS += \
 ./oled.d \
 ./oled_ui.d \
 ./pid.d \
+./servo.d \
 ./track_sensor.d \
 ./ultrasonic.d 
 
@@ -91,6 +93,7 @@ OBJS += \
 ./oled.o \
 ./oled_ui.o \
 ./pid.o \
+./servo.o \
 ./track_sensor.o \
 ./ultrasonic.o 
 
@@ -121,6 +124,7 @@ OBJS__QUOTED += \
 "oled.o" \
 "oled_ui.o" \
 "pid.o" \
+"servo.o" \
 "track_sensor.o" \
 "ultrasonic.o" 
 
@@ -151,6 +155,7 @@ C_DEPS__QUOTED += \
 "oled.d" \
 "oled_ui.d" \
 "pid.d" \
+"servo.d" \
 "track_sensor.d" \
 "ultrasonic.d" 
 
@@ -181,6 +186,7 @@ C_SRCS__QUOTED += \
 "../oled.c" \
 "../oled_ui.c" \
 "../pid.c" \
+"../servo.c" \
 "../track_sensor.c" \
 "../ultrasonic.c" 
 

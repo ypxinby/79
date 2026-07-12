@@ -14,6 +14,7 @@
 #include "obstacle_monitor.h"
 #include "obstacle_safety.h"
 #include "oled_ui.h"
+#include "servo.h"
 #include "track_sensor.h"
 #include "ultrasonic.h"
 
@@ -66,6 +67,7 @@ void App_Init(void)
     Ultrasonic_Init();
     ObstacleMonitor_Init();
     ObstacleSafety_Init();
+    Servo_Init();
     CarController_Init();
     Key_Init();
     OledUi_Init();
@@ -81,6 +83,7 @@ void App_Update_20ms(void)
 
     Ultrasonic_Update_20ms();
     ObstacleMonitor_Update_20ms();
+    Servo_SetAngleDeg(g_appConfig.servo_angle_deg);
 
     Key_Update_20ms();
     {

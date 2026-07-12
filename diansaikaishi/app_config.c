@@ -72,6 +72,10 @@ void AppConfig_InitDefault(void)
     g_appConfig.heading_lock_delay_ms = 100;
     g_appConfig.seek_heading_offset_deg = -1;
     g_appConfig.second_seek_angle_deg = 215;
+
+    g_appConfig.servo_angle_deg = 90;
+    g_appConfig.min_servo_angle_deg = 35;
+    g_appConfig.max_servo_angle_deg = 145;
 }
 
 void AppConfig_LimitAll(void)
@@ -143,6 +147,10 @@ void AppConfig_LimitAll(void)
         clamp_i16(g_appConfig.seek_heading_offset_deg, -45, 45);
     g_appConfig.second_seek_angle_deg =
         clamp_i16(g_appConfig.second_seek_angle_deg, 120, 220);
+    g_appConfig.servo_angle_deg =
+        clamp_i16(g_appConfig.servo_angle_deg,
+            g_appConfig.min_servo_angle_deg,
+            g_appConfig.max_servo_angle_deg);
 }
 
 void AppConfig_IncreaseTargetLap(void)
