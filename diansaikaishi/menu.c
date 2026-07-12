@@ -24,7 +24,7 @@ static void menu_next_param(void)
     }
 }
 
-static void menu_adjust_param(int8_t direction)
+static void menu_adjust_param(int8_t direction, uint8_t fast)
 {
     switch (g_paramItem) {
         case PARAM_TASK:
@@ -53,7 +53,11 @@ static void menu_adjust_param(int8_t direction)
             g_appConfig.max_correction += (int16_t)(direction * 10);
             break;
         case PARAM_SERVO_ANGLE:
-            g_appConfig.servo_angle_deg += (int16_t)(direction * 15);
+            if (fast != 0U) {
+                g_appConfig.servo_angle_deg += (int16_t)(direction * 30);
+            } else {
+                g_appConfig.servo_angle_deg += (int16_t)(direction * 5);
+            }
             break;
         default:
             break;
@@ -118,12 +122,16 @@ static void menu_handle_param_key(KeyEvent event)
             CarState_Set(CAR_STATE_READY);
             break;
         case KEY2_SHORT:
+            menu_adjust_param(1, 0U);
+            break;
         case KEY2_LONG:
-            menu_adjust_param(1);
+            menu_adjust_param(1, 1U);
             break;
         case KEY3_SHORT:
+            menu_adjust_param(-1, 0U);
+            break;
         case KEY3_LONG:
-            menu_adjust_param(-1);
+            menu_adjust_param(-1, 1U);
             break;
         default:
             break;

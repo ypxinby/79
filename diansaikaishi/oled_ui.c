@@ -72,22 +72,10 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
     const char *actionName = "NONE";
     const UltrasonicFeedback *ultrasonic = Ultrasonic_GetFeedback();
     const ObstacleFeedback *obstacle = ObstacleMonitor_GetFeedback();
-    uint16_t actionIndex = 0U;
-    uint16_t actionCount = 0U;
     uint32_t actionTimeS = action->elapsed_ms / 1000U;
 
     (void)error;
     (void)keyEvent;
-
-    if (mission->definition != (const MissionDefinition *)0) {
-        actionCount = mission->definition->action_count;
-        if (actionCount > 0U) {
-            actionIndex = (uint16_t)(mission->current_action_index + 1U);
-            if (actionIndex > actionCount) {
-                actionIndex = actionCount;
-            }
-        }
-    }
 
     if (action->action != (const MotionAction *)0) {
         actionName = motion_action_type_to_string(action->action->type);
@@ -102,10 +90,8 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
     OLED_SetCursor(2, 0);
     OLED_PrintString("ACT:");
     OLED_PrintString(actionName);
-    OLED_PrintString(" S:");
-    OLED_PrintInt16((int16_t)actionIndex);
-    OLED_PrintString(" T:");
-    OLED_PrintInt16((int16_t)actionCount);
+    OLED_PrintString(" M:");
+    OLED_PrintString(CarController_RunModeToString(CarController_GetRunMode()));
 
     OLED_SetCursor(4, 0);
     OLED_PrintString("RAW:");
@@ -116,10 +102,8 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
     OLED_PrintInt16((int16_t)ObstacleSafety_IsHolding());
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("T:");
+    OLED_PrintString("TIME:");
     OLED_PrintInt16(clamp_display_i16((int32_t)actionTimeS));
-    OLED_PrintString(" M:");
-    OLED_PrintString(CarController_RunModeToString(CarController_GetRunMode()));
     OLED_PrintString(" U:");
     if (ultrasonic->measurement_valid) {
         OLED_PrintInt16((int16_t)ultrasonic->distance_cm);
