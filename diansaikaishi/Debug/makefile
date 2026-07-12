@@ -26,6 +26,7 @@ ORDERED_OBJS += \
 "./mission_manager.o" \
 "./motion_action.o" \
 "./motor.o" \
+"./obstacle_monitor.o" \
 "./oled.o" \
 "./oled_ui.o" \
 "./pid.o" \
@@ -155,8 +156,8 @@ diansaikaishi.out: $(OBJS) $(GEN_CMDS)
 # Other Targets
 clean:
 	-$(RM) $(GEN_MISC_FILES__QUOTED)$(GEN_FILES__QUOTED)$(EXE_OUTPUTS__QUOTED)
-	-$(RM) "app.o" "app_config.o" "car_controller.o" "car_state.o" "empty.o" "ti_msp_dl_config.o" "startup_mspm0g350x_ticlang.o" "encoder.o" "heading_control.o" "imu.o" "key.o" "menu.o" "mission_library.o" "mission_manager.o" "motion_action.o" "motor.o" "oled.o" "oled_ui.o" "pid.o" "track_sensor.o" "ultrasonic.o" 
-	-$(RM) "app.d" "app_config.d" "car_controller.d" "car_state.d" "empty.d" "ti_msp_dl_config.d" "startup_mspm0g350x_ticlang.d" "encoder.d" "heading_control.d" "imu.d" "key.d" "menu.d" "mission_library.d" "mission_manager.d" "motion_action.d" "motor.d" "oled.d" "oled_ui.d" "pid.d" "track_sensor.d" "ultrasonic.d" 
+	-$(RM) "app.o" "app_config.o" "car_controller.o" "car_state.o" "empty.o" "ti_msp_dl_config.o" "startup_mspm0g350x_ticlang.o" "encoder.o" "heading_control.o" "imu.o" "key.o" "menu.o" "mission_library.o" "mission_manager.o" "motion_action.o" "motor.o" "obstacle_monitor.o" "oled.o" "oled_ui.o" "pid.o" "track_sensor.o" "ultrasonic.o" 
+	-$(RM) "app.d" "app_config.d" "car_controller.d" "car_state.d" "empty.d" "ti_msp_dl_config.d" "startup_mspm0g350x_ticlang.d" "encoder.d" "heading_control.d" "imu.d" "key.d" "menu.d" "mission_library.d" "mission_manager.d" "motion_action.d" "motor.d" "obstacle_monitor.d" "oled.d" "oled_ui.d" "pid.d" "track_sensor.d" "ultrasonic.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 
