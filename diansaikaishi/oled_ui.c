@@ -8,6 +8,7 @@
 #include "menu.h"
 #include "mission_manager.h"
 #include "motion_action.h"
+#include "obstacle_avoidance.h"
 #include "obstacle_monitor.h"
 #include "obstacle_scanner.h"
 #include "obstacle_safety.h"
@@ -140,6 +141,8 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
     OLED_PrintInt16((int16_t)obstacle->blocked);
     OLED_PrintString(" H:");
     OLED_PrintInt16((int16_t)ObstacleSafety_IsHolding());
+    OLED_PrintString(" A:");
+    OLED_PrintInt16((int16_t)ObstacleAvoidance_IsActive());
 
     OLED_SetCursor(6, 0);
     if (scan->active || scan->complete) {

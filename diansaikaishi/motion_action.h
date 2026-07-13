@@ -22,6 +22,7 @@ bool MotionAction_Start(const MotionAction *action,
     float mission_start_yaw_deg);
 MotionActionResult MotionAction_Update_20ms(void);
 void MotionAction_Cancel(void);
+bool MotionAction_ReapplyControllerTarget(void);
 const MotionActionRuntime *MotionAction_GetRuntime(void);
 
 #endif

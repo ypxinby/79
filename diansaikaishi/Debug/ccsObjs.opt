@@ -14,6 +14,7 @@
 "./mission_manager.o"
 "./motion_action.o"
 "./motor.o"
+"./obstacle_avoidance.o"
 "./obstacle_monitor.o"
 "./obstacle_safety.o"
 "./obstacle_scanner.o"

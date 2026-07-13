@@ -11,6 +11,7 @@
 #include "menu.h"
 #include "mission_manager.h"
 #include "motor.h"
+#include "obstacle_avoidance.h"
 #include "obstacle_monitor.h"
 #include "obstacle_scanner.h"
 #include "obstacle_safety.h"
@@ -67,6 +68,7 @@ void App_Init(void)
     TrackSensor_Init();
     Ultrasonic_Init();
     ObstacleMonitor_Init();
+    ObstacleAvoidance_Init();
     ObstacleSafety_Init();
     ObstacleScanner_Init();
     Servo_Init();
@@ -103,8 +105,9 @@ void App_Update_20ms(void)
     }
 
     MissionManager_Update_20ms();
-    ObstacleSafety_Update_20ms();
     ObstacleScanner_Update_20ms();
+    ObstacleAvoidance_Update_20ms();
+    ObstacleSafety_Update_20ms();
     CarController_Update_20ms();
 
     g_trackRaw = g_appRuntime.sensor_raw;

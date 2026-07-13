@@ -495,6 +495,24 @@ void MotionAction_Cancel(void)
     g_motionActionRuntime.started = false;
 }
 
+bool MotionAction_ReapplyControllerTarget(void)
+{
+    const MotionAction *action = g_motionActionRuntime.action;
+
+    if ((action == (const MotionAction *)0) ||
+        !g_motionActionRuntime.started) {
+        return false;
+    }
+
+    if (action->type != MOTION_ACTION_FOLLOW_LINE) {
+        return false;
+    }
+
+    CarController_StartFollowLine(
+        motion_action_map_turn_policy(action->params.follow_line.turn_policy));
+    return true;
+}
+
 const MotionActionRuntime *MotionAction_GetRuntime(void)
 {
     return &g_motionActionRuntime;
