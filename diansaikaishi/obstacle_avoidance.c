@@ -31,6 +31,7 @@ static bool avoid_can_start(void)
 {
     const MotionActionRuntime *runtime = MotionAction_GetRuntime();
     const ObstacleFeedback *obstacle = ObstacleMonitor_GetFeedback();
+    TrackRunMode mode = CarController_GetRunMode();
 
     if (CarState_Get() != CAR_STATE_RUNNING) {
         return false;
@@ -38,15 +39,18 @@ static bool avoid_can_start(void)
     if (!obstacle->blocked) {
         return false;
     }
-    if ((runtime->action == (const MotionAction *)0) ||
-        !runtime->started) {
-        return false;
-    }
-    if (runtime->action->type != MOTION_ACTION_FOLLOW_LINE) {
-        return false;
+
+    if ((runtime->action != (const MotionAction *)0) &&
+        runtime->started &&
+        (runtime->action->type == MOTION_ACTION_FOLLOW_LINE)) {
+        return true;
     }
 
-    return true;
+    if (mode == TRACK_MODE_FOLLOW_LINE) {
+        return true;
+    }
+
+    return false;
 }
 
 static void avoid_fail(void)
@@ -208,8 +212,7 @@ void ObstacleAvoidance_Update_20ms(void)
 
         case AVOID_STATE_COMPLETE:
             if (!MotionAction_ReapplyControllerTarget()) {
-                avoid_fail();
-                break;
+                CarController_StartFollowLine(CAR_TURN_POLICY_AUTO);
             }
             g_avoidFeedback.active = false;
             g_avoidFeedback.failed = false;
