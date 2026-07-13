@@ -94,9 +94,9 @@ static const MotionAction g_missionTestHeadingDrive[] = {
 
 static const MotionAction g_missionTestReacquire[] = {
     /* Leave the line, turn back toward it, then require stable reacquire. */
-    ACTION_TURN_RELATIVE_YAW(45.0f, 2500U),
-    ACTION_DRIVE_HEADING_TIME(900U, 1500U),
-    ACTION_TURN_RELATIVE_YAW(-75.0f, 2500U),
+    ACTION_TURN_RELATIVE_YAW(35.0f, 2500U),
+    ACTION_DRIVE_HEADING_TIME(1400U, 2000U),
+    ACTION_TURN_RELATIVE_YAW(-55.0f, 2500U),
     ACTION_REACQUIRE_LINE(3000U),
     ACTION_FOLLOW_FOREVER(0U),
     ACTION_STOP()
