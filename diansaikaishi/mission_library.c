@@ -23,6 +23,7 @@ typedef enum {
  * - TEST-R90 / TEST-RSTOP: same right-90 detection, different decisions.
  * - TEST-SK-L / TEST-SK-S: same seek-line event, different decisions.
  * - TEST-YAW: relative IMU yaw turn validation.
+ * - TEST-HEAD: yaw heading drive validation.
  */
 static const MotionAction g_missionLegacy[] = {
     /* Find the first line using the mission start yaw. */
@@ -80,6 +81,13 @@ static const MotionAction g_missionTestYaw[] = {
     ACTION_TURN_RELATIVE_YAW(40.0f, 2000U),
     ACTION_WAIT_MS(300U),
     ACTION_TURN_RELATIVE_YAW(-40.0f, 2000U),
+    ACTION_STOP()
+};
+
+static const MotionAction g_missionTestHeadingDrive[] = {
+    /* Turn away from the current heading, then drive along that yaw. */
+    ACTION_TURN_RELATIVE_YAW(40.0f, 2000U),
+    ACTION_DRIVE_HEADING_TIME(700U, 1200U),
     ACTION_STOP()
 };
 
@@ -191,6 +199,13 @@ static const MissionDefinition g_missionRegistry[] = {
         .control_profile_id = 0U
     },
     {
+        .mission_id = MISSION_ID_TEST_HEAD,
+        .name = "TEST-HEAD",
+        .actions = g_missionTestHeadingDrive,
+        .action_count = ARRAY_SIZE(g_missionTestHeadingDrive),
+        .control_profile_id = 0U
+    },
+    {
         .mission_id = MISSION_ID_MAP_A,
         .name = "MAP-A",
         .actions = g_missionMapA,
@@ -220,6 +235,7 @@ static bool action_type_is_valid(MotionActionType type)
         (type == MOTION_ACTION_TURN_LEFT_90) ||
         (type == MOTION_ACTION_TURN_RIGHT_90) ||
         (type == MOTION_ACTION_TURN_TO_YAW) ||
+        (type == MOTION_ACTION_DRIVE_HEADING_TIME) ||
         (type == MOTION_ACTION_WAIT) ||
         (type == MOTION_ACTION_STOP);
 }

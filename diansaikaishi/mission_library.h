@@ -16,6 +16,7 @@
 #define MISSION_ID_TEST_SEEK_FOLLOW     (4U)
 #define MISSION_ID_TEST_SEEK_STOP       (5U)
 #define MISSION_ID_TEST_YAW             (6U)
+#define MISSION_ID_TEST_HEAD            (7U)
 
 /* 10~99: competition map missions. */
 #define MISSION_ID_MAP_A                (10U)
@@ -194,6 +195,17 @@
         .max_retries = 1U, \
         .params.turn_to_yaw = { \
             .angle_deg = (float)(angle), \
+            .speed_override = MOTION_USE_GLOBAL_SPEED \
+        } \
+    }
+
+#define ACTION_DRIVE_HEADING_TIME(duration, timeout) \
+    { \
+        .type = MOTION_ACTION_DRIVE_HEADING_TIME, \
+        .timeout_ms = (uint32_t)(timeout), \
+        .max_retries = 1U, \
+        .params.drive_heading_time = { \
+            .duration_ms = (uint32_t)(duration), \
             .speed_override = MOTION_USE_GLOBAL_SPEED \
         } \
     }

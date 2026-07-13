@@ -463,6 +463,52 @@ static void handle_turn_to_yaw(void)
     }
 }
 
+static void handle_drive_heading(void)
+{
+    int16_t correction;
+
+    if (!Imu_IsReady()) {
+        Motor_Stop();
+        g_appRuntime.left_speed = 0;
+        g_appRuntime.right_speed = 0;
+        g_appRuntime.correction = 0;
+        g_carControllerFeedback.operation_failed = true;
+        g_carControllerFeedback.error_code = 1U;
+        CarState_Set(CAR_STATE_ERROR);
+        return;
+    }
+
+    if (g_appRuntime.heading_straight_elapsed_ms <
+        UINT16_MAX - CAR_CONTROLLER_PERIOD_MS) {
+        g_appRuntime.heading_straight_elapsed_ms =
+            (uint16_t)(g_appRuntime.heading_straight_elapsed_ms +
+                CAR_CONTROLLER_PERIOD_MS);
+    }
+    if (g_appRuntime.heading_straight_elapsed_ms >=
+        g_appRuntime.drive_heading_duration_ms) {
+        Motor_Stop();
+        g_appRuntime.left_speed = 0;
+        g_appRuntime.right_speed = 0;
+        g_appRuntime.correction = 0;
+        g_carControllerFeedback.turn_completed = true;
+        return;
+    }
+
+    if (!HeadingControl_GetRuntime()->target_locked) {
+        HeadingControl_SetTargetYaw(g_appRuntime.drive_heading_target_yaw_deg);
+        HeadingControl_Enable(true);
+    }
+
+    correction = HeadingControl_Update(Imu_GetYaw(),
+        Imu_GetCorrectedGyroZDps(), 0.02f);
+    g_appRuntime.heading_correction = correction;
+    g_appRuntime.correction = correction;
+
+    set_output_speed(
+        (int16_t)((int32_t)g_appConfig.search_speed + correction),
+        (int16_t)((int32_t)g_appConfig.search_speed - correction));
+}
+
 void CarController_Init(void)
 {
     CarController_ResetRuntime();
@@ -490,9 +536,11 @@ void CarController_ResetRuntime(void)
     g_appRuntime.turn_elapsed_ms = 0;
     g_appRuntime.yaw_turn_stable_ms = 0;
     g_appRuntime.heading_straight_elapsed_ms = 0;
+    g_appRuntime.drive_heading_duration_ms = 0;
     g_appRuntime.lap_cooldown_ms = 0;
     g_appRuntime.yaw_turn_target_deg = 0.0f;
     g_appRuntime.yaw_turn_error_deg = 0.0f;
+    g_appRuntime.drive_heading_target_yaw_deg = 0.0f;
     g_followTurnPolicy = CAR_TURN_POLICY_AUTO;
     g_safetyHold = false;
     update_feedback_from_runtime();
@@ -511,7 +559,9 @@ void CarController_ResetTransientState(void)
     g_appRuntime.turn_elapsed_ms = 0;
     g_appRuntime.yaw_turn_stable_ms = 0;
     g_appRuntime.heading_straight_elapsed_ms = 0;
+    g_appRuntime.drive_heading_duration_ms = 0;
     g_appRuntime.yaw_turn_error_deg = 0.0f;
+    g_appRuntime.drive_heading_target_yaw_deg = 0.0f;
     update_feedback_from_runtime();
     reset_heading_control_runtime();
 }
@@ -570,6 +620,22 @@ void CarController_StartTurnToYawRelative(float angle_deg)
     g_appRuntime.yaw_turn_error_deg = angle_deg;
     g_appRuntime.yaw_turn_stable_ms = 0U;
     g_appRuntime.run_mode = TRACK_MODE_TURN_TO_YAW;
+    CarState_Set(CAR_STATE_RUNNING);
+}
+
+void CarController_StartDriveHeading(uint32_t duration_ms)
+{
+    CarController_ResetTransientState();
+    g_followTurnPolicy = CAR_TURN_POLICY_IGNORE;
+    g_appRuntime.drive_heading_target_yaw_deg = Imu_GetYaw();
+    if (duration_ms > UINT16_MAX) {
+        g_appRuntime.drive_heading_duration_ms = UINT16_MAX;
+    } else {
+        g_appRuntime.drive_heading_duration_ms = (uint16_t)duration_ms;
+    }
+    HeadingControl_SetTargetYaw(g_appRuntime.drive_heading_target_yaw_deg);
+    HeadingControl_Enable(true);
+    g_appRuntime.run_mode = TRACK_MODE_DRIVE_HEADING;
     CarState_Set(CAR_STATE_RUNNING);
 }
 
@@ -655,6 +721,9 @@ void CarController_Update_20ms(void)
         case TRACK_MODE_TURN_TO_YAW:
             handle_turn_to_yaw();
             break;
+        case TRACK_MODE_DRIVE_HEADING:
+            handle_drive_heading();
+            break;
         default:
             Motor_Stop();
             g_appRuntime.left_speed = 0;
@@ -692,6 +761,8 @@ const char *CarController_RunModeToString(TrackRunMode mode)
             return "R90";
         case TRACK_MODE_TURN_TO_YAW:
             return "YAW";
+        case TRACK_MODE_DRIVE_HEADING:
+            return "HEAD";
         case TRACK_MODE_LOST_RECOVER:
             return "LOST";
         default:

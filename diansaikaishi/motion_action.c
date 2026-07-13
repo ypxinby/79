@@ -89,6 +89,10 @@ static bool motion_action_check_timeout(void)
             motion_action_set_result(MOTION_RESULT_TIMEOUT,
                 MOTION_ERROR_FOLLOW_TIMEOUT);
             break;
+        case MOTION_ACTION_DRIVE_HEADING_TIME:
+            motion_action_set_result(MOTION_RESULT_TIMEOUT,
+                MOTION_ERROR_FOLLOW_TIMEOUT);
+            break;
         case MOTION_ACTION_TURN_LEFT_90:
         case MOTION_ACTION_TURN_RIGHT_90:
         case MOTION_ACTION_TURN_TO_YAW:
@@ -172,6 +176,19 @@ bool MotionAction_Start(const MotionAction *action,
             }
             CarController_StartTurnToYawRelative(
                 action->params.turn_to_yaw.angle_deg);
+            motion_action_set_result(MOTION_RESULT_RUNNING,
+                MOTION_ERROR_NONE);
+            return true;
+
+        case MOTION_ACTION_DRIVE_HEADING_TIME:
+            if (!Imu_IsReady()) {
+                motion_action_stop_car();
+                motion_action_set_result(MOTION_RESULT_FAILED,
+                    MOTION_ERROR_IMU_NOT_READY);
+                return false;
+            }
+            CarController_StartDriveHeading(
+                action->params.drive_heading_time.duration_ms);
             motion_action_set_result(MOTION_RESULT_RUNNING,
                 MOTION_ERROR_NONE);
             return true;
@@ -332,6 +349,28 @@ MotionActionResult MotionAction_Update_20ms(void)
             if (motion_action_car_is_error() || feedback->operation_failed) {
                 motion_action_set_result(MOTION_RESULT_FAILED,
                     MOTION_ERROR_TURN_TIMEOUT);
+                break;
+            }
+            if (feedback->turn_completed) {
+                motion_action_set_result(MOTION_RESULT_SUCCESS,
+                    MOTION_ERROR_NONE);
+            }
+            break;
+        }
+
+        case MOTION_ACTION_DRIVE_HEADING_TIME:
+        {
+            const CarControllerFeedback *feedback =
+                CarController_GetFeedback();
+
+            if (!Imu_IsReady()) {
+                motion_action_set_result(MOTION_RESULT_FAILED,
+                    MOTION_ERROR_IMU_NOT_READY);
+                break;
+            }
+            if (motion_action_car_is_error() || feedback->operation_failed) {
+                motion_action_set_result(MOTION_RESULT_FAILED,
+                    MOTION_ERROR_FOLLOW_TIMEOUT);
                 break;
             }
             if (feedback->turn_completed) {

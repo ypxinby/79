@@ -12,6 +12,7 @@ typedef enum {
     TRACK_MODE_TURN_LEFT_90,
     TRACK_MODE_TURN_RIGHT_90,
     TRACK_MODE_TURN_TO_YAW,
+    TRACK_MODE_DRIVE_HEADING,
     TRACK_MODE_LOST_RECOVER
 } TrackRunMode;
 
@@ -50,10 +51,12 @@ typedef struct {
     uint16_t turn_elapsed_ms;
     uint16_t yaw_turn_stable_ms;
     uint16_t heading_straight_elapsed_ms;
+    uint16_t drive_heading_duration_ms;
     uint16_t lap_cooldown_ms;
 
     float yaw_turn_target_deg;
     float yaw_turn_error_deg;
+    float drive_heading_target_yaw_deg;
 } AppRuntime;
 
 typedef struct {
@@ -84,6 +87,7 @@ void CarController_StartFollowLine(CarTurnHandlingPolicy turn_policy);
 void CarController_StartTurnLeft90(void);
 void CarController_StartTurnRight90(void);
 void CarController_StartTurnToYawRelative(float angle_deg);
+void CarController_StartDriveHeading(uint32_t duration_ms);
 void CarController_UseCurrentHeadingForSeek(void);
 void CarController_SetSeekTargetYaw(float target_yaw_deg);
 void CarController_SetSafetyHold(bool enable);
