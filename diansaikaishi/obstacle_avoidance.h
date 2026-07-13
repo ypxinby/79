@@ -6,6 +6,7 @@
 
 typedef enum {
     AVOID_STATE_IDLE = 0,
+    AVOID_STATE_WAIT_AFTER_SCAN,
     AVOID_STATE_TURN_OUT,
     AVOID_STATE_DRIVE_OUT,
     AVOID_STATE_TURN_TO_LINE,
@@ -19,6 +20,7 @@ typedef struct {
     ObstacleAvoidState state;
     bool active;
     bool failed;
+    uint16_t wait_ms;
     uint16_t settle_ms;
     uint8_t center_count;
 } ObstacleAvoidanceFeedback;

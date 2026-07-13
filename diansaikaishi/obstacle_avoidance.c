@@ -11,6 +11,7 @@
 #define AVOID_TURN_OUT_DEG              (35.0f)
 #define AVOID_DRIVE_OUT_MS              (1400U)
 #define AVOID_TURN_TO_LINE_DEG          (-55.0f)
+#define AVOID_WAIT_AFTER_SCAN_MS        (2000U)
 #define AVOID_CENTER_CONFIRM_COUNT      (3U)
 #define AVOID_REACQUIRE_SETTLE_MS       (300U)
 #define AVOID_RESUME_GRACE_MS           (600U)
@@ -47,9 +48,6 @@ static bool avoid_can_start(void)
     if (runtime->action->type != MOTION_ACTION_FOLLOW_LINE) {
         return false;
     }
-    if (CarController_GetRunMode() != TRACK_MODE_FOLLOW_LINE) {
-        return false;
-    }
 
     return true;
 }
@@ -68,9 +66,10 @@ static void avoid_start(void)
     g_avoidFeedback.active = true;
     g_avoidFeedback.failed = false;
     g_avoidFeedback.center_count = 0U;
+    g_avoidFeedback.wait_ms = 0U;
     g_avoidFeedback.settle_ms = 0U;
     MissionManager_SetExternalHold(true);
-    avoid_set_state(AVOID_STATE_TURN_OUT);
+    avoid_set_state(AVOID_STATE_WAIT_AFTER_SCAN);
 }
 
 static bool avoid_feedback_failed(const CarControllerFeedback *feedback)
@@ -85,6 +84,7 @@ void ObstacleAvoidance_Init(void)
     g_avoidFeedback.state = AVOID_STATE_IDLE;
     g_avoidFeedback.active = false;
     g_avoidFeedback.failed = false;
+    g_avoidFeedback.wait_ms = 0U;
     g_avoidFeedback.settle_ms = 0U;
     g_avoidFeedback.center_count = 0U;
     g_stateStarted = false;
@@ -124,6 +124,17 @@ void ObstacleAvoidance_Update_20ms(void)
     }
 
     switch (g_avoidFeedback.state) {
+        case AVOID_STATE_WAIT_AFTER_SCAN:
+            if (g_avoidFeedback.wait_ms <
+                UINT16_MAX - AVOID_PERIOD_MS) {
+                g_avoidFeedback.wait_ms =
+                    (uint16_t)(g_avoidFeedback.wait_ms + AVOID_PERIOD_MS);
+            }
+            if (g_avoidFeedback.wait_ms >= AVOID_WAIT_AFTER_SCAN_MS) {
+                avoid_set_state(AVOID_STATE_TURN_OUT);
+            }
+            break;
+
         case AVOID_STATE_TURN_OUT:
             if (!g_stateStarted) {
                 CarController_StartTurnToYawRelative(AVOID_TURN_OUT_DEG);

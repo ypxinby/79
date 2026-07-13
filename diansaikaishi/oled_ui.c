@@ -170,12 +170,17 @@ static void print_obstacle_page(void)
     const UltrasonicFeedback *ultrasonic = Ultrasonic_GetFeedback();
     const ObstacleFeedback *obstacle = ObstacleMonitor_GetFeedback();
     const ObstacleScanFeedback *scan = ObstacleScanner_GetFeedback();
+    const ObstacleAvoidanceFeedback *avoid = ObstacleAvoidance_GetFeedback();
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("OBS O:");
+    OLED_PrintString("O:");
     OLED_PrintInt16((int16_t)obstacle->blocked);
     OLED_PrintString(" H:");
     OLED_PrintInt16((int16_t)ObstacleSafety_IsHolding());
+    OLED_PrintString(" A:");
+    OLED_PrintInt16((int16_t)ObstacleAvoidance_IsActive());
+    OLED_PrintString(" V:");
+    OLED_PrintInt16((int16_t)avoid->state);
 
     OLED_SetCursor(2, 0);
     OLED_PrintString("U:");
