@@ -41,6 +41,8 @@ static const char *motion_action_type_to_string(MotionActionType type)
             return "YAW";
         case MOTION_ACTION_DRIVE_HEADING_TIME:
             return "HEAD";
+        case MOTION_ACTION_REACQUIRE_LINE:
+            return "REQ";
         case MOTION_ACTION_WAIT:
             return "WAIT";
         case MOTION_ACTION_STOP:

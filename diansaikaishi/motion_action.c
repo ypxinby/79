@@ -6,6 +6,13 @@
 #include "imu.h"
 
 #define MOTION_ACTION_PERIOD_MS      (20U)
+#define REACQUIRE_CENTER_CONFIRM_COUNT  (3U)
+#define REACQUIRE_SETTLE_MS             (300U)
+
+typedef enum {
+    REACQUIRE_PHASE_SEARCH = 0,
+    REACQUIRE_PHASE_SETTLE
+} ReacquirePhase;
 
 static MotionActionRuntime g_motionActionRuntime;
 static float g_motionActionStartYawDeg;
@@ -86,6 +93,7 @@ static bool motion_action_check_timeout(void)
                 MOTION_ERROR_SEEK_TIMEOUT);
             break;
         case MOTION_ACTION_FOLLOW_LINE:
+        case MOTION_ACTION_REACQUIRE_LINE:
             motion_action_set_result(MOTION_RESULT_TIMEOUT,
                 MOTION_ERROR_FOLLOW_TIMEOUT);
             break;
@@ -118,6 +126,9 @@ void MotionAction_Init(void)
     g_motionActionRuntime.result = MOTION_RESULT_IDLE;
     g_motionActionRuntime.elapsed_ms = 0U;
     g_motionActionRuntime.error_code = (uint16_t)MOTION_ERROR_NONE;
+    g_motionActionRuntime.reacquire_settle_ms = 0U;
+    g_motionActionRuntime.reacquire_center_count = 0U;
+    g_motionActionRuntime.reacquire_phase = (uint8_t)REACQUIRE_PHASE_SEARCH;
     g_motionActionRuntime.started = false;
     g_motionActionStartYawDeg = 0.0f;
 }
@@ -189,6 +200,22 @@ bool MotionAction_Start(const MotionAction *action,
             }
             CarController_StartDriveHeading(
                 action->params.drive_heading_time.duration_ms);
+            motion_action_set_result(MOTION_RESULT_RUNNING,
+                MOTION_ERROR_NONE);
+            return true;
+
+        case MOTION_ACTION_REACQUIRE_LINE:
+            if (!Imu_IsReady()) {
+                motion_action_stop_car();
+                motion_action_set_result(MOTION_RESULT_FAILED,
+                    MOTION_ERROR_IMU_NOT_READY);
+                return false;
+            }
+            g_motionActionRuntime.reacquire_phase =
+                (uint8_t)REACQUIRE_PHASE_SEARCH;
+            g_motionActionRuntime.reacquire_center_count = 0U;
+            g_motionActionRuntime.reacquire_settle_ms = 0U;
+            CarController_StartSeekLine(Imu_GetYaw());
             motion_action_set_result(MOTION_RESULT_RUNNING,
                 MOTION_ERROR_NONE);
             return true;
@@ -374,6 +401,68 @@ MotionActionResult MotionAction_Update_20ms(void)
                 break;
             }
             if (feedback->turn_completed) {
+                motion_action_set_result(MOTION_RESULT_SUCCESS,
+                    MOTION_ERROR_NONE);
+            }
+            break;
+        }
+
+        case MOTION_ACTION_REACQUIRE_LINE:
+        {
+            const CarControllerFeedback *feedback =
+                CarController_GetFeedback();
+
+            if (!Imu_IsReady()) {
+                motion_action_set_result(MOTION_RESULT_FAILED,
+                    MOTION_ERROR_IMU_NOT_READY);
+                break;
+            }
+            if (motion_action_car_is_error() || feedback->operation_failed) {
+                motion_action_set_result(MOTION_RESULT_FAILED,
+                    MOTION_ERROR_LINE_LOST);
+                break;
+            }
+
+            if (g_motionActionRuntime.reacquire_phase ==
+                (uint8_t)REACQUIRE_PHASE_SEARCH) {
+                if (feedback->center_detected) {
+                    if (g_motionActionRuntime.reacquire_center_count <
+                        UINT8_MAX) {
+                        g_motionActionRuntime.reacquire_center_count++;
+                    }
+                } else {
+                    g_motionActionRuntime.reacquire_center_count = 0U;
+                }
+
+                if (g_motionActionRuntime.reacquire_center_count >=
+                    REACQUIRE_CENTER_CONFIRM_COUNT) {
+                    g_motionActionRuntime.reacquire_phase =
+                        (uint8_t)REACQUIRE_PHASE_SETTLE;
+                    g_motionActionRuntime.reacquire_center_count = 0U;
+                    g_motionActionRuntime.reacquire_settle_ms = 0U;
+                    CarController_StartFollowLine(CAR_TURN_POLICY_IGNORE);
+                }
+                break;
+            }
+
+            if (feedback->line_lost) {
+                motion_action_set_result(MOTION_RESULT_FAILED,
+                    MOTION_ERROR_LINE_LOST);
+                break;
+            }
+            if (g_motionActionRuntime.reacquire_settle_ms <
+                UINT16_MAX - MOTION_ACTION_PERIOD_MS) {
+                g_motionActionRuntime.reacquire_settle_ms =
+                    (uint16_t)(g_motionActionRuntime.reacquire_settle_ms +
+                        MOTION_ACTION_PERIOD_MS);
+            }
+            if (feedback->center_detected &&
+                (g_motionActionRuntime.reacquire_center_count < UINT8_MAX)) {
+                g_motionActionRuntime.reacquire_center_count++;
+            }
+            if ((g_motionActionRuntime.reacquire_settle_ms >=
+                    REACQUIRE_SETTLE_MS) &&
+                (g_motionActionRuntime.reacquire_center_count > 0U)) {
                 motion_action_set_result(MOTION_RESULT_SUCCESS,
                     MOTION_ERROR_NONE);
             }

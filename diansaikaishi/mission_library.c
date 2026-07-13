@@ -24,6 +24,7 @@ typedef enum {
  * - TEST-SK-L / TEST-SK-S: same seek-line event, different decisions.
  * - TEST-YAW: relative IMU yaw turn validation.
  * - TEST-HEAD: yaw heading drive validation.
+ * - TEST-REQ: line reacquire validation.
  */
 static const MotionAction g_missionLegacy[] = {
     /* Find the first line using the mission start yaw. */
@@ -88,6 +89,16 @@ static const MotionAction g_missionTestHeadingDrive[] = {
     /* Turn away from the current heading, then drive along that yaw. */
     ACTION_TURN_RELATIVE_YAW(40.0f, 2000U),
     ACTION_DRIVE_HEADING_TIME(700U, 1200U),
+    ACTION_STOP()
+};
+
+static const MotionAction g_missionTestReacquire[] = {
+    /* Leave the line, turn back toward it, then require stable reacquire. */
+    ACTION_TURN_RELATIVE_YAW(40.0f, 2000U),
+    ACTION_DRIVE_HEADING_TIME(500U, 1000U),
+    ACTION_TURN_RELATIVE_YAW(-40.0f, 2000U),
+    ACTION_REACQUIRE_LINE(3000U),
+    ACTION_FOLLOW_FOREVER(0U),
     ACTION_STOP()
 };
 
@@ -206,6 +217,13 @@ static const MissionDefinition g_missionRegistry[] = {
         .control_profile_id = 0U
     },
     {
+        .mission_id = MISSION_ID_TEST_REACQUIRE,
+        .name = "TEST-REQ",
+        .actions = g_missionTestReacquire,
+        .action_count = ARRAY_SIZE(g_missionTestReacquire),
+        .control_profile_id = 0U
+    },
+    {
         .mission_id = MISSION_ID_MAP_A,
         .name = "MAP-A",
         .actions = g_missionMapA,
@@ -236,6 +254,7 @@ static bool action_type_is_valid(MotionActionType type)
         (type == MOTION_ACTION_TURN_RIGHT_90) ||
         (type == MOTION_ACTION_TURN_TO_YAW) ||
         (type == MOTION_ACTION_DRIVE_HEADING_TIME) ||
+        (type == MOTION_ACTION_REACQUIRE_LINE) ||
         (type == MOTION_ACTION_WAIT) ||
         (type == MOTION_ACTION_STOP);
 }

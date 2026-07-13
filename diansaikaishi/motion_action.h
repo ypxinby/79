@@ -11,6 +11,9 @@ typedef struct {
     MotionActionResult result;
     uint32_t elapsed_ms;
     uint16_t error_code;
+    uint16_t reacquire_settle_ms;
+    uint8_t reacquire_center_count;
+    uint8_t reacquire_phase;
     bool started;
 } MotionActionRuntime;
 
