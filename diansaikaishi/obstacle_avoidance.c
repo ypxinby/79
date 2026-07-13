@@ -6,12 +6,12 @@
 #include "mission_manager.h"
 #include "motion_action.h"
 #include "motion_types.h"
-#include "obstacle_scanner.h"
+#include "obstacle_monitor.h"
 
 #define AVOID_TURN_OUT_DEG              (35.0f)
 #define AVOID_DRIVE_OUT_MS              (1400U)
 #define AVOID_TURN_TO_LINE_DEG          (-55.0f)
-#define AVOID_WAIT_AFTER_SCAN_MS        (2000U)
+#define AVOID_WAIT_AFTER_OBSTACLE_MS    (2000U)
 #define AVOID_CENTER_CONFIRM_COUNT      (3U)
 #define AVOID_REACQUIRE_SETTLE_MS       (300U)
 #define AVOID_RESUME_GRACE_MS           (600U)
@@ -30,15 +30,12 @@ static void avoid_set_state(ObstacleAvoidState state)
 static bool avoid_can_start(void)
 {
     const MotionActionRuntime *runtime = MotionAction_GetRuntime();
-    const ObstacleScanFeedback *scan = ObstacleScanner_GetFeedback();
+    const ObstacleFeedback *obstacle = ObstacleMonitor_GetFeedback();
 
     if (CarState_Get() != CAR_STATE_RUNNING) {
         return false;
     }
-    if (!MissionManager_IsExternallyHeld()) {
-        return false;
-    }
-    if (!scan->complete) {
+    if (!obstacle->blocked) {
         return false;
     }
     if ((runtime->action == (const MotionAction *)0) ||
@@ -69,7 +66,7 @@ static void avoid_start(void)
     g_avoidFeedback.wait_ms = 0U;
     g_avoidFeedback.settle_ms = 0U;
     MissionManager_SetExternalHold(true);
-    avoid_set_state(AVOID_STATE_WAIT_AFTER_SCAN);
+    avoid_set_state(AVOID_STATE_WAIT_AFTER_OBSTACLE);
 }
 
 static bool avoid_feedback_failed(const CarControllerFeedback *feedback)
@@ -124,13 +121,13 @@ void ObstacleAvoidance_Update_20ms(void)
     }
 
     switch (g_avoidFeedback.state) {
-        case AVOID_STATE_WAIT_AFTER_SCAN:
+        case AVOID_STATE_WAIT_AFTER_OBSTACLE:
             if (g_avoidFeedback.wait_ms <
                 UINT16_MAX - AVOID_PERIOD_MS) {
                 g_avoidFeedback.wait_ms =
                     (uint16_t)(g_avoidFeedback.wait_ms + AVOID_PERIOD_MS);
             }
-            if (g_avoidFeedback.wait_ms >= AVOID_WAIT_AFTER_SCAN_MS) {
+            if (g_avoidFeedback.wait_ms >= AVOID_WAIT_AFTER_OBSTACLE_MS) {
                 avoid_set_state(AVOID_STATE_TURN_OUT);
             }
             break;

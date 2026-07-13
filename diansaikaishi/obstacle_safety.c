@@ -55,6 +55,14 @@ void ObstacleSafety_Update_20ms(void)
     }
 
     if (ObstacleAvoidance_IsActive()) {
+        const ObstacleAvoidanceFeedback *avoid =
+            ObstacleAvoidance_GetFeedback();
+
+        if (avoid->state == AVOID_STATE_WAIT_AFTER_OBSTACLE) {
+            obstacle_safety_apply_hold(true);
+            return;
+        }
+
         if (obstacle_safety_emergency_blocked()) {
             obstacle_safety_apply_hold(true);
             return;
