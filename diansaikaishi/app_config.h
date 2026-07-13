@@ -54,6 +54,13 @@ typedef struct {
     int16_t servo_angle_deg;
     int16_t min_servo_angle_deg;
     int16_t max_servo_angle_deg;
+
+    int16_t avoid_turn_out_deg;
+    uint16_t avoid_drive_out_ms;
+    int16_t avoid_turn_to_line_deg;
+    uint16_t avoid_wait_before_ms;
+    uint16_t avoid_resume_grace_ms;
+    uint16_t avoid_reacquire_settle_ms;
 } AppConfig;
 
 extern AppConfig g_appConfig;

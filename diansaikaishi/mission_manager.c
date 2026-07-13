@@ -59,7 +59,7 @@ void MissionManager_Init(void)
 {
     MotionAction_Init();
 
-    g_missionRuntime.definition = MissionLibrary_FindById(MISSION_ID_LEGACY);
+    g_missionRuntime.definition = MissionLibrary_GetByIndex(0U);
     g_missionRuntime.status = MISSION_STATUS_IDLE;
     g_missionRuntime.last_error_code = 0U;
     mission_reset_runtime_counters();

@@ -1,6 +1,7 @@
 #include "oled_ui.h"
 #include "app.h"
 #include "app_config.h"
+#include "app_features.h"
 #include "car_controller.h"
 #include "car_state.h"
 #include "heading_control.h"
@@ -73,6 +74,7 @@ static const char *mission_status_to_string(MissionStatus status)
     }
 }
 
+#if FEATURE_OBSTACLE_SCANNER
 static const char *obstacle_scan_state_to_string(ObstacleScanState state)
 {
     switch (state) {
@@ -104,6 +106,7 @@ static const char *obstacle_scan_state_to_string(ObstacleScanState state)
             return "ERR";
     }
 }
+#endif
 
 static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
 {
@@ -112,7 +115,11 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
     const char *actionName = "NONE";
     const UltrasonicFeedback *ultrasonic = Ultrasonic_GetFeedback();
     const ObstacleFeedback *obstacle = ObstacleMonitor_GetFeedback();
+#if FEATURE_OBSTACLE_SCANNER
     const ObstacleScanFeedback *scan = ObstacleScanner_GetFeedback();
+#endif
+    uint16_t missionIndex = MissionManager_GetSelectedMissionIndex();
+    uint16_t missionCount = MissionManager_GetMissionCount();
     uint32_t actionTimeS = action->elapsed_ms / 1000U;
 
     (void)error;
@@ -124,7 +131,9 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
 
     OLED_SetCursor(0, 0);
     OLED_PrintString("TASK:");
-    OLED_PrintInt16((int16_t)MissionManager_GetSelectedMissionId());
+    OLED_PrintInt16((int16_t)(missionIndex + 1U));
+    OLED_PrintChar('/');
+    OLED_PrintInt16((int16_t)missionCount);
     OLED_PrintChar(' ');
     OLED_PrintString(mission_status_to_string(mission->status));
 
@@ -145,6 +154,7 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
     OLED_PrintInt16((int16_t)ObstacleAvoidance_IsActive());
 
     OLED_SetCursor(6, 0);
+#if FEATURE_OBSTACLE_SCANNER
     if (scan->active || scan->complete) {
         OLED_PrintString("L:");
         OLED_PrintInt16((int16_t)scan->left_distance_cm);
@@ -154,6 +164,7 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
         OLED_PrintString(ObstacleScanner_DirectionToString(
             scan->recommended_direction));
     } else {
+#endif
         OLED_PrintString("TIME:");
         OLED_PrintInt16(clamp_display_i16((int32_t)actionTimeS));
         OLED_PrintString(" U:");
@@ -162,14 +173,18 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
         } else {
             OLED_PrintInt16(0);
         }
+#if FEATURE_OBSTACLE_SCANNER
     }
+#endif
 }
 
 static void print_obstacle_page(void)
 {
     const UltrasonicFeedback *ultrasonic = Ultrasonic_GetFeedback();
     const ObstacleFeedback *obstacle = ObstacleMonitor_GetFeedback();
+#if FEATURE_OBSTACLE_SCANNER
     const ObstacleScanFeedback *scan = ObstacleScanner_GetFeedback();
+#endif
     const ObstacleAvoidanceFeedback *avoid = ObstacleAvoidance_GetFeedback();
 
     OLED_SetCursor(0, 0);
@@ -181,6 +196,8 @@ static void print_obstacle_page(void)
     OLED_PrintInt16((int16_t)ObstacleAvoidance_IsActive());
     OLED_PrintString(" V:");
     OLED_PrintInt16((int16_t)avoid->state);
+    OLED_PrintString(" D:");
+    OLED_PrintInt16((int16_t)avoid->direction);
 
     OLED_SetCursor(2, 0);
     OLED_PrintString("U:");
@@ -189,6 +206,7 @@ static void print_obstacle_page(void)
     } else {
         OLED_PrintInt16(0);
     }
+#if FEATURE_OBSTACLE_SCANNER
     OLED_PrintString(" C:");
     if (scan->center_valid) {
         OLED_PrintInt16((int16_t)scan->center_distance_cm);
@@ -216,6 +234,20 @@ static void print_obstacle_page(void)
     OLED_PrintString(" D:");
     OLED_PrintString(ObstacleScanner_DirectionToString(
         scan->recommended_direction));
+#else
+    OLED_PrintString(" V:");
+    OLED_PrintInt16((int16_t)obstacle->distance_valid);
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("BC:");
+    OLED_PrintInt16((int16_t)obstacle->block_confirm_count);
+    OLED_PrintString(" CC:");
+    OLED_PrintInt16((int16_t)obstacle->clear_confirm_count);
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("DIST:");
+    OLED_PrintInt16((int16_t)obstacle->distance_cm);
+#endif
 }
 
 static void print_param_page(uint8_t keyEvent)
@@ -223,7 +255,7 @@ static void print_param_page(uint8_t keyEvent)
     ParamItem item = Menu_GetParamItem();
     uint16_t missionIndex;
     uint16_t missionCount;
-    const MissionDefinition *nextMission;
+    uint16_t nextMissionIndex;
 
     OLED_SetCursor(0, 0);
     OLED_PrintString("PARAM");
@@ -240,23 +272,18 @@ static void print_param_page(uint8_t keyEvent)
     if (item == PARAM_TASK) {
         missionIndex = MissionManager_GetSelectedMissionIndex();
         missionCount = MissionManager_GetMissionCount();
-        nextMission = (const MissionDefinition *)0;
+        nextMissionIndex = 0U;
 
         if (missionCount > 0U) {
-            nextMission = MissionLibrary_GetByIndex(
-                (uint16_t)((missionIndex + 1U) % missionCount));
+            nextMissionIndex = (uint16_t)((missionIndex + 1U) % missionCount);
         }
 
-        OLED_PrintString("I:");
-        OLED_PrintInt16((int16_t)(missionIndex + 1U));
+        OLED_PrintString("ID:");
+        OLED_PrintInt16((int16_t)MissionManager_GetSelectedMissionId());
         OLED_PrintString(" N:");
         OLED_PrintInt16((int16_t)missionCount);
         OLED_PrintString(" NX:");
-        if (nextMission != (const MissionDefinition *)0) {
-            OLED_PrintInt16((int16_t)nextMission->mission_id);
-        } else {
-            OLED_PrintInt16(0);
-        }
+        OLED_PrintInt16((int16_t)(nextMissionIndex + 1U));
     } else {
         OLED_PrintString("C:");
         OLED_PrintInt16(g_appRuntime.correction);

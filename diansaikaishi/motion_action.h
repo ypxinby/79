@@ -23,6 +23,8 @@ bool MotionAction_Start(const MotionAction *action,
 MotionActionResult MotionAction_Update_20ms(void);
 void MotionAction_Cancel(void);
 bool MotionAction_ReapplyControllerTarget(void);
+ObstaclePolicy MotionAction_GetCurrentObstaclePolicy(void);
+BypassDirection MotionAction_GetCurrentBypassDirection(void);
 const MotionActionRuntime *MotionAction_GetRuntime(void);
 
 #endif

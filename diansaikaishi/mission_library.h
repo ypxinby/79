@@ -18,6 +18,7 @@
 #define MISSION_ID_TEST_YAW             (6U)
 #define MISSION_ID_TEST_HEAD            (7U)
 #define MISSION_ID_TEST_REACQUIRE       (8U)
+#define MISSION_ID_TEST_STOP_ONLY       (9U)
 
 /* 10~99: competition map missions. */
 #define MISSION_ID_MAP_A                (10U)
@@ -91,6 +92,24 @@
         .params.follow_line = { \
             .end_condition = FOLLOW_END_NEVER, \
             .turn_policy = TURN_POLICY_AUTO, \
+            .obstacle_policy = OBSTACLE_POLICY_FIXED_BYPASS, \
+            .bypass_direction = BYPASS_DIRECTION_RIGHT, \
+            .duration_ms = 0U, \
+            .target_laps = 0U, \
+            .speed_override = MOTION_USE_GLOBAL_SPEED \
+        } \
+    }
+
+#define ACTION_FOLLOW_FOREVER_WITH_OBSTACLE(policy, direction, timeout) \
+    { \
+        .type = MOTION_ACTION_FOLLOW_LINE, \
+        .timeout_ms = (uint32_t)(timeout), \
+        .max_retries = 1U, \
+        .params.follow_line = { \
+            .end_condition = FOLLOW_END_NEVER, \
+            .turn_policy = TURN_POLICY_AUTO, \
+            .obstacle_policy = (policy), \
+            .bypass_direction = (direction), \
             .duration_ms = 0U, \
             .target_laps = 0U, \
             .speed_override = MOTION_USE_GLOBAL_SPEED \
@@ -105,6 +124,24 @@
         .params.follow_line = { \
             .end_condition = FOLLOW_END_DURATION, \
             .turn_policy = TURN_POLICY_AUTO, \
+            .obstacle_policy = OBSTACLE_POLICY_FIXED_BYPASS, \
+            .bypass_direction = BYPASS_DIRECTION_RIGHT, \
+            .duration_ms = (uint32_t)(duration), \
+            .target_laps = 0U, \
+            .speed_override = MOTION_USE_GLOBAL_SPEED \
+        } \
+    }
+
+#define ACTION_FOLLOW_FOR_TIME_WITH_OBSTACLE(duration, policy, direction, timeout) \
+    { \
+        .type = MOTION_ACTION_FOLLOW_LINE, \
+        .timeout_ms = (uint32_t)(timeout), \
+        .max_retries = 1U, \
+        .params.follow_line = { \
+            .end_condition = FOLLOW_END_DURATION, \
+            .turn_policy = TURN_POLICY_AUTO, \
+            .obstacle_policy = (policy), \
+            .bypass_direction = (direction), \
             .duration_ms = (uint32_t)(duration), \
             .target_laps = 0U, \
             .speed_override = MOTION_USE_GLOBAL_SPEED \
@@ -119,6 +156,24 @@
         .params.follow_line = { \
             .end_condition = FOLLOW_END_LINE_LOST, \
             .turn_policy = TURN_POLICY_AUTO, \
+            .obstacle_policy = OBSTACLE_POLICY_FIXED_BYPASS, \
+            .bypass_direction = BYPASS_DIRECTION_RIGHT, \
+            .duration_ms = 0U, \
+            .target_laps = 0U, \
+            .speed_override = MOTION_USE_GLOBAL_SPEED \
+        } \
+    }
+
+#define ACTION_FOLLOW_UNTIL_LINE_LOST_WITH_OBSTACLE(policy, direction, timeout) \
+    { \
+        .type = MOTION_ACTION_FOLLOW_LINE, \
+        .timeout_ms = (uint32_t)(timeout), \
+        .max_retries = 1U, \
+        .params.follow_line = { \
+            .end_condition = FOLLOW_END_LINE_LOST, \
+            .turn_policy = TURN_POLICY_AUTO, \
+            .obstacle_policy = (policy), \
+            .bypass_direction = (direction), \
             .duration_ms = 0U, \
             .target_laps = 0U, \
             .speed_override = MOTION_USE_GLOBAL_SPEED \
@@ -133,6 +188,24 @@
         .params.follow_line = { \
             .end_condition = FOLLOW_END_LEFT_90_DETECTED, \
             .turn_policy = TURN_POLICY_REPORT_ONLY, \
+            .obstacle_policy = OBSTACLE_POLICY_FIXED_BYPASS, \
+            .bypass_direction = BYPASS_DIRECTION_RIGHT, \
+            .duration_ms = 0U, \
+            .target_laps = 0U, \
+            .speed_override = MOTION_USE_GLOBAL_SPEED \
+        } \
+    }
+
+#define ACTION_FOLLOW_UNTIL_LEFT_90_WITH_OBSTACLE(policy, direction, timeout) \
+    { \
+        .type = MOTION_ACTION_FOLLOW_LINE, \
+        .timeout_ms = (uint32_t)(timeout), \
+        .max_retries = 1U, \
+        .params.follow_line = { \
+            .end_condition = FOLLOW_END_LEFT_90_DETECTED, \
+            .turn_policy = TURN_POLICY_REPORT_ONLY, \
+            .obstacle_policy = (policy), \
+            .bypass_direction = (direction), \
             .duration_ms = 0U, \
             .target_laps = 0U, \
             .speed_override = MOTION_USE_GLOBAL_SPEED \
@@ -147,6 +220,24 @@
         .params.follow_line = { \
             .end_condition = FOLLOW_END_RIGHT_90_DETECTED, \
             .turn_policy = TURN_POLICY_REPORT_ONLY, \
+            .obstacle_policy = OBSTACLE_POLICY_FIXED_BYPASS, \
+            .bypass_direction = BYPASS_DIRECTION_RIGHT, \
+            .duration_ms = 0U, \
+            .target_laps = 0U, \
+            .speed_override = MOTION_USE_GLOBAL_SPEED \
+        } \
+    }
+
+#define ACTION_FOLLOW_UNTIL_RIGHT_90_WITH_OBSTACLE(policy, direction, timeout) \
+    { \
+        .type = MOTION_ACTION_FOLLOW_LINE, \
+        .timeout_ms = (uint32_t)(timeout), \
+        .max_retries = 1U, \
+        .params.follow_line = { \
+            .end_condition = FOLLOW_END_RIGHT_90_DETECTED, \
+            .turn_policy = TURN_POLICY_REPORT_ONLY, \
+            .obstacle_policy = (policy), \
+            .bypass_direction = (direction), \
             .duration_ms = 0U, \
             .target_laps = 0U, \
             .speed_override = MOTION_USE_GLOBAL_SPEED \
@@ -161,6 +252,24 @@
         .params.follow_line = { \
             .end_condition = FOLLOW_END_ANY_90_DETECTED, \
             .turn_policy = TURN_POLICY_REPORT_ONLY, \
+            .obstacle_policy = OBSTACLE_POLICY_FIXED_BYPASS, \
+            .bypass_direction = BYPASS_DIRECTION_RIGHT, \
+            .duration_ms = 0U, \
+            .target_laps = 0U, \
+            .speed_override = MOTION_USE_GLOBAL_SPEED \
+        } \
+    }
+
+#define ACTION_FOLLOW_UNTIL_ANY_90_WITH_OBSTACLE(policy, direction, timeout) \
+    { \
+        .type = MOTION_ACTION_FOLLOW_LINE, \
+        .timeout_ms = (uint32_t)(timeout), \
+        .max_retries = 1U, \
+        .params.follow_line = { \
+            .end_condition = FOLLOW_END_ANY_90_DETECTED, \
+            .turn_policy = TURN_POLICY_REPORT_ONLY, \
+            .obstacle_policy = (policy), \
+            .bypass_direction = (direction), \
             .duration_ms = 0U, \
             .target_laps = 0U, \
             .speed_override = MOTION_USE_GLOBAL_SPEED \

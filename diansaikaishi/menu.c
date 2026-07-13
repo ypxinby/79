@@ -197,7 +197,7 @@ int16_t Menu_GetParamValue(ParamItem item)
 {
     switch (item) {
         case PARAM_TASK:
-            return (int16_t)MissionManager_GetSelectedMissionId();
+            return (int16_t)(MissionManager_GetSelectedMissionIndex() + 1U);
         case PARAM_BASE_SPEED:
             return g_appConfig.base_speed;
         case PARAM_SEEK_HEADING_OFFSET:

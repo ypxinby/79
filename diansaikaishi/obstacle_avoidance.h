@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "motion_types.h"
+
 typedef enum {
     AVOID_STATE_IDLE = 0,
     AVOID_STATE_WAIT_AFTER_OBSTACLE,
@@ -20,6 +22,7 @@ typedef struct {
     ObstacleAvoidState state;
     bool active;
     bool failed;
+    BypassDirection direction;
     uint16_t wait_ms;
     uint16_t settle_ms;
     uint8_t center_count;

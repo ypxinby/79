@@ -70,7 +70,9 @@ void App_Init(void)
     ObstacleMonitor_Init();
     ObstacleAvoidance_Init();
     ObstacleSafety_Init();
+#if FEATURE_OBSTACLE_SCANNER
     ObstacleScanner_Init();
+#endif
     Servo_Init();
     CarController_Init();
     Key_Init();
@@ -87,6 +89,7 @@ void App_Update_20ms(void)
 
     Ultrasonic_Update_20ms();
     ObstacleMonitor_Update_20ms();
+#if FEATURE_OBSTACLE_SCANNER
     {
         const ObstacleScanFeedback *scan = ObstacleScanner_GetFeedback();
 
@@ -94,6 +97,9 @@ void App_Update_20ms(void)
             Servo_SetAngleDeg(g_appConfig.servo_angle_deg);
         }
     }
+#else
+    Servo_SetAngleDeg(g_appConfig.servo_angle_deg);
+#endif
 
     Key_Update_20ms();
     {

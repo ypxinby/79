@@ -44,6 +44,16 @@ typedef enum {
 } TurnHandlingPolicy;
 
 typedef enum {
+    OBSTACLE_POLICY_STOP_ONLY = 0,
+    OBSTACLE_POLICY_FIXED_BYPASS
+} ObstaclePolicy;
+
+typedef enum {
+    BYPASS_DIRECTION_RIGHT = 0,
+    BYPASS_DIRECTION_LEFT
+} BypassDirection;
+
+typedef enum {
     YAW_REFERENCE_CURRENT = 0,
     YAW_REFERENCE_MISSION_START,
     YAW_REFERENCE_ABSOLUTE,
@@ -80,6 +90,8 @@ typedef struct {
         struct {
             FollowEndCondition end_condition;
             TurnHandlingPolicy turn_policy;
+            ObstaclePolicy obstacle_policy;
+            BypassDirection bypass_direction;
             uint32_t duration_ms;
             uint8_t target_laps;
             int16_t speed_override;

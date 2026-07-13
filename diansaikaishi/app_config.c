@@ -76,6 +76,13 @@ void AppConfig_InitDefault(void)
     g_appConfig.servo_angle_deg = 90;
     g_appConfig.min_servo_angle_deg = 35;
     g_appConfig.max_servo_angle_deg = 145;
+
+    g_appConfig.avoid_turn_out_deg = 35;
+    g_appConfig.avoid_drive_out_ms = 1400;
+    g_appConfig.avoid_turn_to_line_deg = -55;
+    g_appConfig.avoid_wait_before_ms = 2000;
+    g_appConfig.avoid_resume_grace_ms = 200;
+    g_appConfig.avoid_reacquire_settle_ms = 300;
 }
 
 void AppConfig_LimitAll(void)
@@ -151,6 +158,28 @@ void AppConfig_LimitAll(void)
         clamp_i16(g_appConfig.servo_angle_deg,
             g_appConfig.min_servo_angle_deg,
             g_appConfig.max_servo_angle_deg);
+    g_appConfig.avoid_turn_out_deg =
+        clamp_i16(g_appConfig.avoid_turn_out_deg, -90, 90);
+    g_appConfig.avoid_turn_to_line_deg =
+        clamp_i16(g_appConfig.avoid_turn_to_line_deg, -120, 120);
+    if (g_appConfig.avoid_drive_out_ms < 100U) {
+        g_appConfig.avoid_drive_out_ms = 100U;
+    }
+    if (g_appConfig.avoid_drive_out_ms > 5000U) {
+        g_appConfig.avoid_drive_out_ms = 5000U;
+    }
+    if (g_appConfig.avoid_wait_before_ms > 5000U) {
+        g_appConfig.avoid_wait_before_ms = 5000U;
+    }
+    if (g_appConfig.avoid_resume_grace_ms > 2000U) {
+        g_appConfig.avoid_resume_grace_ms = 2000U;
+    }
+    if (g_appConfig.avoid_reacquire_settle_ms < 100U) {
+        g_appConfig.avoid_reacquire_settle_ms = 100U;
+    }
+    if (g_appConfig.avoid_reacquire_settle_ms > 2000U) {
+        g_appConfig.avoid_reacquire_settle_ms = 2000U;
+    }
 }
 
 void AppConfig_IncreaseTargetLap(void)

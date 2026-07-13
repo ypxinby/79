@@ -513,6 +513,32 @@ bool MotionAction_ReapplyControllerTarget(void)
     return true;
 }
 
+ObstaclePolicy MotionAction_GetCurrentObstaclePolicy(void)
+{
+    const MotionAction *action = g_motionActionRuntime.action;
+
+    if ((action == (const MotionAction *)0) ||
+        !g_motionActionRuntime.started ||
+        (action->type != MOTION_ACTION_FOLLOW_LINE)) {
+        return OBSTACLE_POLICY_STOP_ONLY;
+    }
+
+    return action->params.follow_line.obstacle_policy;
+}
+
+BypassDirection MotionAction_GetCurrentBypassDirection(void)
+{
+    const MotionAction *action = g_motionActionRuntime.action;
+
+    if ((action == (const MotionAction *)0) ||
+        !g_motionActionRuntime.started ||
+        (action->type != MOTION_ACTION_FOLLOW_LINE)) {
+        return BYPASS_DIRECTION_RIGHT;
+    }
+
+    return action->params.follow_line.bypass_direction;
+}
+
 const MotionActionRuntime *MotionAction_GetRuntime(void)
 {
     return &g_motionActionRuntime;
