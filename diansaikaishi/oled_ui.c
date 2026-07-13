@@ -37,6 +37,8 @@ static const char *motion_action_type_to_string(MotionActionType type)
             return "L90";
         case MOTION_ACTION_TURN_RIGHT_90:
             return "R90";
+        case MOTION_ACTION_TURN_TO_YAW:
+            return "YAW";
         case MOTION_ACTION_WAIT:
             return "WAIT";
         case MOTION_ACTION_STOP:
@@ -61,6 +63,38 @@ static const char *mission_status_to_string(MissionStatus status)
             return "DONE";
         case MISSION_STATUS_ERROR:
             return "ERR";
+        default:
+            return "ERR";
+    }
+}
+
+static const char *obstacle_scan_state_to_string(ObstacleScanState state)
+{
+    switch (state) {
+        case OBSTACLE_SCAN_IDLE:
+            return "IDLE";
+        case OBSTACLE_SCAN_MOVE_CENTER:
+            return "M-C";
+        case OBSTACLE_SCAN_WAIT_CENTER:
+            return "W-C";
+        case OBSTACLE_SCAN_SAMPLE_CENTER:
+            return "S-C";
+        case OBSTACLE_SCAN_MOVE_LEFT:
+            return "M-L";
+        case OBSTACLE_SCAN_WAIT_LEFT:
+            return "W-L";
+        case OBSTACLE_SCAN_SAMPLE_LEFT:
+            return "S-L";
+        case OBSTACLE_SCAN_MOVE_RIGHT:
+            return "M-R";
+        case OBSTACLE_SCAN_WAIT_RIGHT:
+            return "W-R";
+        case OBSTACLE_SCAN_SAMPLE_RIGHT:
+            return "S-R";
+        case OBSTACLE_SCAN_RETURN_CENTER:
+            return "RET";
+        case OBSTACLE_SCAN_COMPLETE:
+            return "DONE";
         default:
             return "ERR";
     }
@@ -122,6 +156,54 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
             OLED_PrintInt16(0);
         }
     }
+}
+
+static void print_obstacle_page(void)
+{
+    const UltrasonicFeedback *ultrasonic = Ultrasonic_GetFeedback();
+    const ObstacleFeedback *obstacle = ObstacleMonitor_GetFeedback();
+    const ObstacleScanFeedback *scan = ObstacleScanner_GetFeedback();
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("OBS O:");
+    OLED_PrintInt16((int16_t)obstacle->blocked);
+    OLED_PrintString(" H:");
+    OLED_PrintInt16((int16_t)ObstacleSafety_IsHolding());
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("U:");
+    if (ultrasonic->measurement_valid) {
+        OLED_PrintInt16((int16_t)ultrasonic->distance_cm);
+    } else {
+        OLED_PrintInt16(0);
+    }
+    OLED_PrintString(" C:");
+    if (scan->center_valid) {
+        OLED_PrintInt16((int16_t)scan->center_distance_cm);
+    } else {
+        OLED_PrintInt16(0);
+    }
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("L:");
+    if (scan->left_valid) {
+        OLED_PrintInt16((int16_t)scan->left_distance_cm);
+    } else {
+        OLED_PrintInt16(0);
+    }
+    OLED_PrintString(" R:");
+    if (scan->right_valid) {
+        OLED_PrintInt16((int16_t)scan->right_distance_cm);
+    } else {
+        OLED_PrintInt16(0);
+    }
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("SC:");
+    OLED_PrintString(obstacle_scan_state_to_string(scan->state));
+    OLED_PrintString(" D:");
+    OLED_PrintString(ObstacleScanner_DirectionToString(
+        scan->recommended_direction));
 }
 
 static void print_param_page(uint8_t keyEvent)
@@ -300,6 +382,9 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
             break;
         case OLED_PAGE_HEADING:
             print_heading_page();
+            break;
+        case OLED_PAGE_OBSTACLE:
+            print_obstacle_page();
             break;
         case OLED_PAGE_STATUS:
         default:

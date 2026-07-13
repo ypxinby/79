@@ -10,6 +10,7 @@ typedef enum {
     MOTION_ACTION_FOLLOW_LINE,
     MOTION_ACTION_TURN_LEFT_90,
     MOTION_ACTION_TURN_RIGHT_90,
+    MOTION_ACTION_TURN_TO_YAW,
     MOTION_ACTION_WAIT,
     MOTION_ACTION_STOP
 } MotionActionType;
@@ -86,6 +87,11 @@ typedef struct {
             int16_t speed_override;
             uint16_t min_turn_ms;
         } turn_90;
+
+        struct {
+            float angle_deg;
+            int16_t speed_override;
+        } turn_to_yaw;
 
         struct {
             uint32_t wait_ms;

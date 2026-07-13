@@ -14,9 +14,17 @@
 
 #define CAR_CONTROLLER_PERIOD_MS    (20U)
 #define SEEK_HEADING_DEADBAND_DEG   (1.0f)
+#define YAW_TURN_SLOW_THRESHOLD_DEG (12.0f)
+#define YAW_TURN_DONE_TOLERANCE_DEG (5.0f)
+#define YAW_TURN_STABLE_MS          (100U)
+#define YAW_TURN_MIN_SLOW_SPEED     (60)
 #define RECOVER_DIRECTION_NONE      (0)
 #define RECOVER_DIRECTION_LEFT      (-1)
 #define RECOVER_DIRECTION_RIGHT     (1)
+
+#ifndef YAW_TURN_REVERSE_DIRECTION
+#define YAW_TURN_REVERSE_DIRECTION  (0)
+#endif
 
 AppRuntime g_appRuntime;
 static CarControllerFeedback g_carControllerFeedback;
@@ -42,6 +50,17 @@ static int16_t abs_i16(int16_t value)
 static float abs_float(float value)
 {
     return (value < 0.0f) ? -value : value;
+}
+
+static float normalize_yaw_error(float error_deg)
+{
+    while (error_deg > 180.0f) {
+        error_deg -= 360.0f;
+    }
+    while (error_deg < -180.0f) {
+        error_deg += 360.0f;
+    }
+    return error_deg;
 }
 
 static void update_sensor_runtime(void)
@@ -376,6 +395,74 @@ static void handle_turn_90(uint8_t turnLeft)
     }
 }
 
+static void handle_turn_to_yaw(void)
+{
+    float error;
+    float absError;
+    int16_t speed;
+    int16_t slowSpeed;
+    bool turnLeft;
+
+    g_appRuntime.correction = 0;
+    reset_heading_control_runtime();
+
+    if (!Imu_IsReady()) {
+        Motor_Stop();
+        g_appRuntime.left_speed = 0;
+        g_appRuntime.right_speed = 0;
+        g_carControllerFeedback.operation_failed = true;
+        g_carControllerFeedback.error_code = 1U;
+        CarState_Set(CAR_STATE_ERROR);
+        return;
+    }
+
+    error = normalize_yaw_error(g_appRuntime.yaw_turn_target_deg -
+        Imu_GetYaw());
+    absError = abs_float(error);
+    g_appRuntime.yaw_turn_error_deg = error;
+
+    if (absError <= YAW_TURN_DONE_TOLERANCE_DEG) {
+        if (g_appRuntime.yaw_turn_stable_ms <
+            UINT16_MAX - CAR_CONTROLLER_PERIOD_MS) {
+            g_appRuntime.yaw_turn_stable_ms =
+                (uint16_t)(g_appRuntime.yaw_turn_stable_ms +
+                    CAR_CONTROLLER_PERIOD_MS);
+        }
+        if (g_appRuntime.yaw_turn_stable_ms >= YAW_TURN_STABLE_MS) {
+            Motor_Stop();
+            g_appRuntime.left_speed = 0;
+            g_appRuntime.right_speed = 0;
+            g_appRuntime.turn_elapsed_ms = 0;
+            g_appRuntime.yaw_turn_stable_ms = 0;
+            g_carControllerFeedback.turn_completed = true;
+            return;
+        }
+    } else {
+        g_appRuntime.yaw_turn_stable_ms = 0;
+    }
+
+    slowSpeed = (int16_t)(g_appConfig.turn_speed / 2);
+    if (slowSpeed < YAW_TURN_MIN_SLOW_SPEED) {
+        slowSpeed = YAW_TURN_MIN_SLOW_SPEED;
+    }
+    if (slowSpeed > g_appConfig.turn_speed) {
+        slowSpeed = g_appConfig.turn_speed;
+    }
+
+    speed = (absError > YAW_TURN_SLOW_THRESHOLD_DEG) ?
+        g_appConfig.turn_speed : slowSpeed;
+    turnLeft = error > 0.0f;
+#if YAW_TURN_REVERSE_DIRECTION
+    turnLeft = !turnLeft;
+#endif
+
+    if (turnLeft) {
+        set_output_speed(0, speed);
+    } else {
+        set_output_speed(speed, 0);
+    }
+}
+
 void CarController_Init(void)
 {
     CarController_ResetRuntime();
@@ -401,8 +488,11 @@ void CarController_ResetRuntime(void)
     g_appRuntime.lost_count = 0;
     g_appRuntime.lost_elapsed_ms = 0;
     g_appRuntime.turn_elapsed_ms = 0;
+    g_appRuntime.yaw_turn_stable_ms = 0;
     g_appRuntime.heading_straight_elapsed_ms = 0;
     g_appRuntime.lap_cooldown_ms = 0;
+    g_appRuntime.yaw_turn_target_deg = 0.0f;
+    g_appRuntime.yaw_turn_error_deg = 0.0f;
     g_followTurnPolicy = CAR_TURN_POLICY_AUTO;
     g_safetyHold = false;
     update_feedback_from_runtime();
@@ -419,7 +509,9 @@ void CarController_ResetTransientState(void)
     g_appRuntime.lost_count = 0;
     g_appRuntime.lost_elapsed_ms = 0;
     g_appRuntime.turn_elapsed_ms = 0;
+    g_appRuntime.yaw_turn_stable_ms = 0;
     g_appRuntime.heading_straight_elapsed_ms = 0;
+    g_appRuntime.yaw_turn_error_deg = 0.0f;
     update_feedback_from_runtime();
     reset_heading_control_runtime();
 }
@@ -467,6 +559,17 @@ void CarController_StartTurnRight90(void)
     g_followTurnPolicy = CAR_TURN_POLICY_AUTO;
     g_appRuntime.recover_direction = RECOVER_DIRECTION_RIGHT;
     g_appRuntime.run_mode = TRACK_MODE_TURN_RIGHT_90;
+    CarState_Set(CAR_STATE_RUNNING);
+}
+
+void CarController_StartTurnToYawRelative(float angle_deg)
+{
+    CarController_ResetTransientState();
+    g_followTurnPolicy = CAR_TURN_POLICY_IGNORE;
+    g_appRuntime.yaw_turn_target_deg = Imu_GetYaw() + angle_deg;
+    g_appRuntime.yaw_turn_error_deg = angle_deg;
+    g_appRuntime.yaw_turn_stable_ms = 0U;
+    g_appRuntime.run_mode = TRACK_MODE_TURN_TO_YAW;
     CarState_Set(CAR_STATE_RUNNING);
 }
 
@@ -549,6 +652,9 @@ void CarController_Update_20ms(void)
         case TRACK_MODE_TURN_RIGHT_90:
             handle_turn_90(0U);
             break;
+        case TRACK_MODE_TURN_TO_YAW:
+            handle_turn_to_yaw();
+            break;
         default:
             Motor_Stop();
             g_appRuntime.left_speed = 0;
@@ -584,6 +690,8 @@ const char *CarController_RunModeToString(TrackRunMode mode)
             return "L90";
         case TRACK_MODE_TURN_RIGHT_90:
             return "R90";
+        case TRACK_MODE_TURN_TO_YAW:
+            return "YAW";
         case TRACK_MODE_LOST_RECOVER:
             return "LOST";
         default:

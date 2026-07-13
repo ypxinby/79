@@ -22,6 +22,7 @@ typedef enum {
  * - TEST-SF: seek, follow until line lost, reverse seek, follow until lost.
  * - TEST-R90 / TEST-RSTOP: same right-90 detection, different decisions.
  * - TEST-SK-L / TEST-SK-S: same seek-line event, different decisions.
+ * - TEST-YAW: relative IMU yaw turn validation.
  */
 static const MotionAction g_missionLegacy[] = {
     /* Find the first line using the mission start yaw. */
@@ -71,6 +72,14 @@ static const MotionAction g_missionTestSeekThenFollow[] = {
 static const MotionAction g_missionTestSeekThenStop[] = {
     /* Seek until a line is found, then stop. */
     ACTION_SEEK_MISSION_YAW(0.0f, 0U),
+    ACTION_STOP()
+};
+
+static const MotionAction g_missionTestYaw[] = {
+    /* Turn relative to the current yaw, wait, then turn back. */
+    ACTION_TURN_RELATIVE_YAW(40.0f, 2000U),
+    ACTION_WAIT_MS(300U),
+    ACTION_TURN_RELATIVE_YAW(-40.0f, 2000U),
     ACTION_STOP()
 };
 
@@ -175,6 +184,13 @@ static const MissionDefinition g_missionRegistry[] = {
         .control_profile_id = 0U
     },
     {
+        .mission_id = MISSION_ID_TEST_YAW,
+        .name = "TEST-YAW",
+        .actions = g_missionTestYaw,
+        .action_count = ARRAY_SIZE(g_missionTestYaw),
+        .control_profile_id = 0U
+    },
+    {
         .mission_id = MISSION_ID_MAP_A,
         .name = "MAP-A",
         .actions = g_missionMapA,
@@ -203,6 +219,7 @@ static bool action_type_is_valid(MotionActionType type)
         (type == MOTION_ACTION_FOLLOW_LINE) ||
         (type == MOTION_ACTION_TURN_LEFT_90) ||
         (type == MOTION_ACTION_TURN_RIGHT_90) ||
+        (type == MOTION_ACTION_TURN_TO_YAW) ||
         (type == MOTION_ACTION_WAIT) ||
         (type == MOTION_ACTION_STOP);
 }

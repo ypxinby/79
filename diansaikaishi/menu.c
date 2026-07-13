@@ -11,6 +11,8 @@ static void menu_toggle_status_sensor_page(void)
 {
     if (g_oledPage == OLED_PAGE_STATUS) {
         g_oledPage = OLED_PAGE_HEADING;
+    } else if (g_oledPage == OLED_PAGE_HEADING) {
+        g_oledPage = OLED_PAGE_OBSTACLE;
     } else {
         g_oledPage = OLED_PAGE_STATUS;
     }

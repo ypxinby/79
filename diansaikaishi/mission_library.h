@@ -15,6 +15,7 @@
 #define MISSION_ID_TEST_RSTOP           (3U)
 #define MISSION_ID_TEST_SEEK_FOLLOW     (4U)
 #define MISSION_ID_TEST_SEEK_STOP       (5U)
+#define MISSION_ID_TEST_YAW             (6U)
 
 /* 10~99: competition map missions. */
 #define MISSION_ID_MAP_A                (10U)
@@ -183,6 +184,17 @@
         .params.turn_90 = { \
             .speed_override = MOTION_USE_GLOBAL_SPEED, \
             .min_turn_ms = 0U \
+        } \
+    }
+
+#define ACTION_TURN_RELATIVE_YAW(angle, timeout) \
+    { \
+        .type = MOTION_ACTION_TURN_TO_YAW, \
+        .timeout_ms = (uint32_t)(timeout), \
+        .max_retries = 1U, \
+        .params.turn_to_yaw = { \
+            .angle_deg = (float)(angle), \
+            .speed_override = MOTION_USE_GLOBAL_SPEED \
         } \
     }
 
