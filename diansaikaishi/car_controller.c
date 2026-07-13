@@ -23,7 +23,7 @@
 #define RECOVER_DIRECTION_RIGHT     (1)
 
 #ifndef YAW_TURN_REVERSE_DIRECTION
-#define YAW_TURN_REVERSE_DIRECTION  (0)
+#define YAW_TURN_REVERSE_DIRECTION  (1)
 #endif
 
 AppRuntime g_appRuntime;
