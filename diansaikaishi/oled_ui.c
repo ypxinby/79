@@ -406,29 +406,27 @@ static const char *gimbal_mode_to_string(GimbalMode mode)
     }
 }
 
-static void print_gimbal_page(void)
+static void print_gimbal_page(uint8_t keyEvent)
 {
     const GimbalFeedback *gimbal = Gimbal_GetFeedback();
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("GIMBAL PITCH");
+    OLED_PrintString("GIMBAL P7R2");
 
     OLED_SetCursor(2, 0);
-    OLED_PrintString("K2:+5/H K3:REL");
+    OLED_PrintString("K2S:+5 K2L:H");
 
     OLED_SetCursor(4, 0);
-    OLED_PrintString("T10:");
-    OLED_PrintInt16(gimbal->target_deg_x10);
-    OLED_PrintString(" C10:");
-    OLED_PrintInt16(gimbal->completed_deg_x10);
+    OLED_PrintString("K3:REL T5:");
+    OLED_PrintInt16(clamp_display_i16((int32_t)gimbal->control_tick_5ms));
 
     OLED_SetCursor(6, 0);
     OLED_PrintString("M:");
     OLED_PrintString(gimbal_mode_to_string(gimbal->mode));
     OLED_PrintString(" E:");
     OLED_PrintInt16((int16_t)gimbal->enabled);
-    OLED_PrintString(" T5:");
-    OLED_PrintInt16(clamp_display_i16((int32_t)gimbal->control_tick_5ms));
+    OLED_PrintString(" K:");
+    OLED_PrintInt16((int16_t)keyEvent);
 }
 #endif
 
@@ -469,7 +467,7 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
             break;
         case OLED_PAGE_GIMBAL:
 #if FEATURE_GIMBAL_OLED_TEST
-            print_gimbal_page();
+            print_gimbal_page(keyEvent);
 #else
             print_status_page(raw, error, keyEvent);
 #endif
