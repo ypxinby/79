@@ -17,6 +17,7 @@ C_SRCS += \
 ./ti_msp_dl_config.c \
 C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/m0p/startup_system_files/ticlang/startup_mspm0g350x_ticlang.c \
 ../encoder.c \
+../gimbal_stepper_test.c \
 ../heading_control.c \
 ../imu.c \
 ../key.c \
@@ -53,6 +54,7 @@ C_DEPS += \
 ./ti_msp_dl_config.d \
 ./startup_mspm0g350x_ticlang.d \
 ./encoder.d \
+./gimbal_stepper_test.d \
 ./heading_control.d \
 ./imu.d \
 ./key.d \
@@ -84,6 +86,7 @@ OBJS += \
 ./ti_msp_dl_config.o \
 ./startup_mspm0g350x_ticlang.o \
 ./encoder.o \
+./gimbal_stepper_test.o \
 ./heading_control.o \
 ./imu.o \
 ./key.o \
@@ -117,6 +120,7 @@ OBJS__QUOTED += \
 "ti_msp_dl_config.o" \
 "startup_mspm0g350x_ticlang.o" \
 "encoder.o" \
+"gimbal_stepper_test.o" \
 "heading_control.o" \
 "imu.o" \
 "key.o" \
@@ -150,6 +154,7 @@ C_DEPS__QUOTED += \
 "ti_msp_dl_config.d" \
 "startup_mspm0g350x_ticlang.d" \
 "encoder.d" \
+"gimbal_stepper_test.d" \
 "heading_control.d" \
 "imu.d" \
 "key.d" \
@@ -183,6 +188,7 @@ C_SRCS__QUOTED += \
 "./ti_msp_dl_config.c" \
 "C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/m0p/startup_system_files/ticlang/startup_mspm0g350x_ticlang.c" \
 "../encoder.c" \
+"../gimbal_stepper_test.c" \
 "../heading_control.c" \
 "../imu.c" \
 "../key.c" \

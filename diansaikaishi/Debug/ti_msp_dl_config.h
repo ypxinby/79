@@ -197,6 +197,30 @@ extern "C" {
 /* Defines for SERVO: GPIOB.9 with pinCMx 26 on package pin 61 */
 #define GPIO_SERVO_SERVO_PIN                                     (DL_GPIO_PIN_9)
 #define GPIO_SERVO_SERVO_IOMUX                                   (IOMUX_PINCM26)
+/* Port definition for Pin Group GPIO_GIMBAL_A */
+#define GPIO_GIMBAL_A_PORT                                               (GPIOA)
+
+/* Defines for PITCH_STEP: GPIOA.3 with pinCMx 8 on package pin 43 */
+#define GPIO_GIMBAL_A_PITCH_STEP_PIN                             (DL_GPIO_PIN_3)
+#define GPIO_GIMBAL_A_PITCH_STEP_IOMUX                            (IOMUX_PINCM8)
+/* Defines for PITCH_DIR: GPIOA.1 with pinCMx 2 on package pin 34 */
+#define GPIO_GIMBAL_A_PITCH_DIR_PIN                              (DL_GPIO_PIN_1)
+#define GPIO_GIMBAL_A_PITCH_DIR_IOMUX                             (IOMUX_PINCM2)
+/* Defines for PITCH_EN: GPIOA.2 with pinCMx 7 on package pin 42 */
+#define GPIO_GIMBAL_A_PITCH_EN_PIN                               (DL_GPIO_PIN_2)
+#define GPIO_GIMBAL_A_PITCH_EN_IOMUX                              (IOMUX_PINCM7)
+/* Defines for YAW_DIR: GPIOA.4 with pinCMx 9 on package pin 44 */
+#define GPIO_GIMBAL_A_YAW_DIR_PIN                                (DL_GPIO_PIN_4)
+#define GPIO_GIMBAL_A_YAW_DIR_IOMUX                               (IOMUX_PINCM9)
+/* Defines for YAW_EN: GPIOA.5 with pinCMx 10 on package pin 45 */
+#define GPIO_GIMBAL_A_YAW_EN_PIN                                 (DL_GPIO_PIN_5)
+#define GPIO_GIMBAL_A_YAW_EN_IOMUX                               (IOMUX_PINCM10)
+/* Port definition for Pin Group GPIO_GIMBAL_B */
+#define GPIO_GIMBAL_B_PORT                                               (GPIOB)
+
+/* Defines for YAW_STEP: GPIOB.4 with pinCMx 17 on package pin 52 */
+#define GPIO_GIMBAL_B_YAW_STEP_PIN                               (DL_GPIO_PIN_4)
+#define GPIO_GIMBAL_B_YAW_STEP_IOMUX                             (IOMUX_PINCM17)
 
 /* clang-format on */
 

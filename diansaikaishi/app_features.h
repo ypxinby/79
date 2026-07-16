@@ -11,6 +11,7 @@
 #define APP_PROFILE                APP_PROFILE_COMPETITION
 
 #define FEATURE_OBSTACLE_SCANNER   (0)
+#define FEATURE_GIMBAL_P1_SMOKE_TEST (1)
 
 #define ENABLE_IMU                 (1)
 #define ENABLE_HEADING_OBSERVER    (1)

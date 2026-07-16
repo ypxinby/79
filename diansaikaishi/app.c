@@ -5,6 +5,7 @@
 #include "car_controller.h"
 #include "car_state.h"
 #include "encoder.h"
+#include "gimbal_stepper_test.h"
 #include "heading_control.h"
 #include "imu.h"
 #include "key.h"
@@ -53,6 +54,7 @@ static void App_UpdateHeadingObserver(void)
 void App_Init(void)
 {
     Motor_Init();
+    GimbalStepperTest_Init();
     Encoder_Reset();
     AppConfig_InitDefault();
 #if ENABLE_IMU
