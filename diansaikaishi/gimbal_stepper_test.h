@@ -6,6 +6,7 @@
 typedef struct {
     int32_t target_steps;
     int32_t completed_steps;
+    int8_t direction;
     uint8_t running;
     uint8_t target_reached;
 } GimbalStepperTestFeedback;

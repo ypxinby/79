@@ -39,13 +39,14 @@
 #endif
 
 #define GIMBAL_P2_STEP_HALF_PERIOD_TICKS_100US (25U)
-#define GIMBAL_P2_TARGET_STEPS                 (800)
-#define GIMBAL_P2_PITCH_DIR_HIGH               (0)
+#define GIMBAL_P3_TARGET_STEPS                 (-800)
+#define GIMBAL_PITCH_POSITIVE_DIR_HIGH         (0)
 #define GIMBAL_EN_ACTIVE_LOW                   (0)
 
 static uint16_t g_pitchHalfPeriodTicks;
 static int32_t g_pitchTargetSteps;
 static int32_t g_pitchCompletedSteps;
+static int8_t g_pitchDirection;
 static bool g_pitchStepHigh;
 static bool g_pitchRunning;
 static GimbalStepperTestFeedback g_feedback;
@@ -67,12 +68,20 @@ static void gimbal_set_enable(bool enable)
 #endif
 }
 
-static void gimbal_set_pitch_dir(void)
+static void gimbal_set_pitch_dir(int8_t direction)
 {
-#if GIMBAL_P2_PITCH_DIR_HIGH
-    DL_GPIO_setPins(GPIO_GIMBAL_A_PORT, GPIO_GIMBAL_A_PITCH_DIR_PIN);
+#if GIMBAL_PITCH_POSITIVE_DIR_HIGH
+    if (direction >= 0) {
+        DL_GPIO_setPins(GPIO_GIMBAL_A_PORT, GPIO_GIMBAL_A_PITCH_DIR_PIN);
+    } else {
+        DL_GPIO_clearPins(GPIO_GIMBAL_A_PORT, GPIO_GIMBAL_A_PITCH_DIR_PIN);
+    }
 #else
-    DL_GPIO_clearPins(GPIO_GIMBAL_A_PORT, GPIO_GIMBAL_A_PITCH_DIR_PIN);
+    if (direction >= 0) {
+        DL_GPIO_clearPins(GPIO_GIMBAL_A_PORT, GPIO_GIMBAL_A_PITCH_DIR_PIN);
+    } else {
+        DL_GPIO_setPins(GPIO_GIMBAL_A_PORT, GPIO_GIMBAL_A_PITCH_DIR_PIN);
+    }
 #endif
 }
 
@@ -90,18 +99,20 @@ static void gimbal_stop_pitch_hold(void)
 static void gimbal_start_pitch_fixed_steps(int32_t steps)
 {
     gimbal_stop_pitch_hold();
-    g_pitchTargetSteps = steps;
+    g_pitchDirection = (steps < 0) ? -1 : 1;
+    g_pitchTargetSteps = (steps < 0) ? -steps : steps;
     g_pitchCompletedSteps = 0;
     g_feedback.target_steps = steps;
     g_feedback.completed_steps = 0;
+    g_feedback.direction = g_pitchDirection;
     g_feedback.target_reached = 0U;
 
-    if (steps <= 0) {
+    if (steps == 0) {
         g_feedback.target_reached = 1U;
         return;
     }
 
-    gimbal_set_pitch_dir();
+    gimbal_set_pitch_dir(g_pitchDirection);
     gimbal_set_enable(true);
     g_pitchRunning = true;
     g_feedback.running = 1U;
@@ -112,10 +123,12 @@ void GimbalStepperTest_Init(void)
     g_pitchHalfPeriodTicks = 0U;
     g_pitchTargetSteps = 0;
     g_pitchCompletedSteps = 0;
+    g_pitchDirection = 1;
     g_pitchStepHigh = false;
     g_pitchRunning = false;
     g_feedback.target_steps = 0;
     g_feedback.completed_steps = 0;
+    g_feedback.direction = 1;
     g_feedback.running = 0U;
     g_feedback.target_reached = 0U;
 
@@ -132,7 +145,7 @@ void GimbalStepperTest_Init(void)
     DL_GPIO_enableOutput(GPIO_GIMBAL_B_PORT, GPIO_GIMBAL_B_PITCH_STEP_PIN);
 
 #if FEATURE_GIMBAL_P1_SMOKE_TEST
-    gimbal_start_pitch_fixed_steps(GIMBAL_P2_TARGET_STEPS);
+    gimbal_start_pitch_fixed_steps(GIMBAL_P3_TARGET_STEPS);
 #else
     gimbal_set_enable(false);
 #endif
