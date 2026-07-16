@@ -40,7 +40,7 @@
 
 #define GIMBAL_P1_STEP_HALF_PERIOD_TICKS_100US (25U)
 #define GIMBAL_P1_PITCH_DIR_HIGH               (0)
-#define GIMBAL_EN_ACTIVE_LOW                   (1)
+#define GIMBAL_EN_ACTIVE_LOW                   (0)
 
 static uint16_t g_pitchHalfPeriodTicks;
 static bool g_pitchStepHigh;
