@@ -16,9 +16,12 @@
 
 #define APP_TICK_HZ             (10000U)
 #define APP_TICKS_PER_MS        (APP_TICK_HZ / 1000U)
+#define GIMBAL_UPDATE_PERIOD_MS (5U)
+#define GIMBAL_UPDATE_PENDING_MAX (2U)
 #define APP_UPDATE_PERIOD_MS    (20U)
 
 static volatile bool g_appUpdateDue;
+static volatile uint8_t g_gimbalUpdatePending;
 
 int main(void)
 {
@@ -31,6 +34,23 @@ int main(void)
     __enable_irq();
 
     while (1) {
+        bool gimbalUpdateDue;
+
+        do {
+            __disable_irq();
+            if (g_gimbalUpdatePending != 0U) {
+                g_gimbalUpdatePending--;
+                gimbalUpdateDue = true;
+            } else {
+                gimbalUpdateDue = false;
+            }
+            __enable_irq();
+
+            if (gimbalUpdateDue) {
+                Gimbal_Update5ms();
+            }
+        } while (gimbalUpdateDue);
+
         if (g_appUpdateDue) {
             g_appUpdateDue = false;
             App_Update_20ms();
@@ -42,6 +62,7 @@ void SysTick_Handler(void)
 {
     static uint8_t tick100usCount;
     static uint8_t controlMsCount;
+    static uint8_t gimbalMsCount;
 
     Motor_PwmTick100us();
     Gimbal_Tick100us();
@@ -53,6 +74,14 @@ void SysTick_Handler(void)
         tick100usCount = 0;
 
         controlMsCount++;
+        gimbalMsCount++;
+        if (gimbalMsCount >= GIMBAL_UPDATE_PERIOD_MS) {
+            gimbalMsCount = 0;
+            if (g_gimbalUpdatePending < GIMBAL_UPDATE_PENDING_MAX) {
+                g_gimbalUpdatePending++;
+            }
+        }
+
         if (controlMsCount >= APP_UPDATE_PERIOD_MS) {
             controlMsCount = 0;
             g_appUpdateDue = true;

@@ -409,7 +409,9 @@ static void print_gimbal_page(void)
     OLED_PrintInt16(gimbal->completed_deg_x10);
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("RUN:");
+    OLED_PrintString("T5:");
+    OLED_PrintInt16((int16_t)gimbal->control_tick_5ms);
+    OLED_PrintString(" RUN:");
     OLED_PrintInt16((int16_t)gimbal->running);
     OLED_PrintString(" D:");
     OLED_PrintInt16((int16_t)gimbal->direction);

@@ -45,6 +45,7 @@ static void gimbal_update_feedback(void)
 
 void Gimbal_Init(void)
 {
+    g_feedback = (GimbalFeedback){0};
     GimbalStepperTest_Init();
     gimbal_update_feedback();
 }
@@ -52,6 +53,11 @@ void Gimbal_Init(void)
 void Gimbal_Tick100us(void)
 {
     GimbalStepperTest_Tick100us();
+}
+
+void Gimbal_Update5ms(void)
+{
+    g_feedback.control_tick_5ms++;
 }
 
 void Gimbal_MoveRelativeDeg(float delta_deg)

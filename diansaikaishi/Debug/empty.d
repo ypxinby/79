@@ -1,7 +1,7 @@
 # FIXED
 
-empty.o: ../empty.c ../app.h ../encoder.h ../gimbal_stepper_test.h \
- ../motor.h ../servo.h \
+empty.o: ../empty.c ../app.h ../encoder.h ../gimbal.h ../motor.h \
+ ../servo.h \
  ti_msp_dl_config.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/msp.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/DeviceFamily.h \
@@ -79,7 +79,7 @@ empty.o: ../empty.c ../app.h ../encoder.h ../gimbal_stepper_test.h \
  ../ultrasonic.h
 ../app.h:
 ../encoder.h:
-../gimbal_stepper_test.h:
+../gimbal.h:
 ../motor.h:
 ../servo.h:
 ti_msp_dl_config.h:
