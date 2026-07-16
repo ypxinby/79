@@ -1,7 +1,9 @@
 #include "menu.h"
 #include "app_config.h"
+#include "app_features.h"
 #include "car_controller.h"
 #include "car_state.h"
+#include "gimbal.h"
 #include "mission_manager.h"
 
 static OledPage g_oledPage;
@@ -13,6 +15,10 @@ static void menu_toggle_status_sensor_page(void)
         g_oledPage = OLED_PAGE_HEADING;
     } else if (g_oledPage == OLED_PAGE_HEADING) {
         g_oledPage = OLED_PAGE_OBSTACLE;
+#if FEATURE_GIMBAL_OLED_TEST
+    } else if (g_oledPage == OLED_PAGE_OBSTACLE) {
+        g_oledPage = OLED_PAGE_GIMBAL;
+#endif
     } else {
         g_oledPage = OLED_PAGE_STATUS;
     }
@@ -71,6 +77,35 @@ static void menu_adjust_param(int8_t direction, uint8_t fast)
 static void menu_handle_status_key(KeyEvent event)
 {
     CarState state = CarState_Get();
+
+#if FEATURE_GIMBAL_OLED_TEST
+    if (g_oledPage == OLED_PAGE_GIMBAL) {
+        switch (event) {
+            case KEY1_SHORT:
+                menu_toggle_status_sensor_page();
+                break;
+            case KEY1_LONG:
+                g_oledPage = OLED_PAGE_PARAM;
+                CarState_Set(CAR_STATE_MENU);
+                break;
+            case KEY2_SHORT:
+                Gimbal_MoveRelativeDeg(5.0f);
+                break;
+            case KEY2_LONG:
+                Gimbal_MoveRelativeDeg(30.0f);
+                break;
+            case KEY3_SHORT:
+                Gimbal_MoveRelativeDeg(-5.0f);
+                break;
+            case KEY3_LONG:
+                Gimbal_MoveRelativeDeg(-30.0f);
+                break;
+            default:
+                break;
+        }
+        return;
+    }
+#endif
 
     switch (event) {
         case KEY1_SHORT:

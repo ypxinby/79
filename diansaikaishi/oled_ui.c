@@ -4,6 +4,7 @@
 #include "app_features.h"
 #include "car_controller.h"
 #include "car_state.h"
+#include "gimbal.h"
 #include "heading_control.h"
 #include "imu.h"
 #include "menu.h"
@@ -390,6 +391,33 @@ static void print_heading_page(void)
     OLED_PrintInt16((int16_t)heading->target_locked);
 }
 
+#if FEATURE_GIMBAL_OLED_TEST
+static void print_gimbal_page(void)
+{
+    const GimbalFeedback *gimbal = Gimbal_GetFeedback();
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("GIMBAL PITCH");
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("K2:+5 K3:-5");
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("T10:");
+    OLED_PrintInt16(gimbal->target_deg_x10);
+    OLED_PrintString(" C10:");
+    OLED_PrintInt16(gimbal->completed_deg_x10);
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("RUN:");
+    OLED_PrintInt16((int16_t)gimbal->running);
+    OLED_PrintString(" D:");
+    OLED_PrintInt16((int16_t)gimbal->direction);
+    OLED_PrintString(" OK:");
+    OLED_PrintInt16((int16_t)gimbal->target_reached);
+}
+#endif
+
 void OledUi_Init(void)
 {
     OLED_Init();
@@ -424,6 +452,13 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
             break;
         case OLED_PAGE_OBSTACLE:
             print_obstacle_page();
+            break;
+        case OLED_PAGE_GIMBAL:
+#if FEATURE_GIMBAL_OLED_TEST
+            print_gimbal_page();
+#else
+            print_status_page(raw, error, keyEvent);
+#endif
             break;
         case OLED_PAGE_STATUS:
         default:

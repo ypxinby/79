@@ -8,7 +8,7 @@
 
 #include "app.h"
 #include "encoder.h"
-#include "gimbal_stepper_test.h"
+#include "gimbal.h"
 #include "motor.h"
 #include "servo.h"
 #include "ti_msp_dl_config.h"
@@ -44,7 +44,7 @@ void SysTick_Handler(void)
     static uint8_t controlMsCount;
 
     Motor_PwmTick100us();
-    GimbalStepperTest_Tick100us();
+    Gimbal_Tick100us();
     Servo_Tick100us();
     Ultrasonic_Tick100us();
 

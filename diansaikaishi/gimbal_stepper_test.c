@@ -38,8 +38,10 @@
 #define GPIO_GIMBAL_A_PITCH_EN_IOMUX           (IOMUX_PINCM7)
 #endif
 
-#define GIMBAL_P2_STEP_HALF_PERIOD_TICKS_100US (25U)
-#define GIMBAL_P3_TARGET_STEPS                 (-800)
+#define GIMBAL_P4_STEP_HALF_PERIOD_TICKS_100US (25U)
+#define GIMBAL_P4_SMOKE_TEST_DELTA_DEG         (-90.0f)
+#define GIMBAL_P4_STEPS_PER_REV                (3200.0f)
+#define GIMBAL_P4_DEGREES_PER_REV              (360.0f)
 #define GIMBAL_PITCH_POSITIVE_DIR_HIGH         (0)
 #define GIMBAL_EN_ACTIVE_LOW                   (0)
 
@@ -85,6 +87,17 @@ static void gimbal_set_pitch_dir(int8_t direction)
 #endif
 }
 
+static int32_t gimbal_deg_to_steps(float delta_deg)
+{
+    float raw_steps =
+        (delta_deg * GIMBAL_P4_STEPS_PER_REV) / GIMBAL_P4_DEGREES_PER_REV;
+
+    if (raw_steps >= 0.0f) {
+        return (int32_t)(raw_steps + 0.5f);
+    }
+    return (int32_t)(raw_steps - 0.5f);
+}
+
 static void gimbal_stop_pitch_hold(void)
 {
     DL_GPIO_clearPins(GPIO_GIMBAL_B_PORT, GPIO_GIMBAL_B_PITCH_STEP_PIN);
@@ -118,6 +131,13 @@ static void gimbal_start_pitch_fixed_steps(int32_t steps)
     g_feedback.running = 1U;
 }
 
+void GimbalStepperTest_MoveRelativeDeg(float delta_deg)
+{
+    int32_t steps = gimbal_deg_to_steps(delta_deg);
+
+    gimbal_start_pitch_fixed_steps(steps);
+}
+
 void GimbalStepperTest_Init(void)
 {
     g_pitchHalfPeriodTicks = 0U;
@@ -144,8 +164,8 @@ void GimbalStepperTest_Init(void)
         GPIO_GIMBAL_A_PITCH_DIR_PIN | GPIO_GIMBAL_A_PITCH_EN_PIN);
     DL_GPIO_enableOutput(GPIO_GIMBAL_B_PORT, GPIO_GIMBAL_B_PITCH_STEP_PIN);
 
-#if FEATURE_GIMBAL_P1_SMOKE_TEST
-    gimbal_start_pitch_fixed_steps(GIMBAL_P3_TARGET_STEPS);
+#if FEATURE_GIMBAL_TEST_AUTO_RUN
+    GimbalStepperTest_MoveRelativeDeg(GIMBAL_P4_SMOKE_TEST_DELTA_DEG);
 #else
     gimbal_set_enable(false);
 #endif
@@ -158,7 +178,7 @@ void GimbalStepperTest_Tick100us(void)
     }
 
     g_pitchHalfPeriodTicks++;
-    if (g_pitchHalfPeriodTicks < GIMBAL_P2_STEP_HALF_PERIOD_TICKS_100US) {
+    if (g_pitchHalfPeriodTicks < GIMBAL_P4_STEP_HALF_PERIOD_TICKS_100US) {
         return;
     }
 

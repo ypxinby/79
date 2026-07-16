@@ -13,6 +13,7 @@ typedef struct {
 
 void GimbalStepperTest_Init(void);
 void GimbalStepperTest_Tick100us(void);
+void GimbalStepperTest_MoveRelativeDeg(float delta_deg);
 const GimbalStepperTestFeedback *GimbalStepperTest_GetFeedback(void);
 
 #endif
