@@ -14,12 +14,12 @@
 #define GPIO_GIMBAL_B_PORT                     (GPIOB)
 #endif
 
-#ifndef GPIO_GIMBAL_A_PITCH_STEP_PIN
-#define GPIO_GIMBAL_A_PITCH_STEP_PIN           (DL_GPIO_PIN_3)
+#ifndef GPIO_GIMBAL_B_PITCH_STEP_PIN
+#define GPIO_GIMBAL_B_PITCH_STEP_PIN           (DL_GPIO_PIN_4)
 #endif
 
-#ifndef GPIO_GIMBAL_A_PITCH_STEP_IOMUX
-#define GPIO_GIMBAL_A_PITCH_STEP_IOMUX         (IOMUX_PINCM8)
+#ifndef GPIO_GIMBAL_B_PITCH_STEP_IOMUX
+#define GPIO_GIMBAL_B_PITCH_STEP_IOMUX         (IOMUX_PINCM17)
 #endif
 
 #ifndef GPIO_GIMBAL_A_PITCH_DIR_PIN
@@ -36,30 +36,6 @@
 
 #ifndef GPIO_GIMBAL_A_PITCH_EN_IOMUX
 #define GPIO_GIMBAL_A_PITCH_EN_IOMUX           (IOMUX_PINCM7)
-#endif
-
-#ifndef GPIO_GIMBAL_A_YAW_DIR_PIN
-#define GPIO_GIMBAL_A_YAW_DIR_PIN              (DL_GPIO_PIN_4)
-#endif
-
-#ifndef GPIO_GIMBAL_A_YAW_DIR_IOMUX
-#define GPIO_GIMBAL_A_YAW_DIR_IOMUX            (IOMUX_PINCM9)
-#endif
-
-#ifndef GPIO_GIMBAL_A_YAW_EN_PIN
-#define GPIO_GIMBAL_A_YAW_EN_PIN               (DL_GPIO_PIN_5)
-#endif
-
-#ifndef GPIO_GIMBAL_A_YAW_EN_IOMUX
-#define GPIO_GIMBAL_A_YAW_EN_IOMUX             (IOMUX_PINCM10)
-#endif
-
-#ifndef GPIO_GIMBAL_B_YAW_STEP_PIN
-#define GPIO_GIMBAL_B_YAW_STEP_PIN             (DL_GPIO_PIN_4)
-#endif
-
-#ifndef GPIO_GIMBAL_B_YAW_STEP_IOMUX
-#define GPIO_GIMBAL_B_YAW_STEP_IOMUX           (IOMUX_PINCM17)
 #endif
 
 #define GIMBAL_P1_STEP_HALF_PERIOD_TICKS_100US (25U)
@@ -102,25 +78,17 @@ void GimbalStepperTest_Init(void)
     g_pitchStepHigh = false;
     g_pitchRunning = false;
 
-    DL_GPIO_initDigitalOutput(GPIO_GIMBAL_A_PITCH_STEP_IOMUX);
+    DL_GPIO_initDigitalOutput(GPIO_GIMBAL_B_PITCH_STEP_IOMUX);
     DL_GPIO_initDigitalOutput(GPIO_GIMBAL_A_PITCH_DIR_IOMUX);
     DL_GPIO_initDigitalOutput(GPIO_GIMBAL_A_PITCH_EN_IOMUX);
-    DL_GPIO_initDigitalOutput(GPIO_GIMBAL_A_YAW_DIR_IOMUX);
-    DL_GPIO_initDigitalOutput(GPIO_GIMBAL_A_YAW_EN_IOMUX);
-    DL_GPIO_initDigitalOutput(GPIO_GIMBAL_B_YAW_STEP_IOMUX);
 
-    DL_GPIO_clearPins(GPIO_GIMBAL_A_PORT,
-        GPIO_GIMBAL_A_PITCH_STEP_PIN | GPIO_GIMBAL_A_PITCH_DIR_PIN |
-            GPIO_GIMBAL_A_YAW_DIR_PIN);
-    DL_GPIO_setPins(GPIO_GIMBAL_A_PORT,
-        GPIO_GIMBAL_A_PITCH_EN_PIN | GPIO_GIMBAL_A_YAW_EN_PIN);
-    DL_GPIO_clearPins(GPIO_GIMBAL_B_PORT, GPIO_GIMBAL_B_YAW_STEP_PIN);
+    DL_GPIO_clearPins(GPIO_GIMBAL_A_PORT, GPIO_GIMBAL_A_PITCH_DIR_PIN);
+    DL_GPIO_setPins(GPIO_GIMBAL_A_PORT, GPIO_GIMBAL_A_PITCH_EN_PIN);
+    DL_GPIO_clearPins(GPIO_GIMBAL_B_PORT, GPIO_GIMBAL_B_PITCH_STEP_PIN);
 
     DL_GPIO_enableOutput(GPIO_GIMBAL_A_PORT,
-        GPIO_GIMBAL_A_PITCH_STEP_PIN | GPIO_GIMBAL_A_PITCH_DIR_PIN |
-            GPIO_GIMBAL_A_PITCH_EN_PIN | GPIO_GIMBAL_A_YAW_DIR_PIN |
-            GPIO_GIMBAL_A_YAW_EN_PIN);
-    DL_GPIO_enableOutput(GPIO_GIMBAL_B_PORT, GPIO_GIMBAL_B_YAW_STEP_PIN);
+        GPIO_GIMBAL_A_PITCH_DIR_PIN | GPIO_GIMBAL_A_PITCH_EN_PIN);
+    DL_GPIO_enableOutput(GPIO_GIMBAL_B_PORT, GPIO_GIMBAL_B_PITCH_STEP_PIN);
 
 #if FEATURE_GIMBAL_P1_SMOKE_TEST
     gimbal_set_pitch_dir();
@@ -144,10 +112,10 @@ void GimbalStepperTest_Tick100us(void)
 
     g_pitchHalfPeriodTicks = 0U;
     if (g_pitchStepHigh) {
-        DL_GPIO_clearPins(GPIO_GIMBAL_A_PORT, GPIO_GIMBAL_A_PITCH_STEP_PIN);
+        DL_GPIO_clearPins(GPIO_GIMBAL_B_PORT, GPIO_GIMBAL_B_PITCH_STEP_PIN);
         g_pitchStepHigh = false;
     } else {
-        DL_GPIO_setPins(GPIO_GIMBAL_A_PORT, GPIO_GIMBAL_A_PITCH_STEP_PIN);
+        DL_GPIO_setPins(GPIO_GIMBAL_B_PORT, GPIO_GIMBAL_B_PITCH_STEP_PIN);
         g_pitchStepHigh = true;
     }
 }
