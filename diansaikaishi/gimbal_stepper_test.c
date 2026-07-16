@@ -120,6 +120,13 @@ void GimbalStepperTest_Release(void)
 {
     gimbal_stop_pitch_hold();
     gimbal_set_enable(false);
+    DL_GPIO_clearPins(GPIO_GIMBAL_A_PORT, GPIO_GIMBAL_A_PITCH_DIR_PIN);
+    DL_GPIO_clearPins(GPIO_GIMBAL_B_PORT, GPIO_GIMBAL_B_PITCH_STEP_PIN);
+    g_pitchTargetSteps = 0;
+    g_pitchCompletedSteps = 0;
+    g_feedback.target_steps = 0;
+    g_feedback.completed_steps = 0;
+    g_feedback.target_reached = 1U;
 }
 
 static void gimbal_start_pitch_fixed_steps(int32_t steps)

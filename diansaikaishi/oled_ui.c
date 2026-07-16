@@ -414,7 +414,7 @@ static void print_gimbal_page(void)
     OLED_PrintString("GIMBAL PITCH");
 
     OLED_SetCursor(2, 0);
-    OLED_PrintString("S:+-5 L:H/R");
+    OLED_PrintString("K2:+5/H K3:REL");
 
     OLED_SetCursor(4, 0);
     OLED_PrintString("T10:");

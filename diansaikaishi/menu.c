@@ -95,7 +95,7 @@ static void menu_handle_status_key(KeyEvent event)
                 Gimbal_StopHold();
                 break;
             case KEY3_SHORT:
-                Gimbal_MoveRelativeDeg(-5.0f);
+                Gimbal_Release();
                 break;
             case KEY3_LONG:
                 Gimbal_Release();
