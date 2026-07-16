@@ -392,6 +392,20 @@ static void print_heading_page(void)
 }
 
 #if FEATURE_GIMBAL_OLED_TEST
+static const char *gimbal_mode_to_string(GimbalMode mode)
+{
+    switch (mode) {
+        case GIMBAL_MODE_RELEASED:
+            return "REL";
+        case GIMBAL_MODE_HOLDING:
+            return "HLD";
+        case GIMBAL_MODE_MOVING:
+            return "MOV";
+        default:
+            return "ERR";
+    }
+}
+
 static void print_gimbal_page(void)
 {
     const GimbalFeedback *gimbal = Gimbal_GetFeedback();
@@ -409,14 +423,12 @@ static void print_gimbal_page(void)
     OLED_PrintInt16(gimbal->completed_deg_x10);
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("T5:");
-    OLED_PrintInt16((int16_t)gimbal->control_tick_5ms);
-    OLED_PrintString(" RUN:");
-    OLED_PrintInt16((int16_t)gimbal->running);
-    OLED_PrintString(" D:");
-    OLED_PrintInt16((int16_t)gimbal->direction);
-    OLED_PrintString(" OK:");
-    OLED_PrintInt16((int16_t)gimbal->target_reached);
+    OLED_PrintString("M:");
+    OLED_PrintString(gimbal_mode_to_string(gimbal->mode));
+    OLED_PrintString(" E:");
+    OLED_PrintInt16((int16_t)gimbal->enabled);
+    OLED_PrintString(" T5:");
+    OLED_PrintInt16(clamp_display_i16((int32_t)gimbal->control_tick_5ms));
 }
 #endif
 

@@ -7,6 +7,7 @@ typedef struct {
     int32_t target_steps;
     int32_t completed_steps;
     int8_t direction;
+    uint8_t enabled;
     uint8_t running;
     uint8_t target_reached;
 } GimbalStepperTestFeedback;
@@ -14,6 +15,8 @@ typedef struct {
 void GimbalStepperTest_Init(void);
 void GimbalStepperTest_Tick100us(void);
 void GimbalStepperTest_MoveRelativeDeg(float delta_deg);
+void GimbalStepperTest_StopHold(void);
+void GimbalStepperTest_Release(void);
 const GimbalStepperTestFeedback *GimbalStepperTest_GetFeedback(void);
 
 #endif

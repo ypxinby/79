@@ -68,6 +68,7 @@ static void gimbal_set_enable(bool enable)
         DL_GPIO_clearPins(GPIO_GIMBAL_A_PORT, GPIO_GIMBAL_A_PITCH_EN_PIN);
     }
 #endif
+    g_feedback.enabled = enable ? 1U : 0U;
 }
 
 static void gimbal_set_pitch_dir(int8_t direction)
@@ -107,6 +108,18 @@ static void gimbal_stop_pitch_hold(void)
     g_feedback.running = 0U;
     g_feedback.target_reached =
         (g_pitchCompletedSteps >= g_pitchTargetSteps) ? 1U : 0U;
+}
+
+void GimbalStepperTest_StopHold(void)
+{
+    gimbal_stop_pitch_hold();
+    gimbal_set_enable(true);
+}
+
+void GimbalStepperTest_Release(void)
+{
+    gimbal_stop_pitch_hold();
+    gimbal_set_enable(false);
 }
 
 static void gimbal_start_pitch_fixed_steps(int32_t steps)
@@ -149,6 +162,7 @@ void GimbalStepperTest_Init(void)
     g_feedback.target_steps = 0;
     g_feedback.completed_steps = 0;
     g_feedback.direction = 1;
+    g_feedback.enabled = 0U;
     g_feedback.running = 0U;
     g_feedback.target_reached = 0U;
 
@@ -167,7 +181,7 @@ void GimbalStepperTest_Init(void)
 #if FEATURE_GIMBAL_TEST_AUTO_RUN
     GimbalStepperTest_MoveRelativeDeg(GIMBAL_P4_SMOKE_TEST_DELTA_DEG);
 #else
-    gimbal_set_enable(false);
+    GimbalStepperTest_Release();
 #endif
 }
 

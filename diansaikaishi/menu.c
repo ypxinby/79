@@ -85,8 +85,17 @@ static void menu_handle_status_key(KeyEvent event)
                 menu_toggle_status_sensor_page();
                 break;
             case KEY1_LONG:
-                g_oledPage = OLED_PAGE_PARAM;
-                CarState_Set(CAR_STATE_MENU);
+                {
+                    const GimbalFeedback *gimbal = Gimbal_GetFeedback();
+
+                    if (gimbal->running) {
+                        Gimbal_StopHold();
+                    } else if (gimbal->enabled) {
+                        Gimbal_Release();
+                    } else {
+                        Gimbal_StopHold();
+                    }
+                }
                 break;
             case KEY2_SHORT:
                 Gimbal_MoveRelativeDeg(5.0f);

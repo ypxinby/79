@@ -38,9 +38,17 @@ static void gimbal_update_feedback(void)
     g_feedback.completed_steps = signed_completed;
     g_feedback.target_deg_x10 = steps_to_deg_x10(src->target_steps);
     g_feedback.completed_deg_x10 = steps_to_deg_x10(signed_completed);
+    g_feedback.enabled = src->enabled;
     g_feedback.direction = src->direction;
     g_feedback.running = src->running;
     g_feedback.target_reached = src->target_reached;
+    if (src->running) {
+        g_feedback.mode = GIMBAL_MODE_MOVING;
+    } else if (src->enabled) {
+        g_feedback.mode = GIMBAL_MODE_HOLDING;
+    } else {
+        g_feedback.mode = GIMBAL_MODE_RELEASED;
+    }
 }
 
 void Gimbal_Init(void)
@@ -63,6 +71,18 @@ void Gimbal_Update5ms(void)
 void Gimbal_MoveRelativeDeg(float delta_deg)
 {
     GimbalStepperTest_MoveRelativeDeg(delta_deg);
+    gimbal_update_feedback();
+}
+
+void Gimbal_StopHold(void)
+{
+    GimbalStepperTest_StopHold();
+    gimbal_update_feedback();
+}
+
+void Gimbal_Release(void)
+{
+    GimbalStepperTest_Release();
     gimbal_update_feedback();
 }
 
