@@ -7,7 +7,7 @@
 "./startup_mspm0g350x_ticlang.o"
 "./encoder.o"
 "./gimbal.o"
-"./gimbal_stepper_test.o"
+"./gimbal_stepper.o"
 "./heading_control.o"
 "./imu.o"
 "./key.o"

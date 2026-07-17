@@ -1,6 +1,6 @@
 #include "gimbal.h"
 
-#include "gimbal_stepper_test.h"
+#include "gimbal_stepper.h"
 #include "imu.h"
 
 #define GIMBAL_STEPS_PER_REV   (3200LL)
@@ -167,7 +167,7 @@ static void gimbal_update_angle_from_steps(int64_t estimated_steps)
 
 static void gimbal_update_feedback(void)
 {
-    const GimbalStepperTestFeedback *src = GimbalStepperTest_GetFeedback();
+    const GimbalStepperFeedback *src = GimbalStepper_GetFeedback();
     int32_t signed_completed = src->completed_steps;
 
     if (src->direction < 0) {
@@ -228,18 +228,18 @@ void Gimbal_YawInit(void)
     g_yawCarYawDegX10 = 0;
     g_yawLockedWorldYawDegX10 = 0;
     g_yawWorldTargetDegX10 = 0;
-    GimbalStepperTest_Init();
+    GimbalStepper_Init();
     gimbal_update_feedback();
 }
 
 void Gimbal_YawTick100us(void)
 {
-    GimbalStepperTest_Tick100us();
+    GimbalStepper_Tick100us();
 }
 
 void Gimbal_YawUpdate5ms(void)
 {
-    const GimbalStepperTestFeedback *src;
+    const GimbalStepperFeedback *src;
     float rpm_diff;
     float max_delta_rpm;
     float max_target_rpm;
@@ -254,12 +254,12 @@ void Gimbal_YawUpdate5ms(void)
         g_yawWorldTargetDegX10 =
             g_yawLockedWorldYawDegX10 - g_yawCarYawDegX10;
         g_yawTargetContinuousDegX10 = g_yawWorldTargetDegX10;
-        GimbalStepperTest_MoveToEstimatedSteps(
+        GimbalStepper_MoveToEstimatedSteps(
             deg_x10_to_steps(g_yawTargetContinuousDegX10));
         gimbal_update_feedback();
     }
 
-    src = GimbalStepperTest_GetFeedback();
+    src = GimbalStepper_GetFeedback();
     if (g_yawWorldLockEnabled != 0U) {
         max_target_rpm = GIMBAL_MAX_LOCK_RPM;
         accel_limit_rpm_per_s = GIMBAL_LOCK_ACCEL_LIMIT_RPM_PER_S;
@@ -296,7 +296,7 @@ void Gimbal_YawUpdate5ms(void)
             rpm_to_half_period_ticks(g_yawCommandedRpm);
     }
 
-    GimbalStepperTest_SetStepHalfPeriodTicks(step_half_period_ticks);
+    GimbalStepper_SetStepHalfPeriodTicks(step_half_period_ticks);
     gimbal_update_feedback();
 }
 
@@ -309,9 +309,9 @@ static void gimbal_yaw_set_target_x10(int64_t target_continuous_deg_x10,
     if (reset_speed != 0U) {
         g_yawTargetRpm = 0.0f;
         g_yawCommandedRpm = 0.0f;
-        GimbalStepperTest_SetStepHalfPeriodTicks(0U);
+        GimbalStepper_SetStepHalfPeriodTicks(0U);
     }
-    GimbalStepperTest_MoveToEstimatedSteps(
+    GimbalStepper_MoveToEstimatedSteps(
         deg_x10_to_steps(g_yawTargetContinuousDegX10));
     gimbal_update_feedback();
 }
@@ -366,9 +366,9 @@ void Gimbal_YawEnableWorldLock(void)
     g_yawWorldTargetDegX10 = g_yawContinuousDegX10;
     g_yawTargetContinuousDegX10 = g_yawContinuousDegX10;
     g_yawWorldLockEnabled = 1U;
-    GimbalStepperTest_MoveToEstimatedSteps(
+    GimbalStepper_MoveToEstimatedSteps(
         deg_x10_to_steps(g_yawTargetContinuousDegX10));
-    GimbalStepperTest_StopHold();
+    GimbalStepper_StopHold();
     gimbal_update_feedback();
 }
 
@@ -393,12 +393,12 @@ void Gimbal_YawStopHold(void)
     gimbal_update_feedback();
     g_yawTargetContinuousDegX10 = g_yawContinuousDegX10;
     g_yawWorldTargetDegX10 = g_yawTargetContinuousDegX10;
-    GimbalStepperTest_MoveToEstimatedSteps(
+    GimbalStepper_MoveToEstimatedSteps(
         deg_x10_to_steps(g_yawTargetContinuousDegX10));
-    GimbalStepperTest_StopHold();
+    GimbalStepper_StopHold();
     g_yawTargetRpm = 0.0f;
     g_yawCommandedRpm = 0.0f;
-    GimbalStepperTest_SetStepHalfPeriodTicks(0U);
+    GimbalStepper_SetStepHalfPeriodTicks(0U);
     gimbal_update_feedback();
 }
 
@@ -410,8 +410,8 @@ void Gimbal_YawRelease(void)
     g_yawWorldTargetDegX10 = g_yawTargetContinuousDegX10;
     g_yawTargetRpm = 0.0f;
     g_yawCommandedRpm = 0.0f;
-    GimbalStepperTest_SetStepHalfPeriodTicks(0U);
-    GimbalStepperTest_Release();
+    GimbalStepper_SetStepHalfPeriodTicks(0U);
+    GimbalStepper_Release();
     gimbal_update_feedback();
 }
 

@@ -1,6 +1,6 @@
 # FIXED
 
-gimbal_stepper_test.o: ../gimbal_stepper_test.c ../gimbal_stepper_test.h \
+gimbal_stepper.o: ../gimbal_stepper.c ../gimbal_stepper.h \
  ../app_features.h \
  ti_msp_dl_config.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/msp.h \
@@ -76,7 +76,7 @@ gimbal_stepper_test.o: ../gimbal_stepper_test.c ../gimbal_stepper_test.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/dl_wwdt.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/m0p/dl_interrupt.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/m0p/dl_systick.h
-../gimbal_stepper_test.h:
+../gimbal_stepper.h:
 ../app_features.h:
 ti_msp_dl_config.h:
 C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/msp.h:
