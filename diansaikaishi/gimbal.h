@@ -52,6 +52,20 @@ void Gimbal_YawStopHold(void);
 void Gimbal_YawRelease(void);
 const GimbalFeedback *Gimbal_YawGetFeedback(void);
 
+/*
+ * Reserved pitch-axis interface for the future second motor.
+ * P16 keeps these functions as safe no-op stubs: no GPIO is initialized,
+ * no STEP is generated, and no hardware state is changed.
+ */
+void Gimbal_PitchInit(void);
+void Gimbal_PitchTick100us(void);
+void Gimbal_PitchUpdate5ms(void);
+void Gimbal_PitchMoveToDeg(float target_deg);
+void Gimbal_PitchMoveRelativeDeg(float delta_deg);
+void Gimbal_PitchStopHold(void);
+void Gimbal_PitchRelease(void);
+const GimbalFeedback *Gimbal_PitchGetFeedback(void);
+
 /* Compatibility wrappers kept for early single-axis test code. */
 void Gimbal_Init(void);
 void Gimbal_Tick100us(void);

@@ -14,6 +14,7 @@
 #define GIMBAL_TICK_HZ         (10000.0f)
 
 static GimbalFeedback g_feedback;
+static GimbalFeedback g_pitchFeedback;
 static int64_t g_yawContinuousDegX10;
 static int64_t g_yawWrappedDegX10;
 static int64_t g_yawTargetContinuousDegX10;
@@ -25,6 +26,7 @@ static uint8_t g_yawWorldLockEnabled;
 static int64_t g_yawCarYawDegX10;
 static int64_t g_yawLockedWorldYawDegX10;
 static int64_t g_yawWorldTargetDegX10;
+static uint8_t g_pitchInitialized;
 
 static int16_t clamp_i16(int64_t value)
 {
@@ -211,6 +213,22 @@ static void gimbal_update_feedback(void)
         g_feedback.mode = GIMBAL_MODE_HOLDING;
     } else {
         g_feedback.mode = GIMBAL_MODE_RELEASED;
+    }
+}
+
+static void gimbal_pitch_reset_feedback(void)
+{
+    g_pitchFeedback = (GimbalFeedback){0};
+    g_pitchFeedback.mode = GIMBAL_MODE_RELEASED;
+    g_pitchFeedback.target_reached = 1U;
+    g_pitchFeedback.position_valid = 0U;
+    g_pitchInitialized = 1U;
+}
+
+static void gimbal_pitch_ensure_initialized(void)
+{
+    if (g_pitchInitialized == 0U) {
+        gimbal_pitch_reset_feedback();
     }
 }
 
@@ -419,6 +437,57 @@ const GimbalFeedback *Gimbal_YawGetFeedback(void)
 {
     gimbal_update_feedback();
     return &g_feedback;
+}
+
+void Gimbal_PitchInit(void)
+{
+    gimbal_pitch_reset_feedback();
+}
+
+void Gimbal_PitchTick100us(void)
+{
+    gimbal_pitch_ensure_initialized();
+}
+
+void Gimbal_PitchUpdate5ms(void)
+{
+    gimbal_pitch_ensure_initialized();
+    g_pitchFeedback.control_tick_5ms++;
+}
+
+void Gimbal_PitchMoveToDeg(float target_deg)
+{
+    gimbal_pitch_ensure_initialized();
+    g_pitchFeedback.target_deg_x10 = clamp_i16(deg_to_x10(target_deg));
+    g_pitchFeedback.target_reached = 1U;
+}
+
+void Gimbal_PitchMoveRelativeDeg(float delta_deg)
+{
+    gimbal_pitch_ensure_initialized();
+    g_pitchFeedback.target_deg_x10 = clamp_i16(
+        (int64_t)g_pitchFeedback.target_deg_x10 + deg_to_x10(delta_deg));
+    g_pitchFeedback.target_reached = 1U;
+}
+
+void Gimbal_PitchStopHold(void)
+{
+    gimbal_pitch_ensure_initialized();
+    g_pitchFeedback.mode = GIMBAL_MODE_RELEASED;
+    g_pitchFeedback.enabled = 0U;
+    g_pitchFeedback.running = 0U;
+    g_pitchFeedback.target_reached = 1U;
+}
+
+void Gimbal_PitchRelease(void)
+{
+    gimbal_pitch_reset_feedback();
+}
+
+const GimbalFeedback *Gimbal_PitchGetFeedback(void)
+{
+    gimbal_pitch_ensure_initialized();
+    return &g_pitchFeedback;
 }
 
 void Gimbal_Init(void)
