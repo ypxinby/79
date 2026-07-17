@@ -7,8 +7,10 @@
 #define GIMBAL_DEG_X10_PER_REV (3600LL)
 #define GIMBAL_CONTROL_DT_S    (0.005f)
 #define GIMBAL_MAX_POSITION_RPM (4.0f)
+#define GIMBAL_MAX_LOCK_RPM    (12.0f)
 #define GIMBAL_MIN_EFFECTIVE_RPM (0.5f)
 #define GIMBAL_ACCEL_LIMIT_RPM_PER_S (10.0f)
+#define GIMBAL_LOCK_ACCEL_LIMIT_RPM_PER_S (30.0f)
 #define GIMBAL_TICK_HZ         (10000.0f)
 
 static GimbalFeedback g_feedback;
@@ -240,6 +242,8 @@ void Gimbal_YawUpdate5ms(void)
     const GimbalStepperTestFeedback *src;
     float rpm_diff;
     float max_delta_rpm;
+    float max_target_rpm;
+    float accel_limit_rpm_per_s;
     uint16_t step_half_period_ticks = 0U;
 
     g_feedback.control_tick_5ms++;
@@ -256,16 +260,23 @@ void Gimbal_YawUpdate5ms(void)
     }
 
     src = GimbalStepperTest_GetFeedback();
+    if (g_yawWorldLockEnabled != 0U) {
+        max_target_rpm = GIMBAL_MAX_LOCK_RPM;
+        accel_limit_rpm_per_s = GIMBAL_LOCK_ACCEL_LIMIT_RPM_PER_S;
+    } else {
+        max_target_rpm = GIMBAL_MAX_POSITION_RPM;
+        accel_limit_rpm_per_s = GIMBAL_ACCEL_LIMIT_RPM_PER_S;
+    }
+
     if (src->running) {
         g_yawTargetRpm =
             (src->direction >= 0) ?
-                GIMBAL_MAX_POSITION_RPM : -GIMBAL_MAX_POSITION_RPM;
+                max_target_rpm : -max_target_rpm;
     } else {
         g_yawTargetRpm = 0.0f;
     }
 
-    max_delta_rpm =
-        GIMBAL_ACCEL_LIMIT_RPM_PER_S * GIMBAL_CONTROL_DT_S;
+    max_delta_rpm = accel_limit_rpm_per_s * GIMBAL_CONTROL_DT_S;
     rpm_diff = g_yawTargetRpm - g_yawCommandedRpm;
     if (rpm_diff > max_delta_rpm) {
         rpm_diff = max_delta_rpm;

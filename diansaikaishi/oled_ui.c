@@ -411,7 +411,7 @@ static void print_gimbal_page(void)
     const GimbalFeedback *gimbal = Gimbal_YawGetFeedback();
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("GYAW P14 L:");
+    OLED_PrintString("GYAW P14B L:");
     OLED_PrintInt16((int16_t)gimbal->world_lock_enabled);
 
     OLED_SetCursor(2, 0);
