@@ -51,43 +51,78 @@ static void gimbal_update_feedback(void)
     }
 }
 
-void Gimbal_Init(void)
+void Gimbal_PitchInit(void)
 {
     g_feedback = (GimbalFeedback){0};
     GimbalStepperTest_Init();
     gimbal_update_feedback();
 }
 
-void Gimbal_Tick100us(void)
+void Gimbal_PitchTick100us(void)
 {
     GimbalStepperTest_Tick100us();
 }
 
-void Gimbal_Update5ms(void)
+void Gimbal_PitchUpdate5ms(void)
 {
     g_feedback.control_tick_5ms++;
 }
 
-void Gimbal_MoveRelativeDeg(float delta_deg)
+void Gimbal_PitchMoveRelativeDeg(float delta_deg)
 {
     GimbalStepperTest_MoveRelativeDeg(delta_deg);
     gimbal_update_feedback();
 }
 
-void Gimbal_StopHold(void)
+void Gimbal_PitchStopHold(void)
 {
     GimbalStepperTest_StopHold();
     gimbal_update_feedback();
 }
 
-void Gimbal_Release(void)
+void Gimbal_PitchRelease(void)
 {
     GimbalStepperTest_Release();
     gimbal_update_feedback();
 }
 
-const GimbalFeedback *Gimbal_GetFeedback(void)
+const GimbalFeedback *Gimbal_PitchGetFeedback(void)
 {
     gimbal_update_feedback();
     return &g_feedback;
+}
+
+void Gimbal_Init(void)
+{
+    Gimbal_PitchInit();
+}
+
+void Gimbal_Tick100us(void)
+{
+    Gimbal_PitchTick100us();
+}
+
+void Gimbal_Update5ms(void)
+{
+    Gimbal_PitchUpdate5ms();
+}
+
+void Gimbal_MoveRelativeDeg(float delta_deg)
+{
+    Gimbal_PitchMoveRelativeDeg(delta_deg);
+}
+
+void Gimbal_StopHold(void)
+{
+    Gimbal_PitchStopHold();
+}
+
+void Gimbal_Release(void)
+{
+    Gimbal_PitchRelease();
+}
+
+const GimbalFeedback *Gimbal_GetFeedback(void)
+{
+    return Gimbal_PitchGetFeedback();
 }

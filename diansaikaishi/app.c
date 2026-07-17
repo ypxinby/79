@@ -54,7 +54,7 @@ static void App_UpdateHeadingObserver(void)
 void App_Init(void)
 {
     Motor_Init();
-    Gimbal_Init();
+    Gimbal_PitchInit();
     Encoder_Reset();
     AppConfig_InitDefault();
 #if ENABLE_IMU

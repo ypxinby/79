@@ -22,6 +22,16 @@ typedef struct {
     uint8_t target_reached;
 } GimbalFeedback;
 
+/* P8 public pitch-axis interface. New business code should use this group. */
+void Gimbal_PitchInit(void);
+void Gimbal_PitchTick100us(void);
+void Gimbal_PitchUpdate5ms(void);
+void Gimbal_PitchMoveRelativeDeg(float delta_deg);
+void Gimbal_PitchStopHold(void);
+void Gimbal_PitchRelease(void);
+const GimbalFeedback *Gimbal_PitchGetFeedback(void);
+
+/* Compatibility wrappers kept for early test code. */
 void Gimbal_Init(void);
 void Gimbal_Tick100us(void);
 void Gimbal_Update5ms(void);
