@@ -21,6 +21,9 @@ typedef struct {
     int16_t commanded_rpm_x10;
     int32_t turn_count;
     uint16_t step_half_period_ticks;
+    int16_t car_yaw_deg_x10;
+    int16_t locked_world_yaw_deg_x10;
+    int16_t world_target_deg_x10;
     int16_t min_limit_deg_x10;
     int16_t max_limit_deg_x10;
     uint32_t control_tick_5ms;
@@ -31,6 +34,7 @@ typedef struct {
     uint8_t target_reached;
     uint8_t limit_clamped;
     uint8_t position_valid;
+    uint8_t world_lock_enabled;
 } GimbalFeedback;
 
 /* P11 public yaw-axis interface. New business code should use this group. */
@@ -39,7 +43,11 @@ void Gimbal_YawTick100us(void);
 void Gimbal_YawUpdate5ms(void);
 void Gimbal_YawMoveToDeg(float target_deg);
 void Gimbal_YawMoveWrappedDeg(float target_deg);
+void Gimbal_YawSetWrappedTargetDeg(float target_deg);
 void Gimbal_YawMoveRelativeDeg(float delta_deg);
+void Gimbal_YawEnableWorldLock(void);
+void Gimbal_YawDisableWorldLock(void);
+void Gimbal_YawToggleWorldLock(void);
 void Gimbal_YawStopHold(void);
 void Gimbal_YawRelease(void);
 const GimbalFeedback *Gimbal_YawGetFeedback(void);
@@ -50,7 +58,11 @@ void Gimbal_Tick100us(void);
 void Gimbal_Update5ms(void);
 void Gimbal_MoveToDeg(float target_deg);
 void Gimbal_MoveWrappedDeg(float target_deg);
+void Gimbal_SetWrappedTargetDeg(float target_deg);
 void Gimbal_MoveRelativeDeg(float delta_deg);
+void Gimbal_EnableWorldLock(void);
+void Gimbal_DisableWorldLock(void);
+void Gimbal_ToggleWorldLock(void);
 void Gimbal_StopHold(void);
 void Gimbal_Release(void);
 const GimbalFeedback *Gimbal_GetFeedback(void);

@@ -98,7 +98,7 @@ static void menu_handle_status_key(KeyEvent event)
                 Gimbal_YawRelease();
                 break;
             case KEY3_LONG:
-                Gimbal_YawMoveWrappedDeg(0.0f);
+                Gimbal_YawToggleWorldLock();
                 break;
             default:
                 break;

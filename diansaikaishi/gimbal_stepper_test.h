@@ -17,6 +17,7 @@ typedef struct {
 void GimbalStepperTest_Init(void);
 void GimbalStepperTest_Tick100us(void);
 void GimbalStepperTest_SetStepHalfPeriodTicks(uint16_t half_period_ticks);
+void GimbalStepperTest_MoveToEstimatedSteps(int64_t target_estimated_steps);
 void GimbalStepperTest_MoveRelativeDeg(float delta_deg);
 void GimbalStepperTest_StopHold(void);
 void GimbalStepperTest_Release(void);
