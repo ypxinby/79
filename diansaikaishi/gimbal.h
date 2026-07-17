@@ -53,9 +53,8 @@ void Gimbal_YawRelease(void);
 const GimbalFeedback *Gimbal_YawGetFeedback(void);
 
 /*
- * Reserved pitch-axis interface for the future second motor.
- * P16 keeps these functions as safe no-op stubs: no GPIO is initialized,
- * no STEP is generated, and no hardware state is changed.
+ * P18 pitch-axis interface for the second motor.
+ * PB5/PB6/PB7 drive STEP/DIR/EN through the low-level implementation.
  */
 void Gimbal_PitchInit(void);
 void Gimbal_PitchTick100us(void);
@@ -66,10 +65,21 @@ void Gimbal_PitchStopHold(void);
 void Gimbal_PitchRelease(void);
 const GimbalFeedback *Gimbal_PitchGetFeedback(void);
 
-/* Compatibility wrappers kept for early single-axis test code. */
+/* P19 unified two-axis interface for future vision tracking code. */
 void Gimbal_Init(void);
 void Gimbal_Tick100us(void);
 void Gimbal_Update5ms(void);
+void Gimbal_MoveToYawPitchDeg(float yaw_deg, float pitch_deg);
+void Gimbal_MoveWrappedYawPitchDeg(float yaw_wrapped_deg,
+    float pitch_deg);
+void Gimbal_SetWrappedYawPitchTargetDeg(float yaw_wrapped_deg,
+    float pitch_deg);
+void Gimbal_MoveRelativeYawPitchDeg(float yaw_delta_deg,
+    float pitch_delta_deg);
+void Gimbal_StopHoldAll(void);
+void Gimbal_ReleaseAll(void);
+
+/* Compatibility wrappers kept for early single-axis yaw test code. */
 void Gimbal_MoveToDeg(float target_deg);
 void Gimbal_MoveWrappedDeg(float target_deg);
 void Gimbal_SetWrappedTargetDeg(float target_deg);

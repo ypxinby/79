@@ -736,6 +736,45 @@ void Gimbal_Update5ms(void)
     Gimbal_PitchUpdate5ms();
 }
 
+void Gimbal_MoveToYawPitchDeg(float yaw_deg, float pitch_deg)
+{
+    Gimbal_YawMoveToDeg(yaw_deg);
+    Gimbal_PitchMoveToDeg(pitch_deg);
+}
+
+void Gimbal_MoveWrappedYawPitchDeg(float yaw_wrapped_deg,
+    float pitch_deg)
+{
+    Gimbal_YawMoveWrappedDeg(yaw_wrapped_deg);
+    Gimbal_PitchMoveToDeg(pitch_deg);
+}
+
+void Gimbal_SetWrappedYawPitchTargetDeg(float yaw_wrapped_deg,
+    float pitch_deg)
+{
+    Gimbal_YawSetWrappedTargetDeg(yaw_wrapped_deg);
+    Gimbal_PitchMoveToDeg(pitch_deg);
+}
+
+void Gimbal_MoveRelativeYawPitchDeg(float yaw_delta_deg,
+    float pitch_delta_deg)
+{
+    Gimbal_YawMoveRelativeDeg(yaw_delta_deg);
+    Gimbal_PitchMoveRelativeDeg(pitch_delta_deg);
+}
+
+void Gimbal_StopHoldAll(void)
+{
+    Gimbal_YawStopHold();
+    Gimbal_PitchStopHold();
+}
+
+void Gimbal_ReleaseAll(void)
+{
+    Gimbal_YawRelease();
+    Gimbal_PitchRelease();
+}
+
 void Gimbal_MoveToDeg(float target_deg)
 {
     Gimbal_YawMoveToDeg(target_deg);

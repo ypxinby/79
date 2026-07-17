@@ -47,8 +47,7 @@ int main(void)
             __enable_irq();
 
             if (gimbalUpdateDue) {
-                Gimbal_YawUpdate5ms();
-                Gimbal_PitchUpdate5ms();
+                Gimbal_Update5ms();
             }
         } while (gimbalUpdateDue);
 
@@ -66,8 +65,7 @@ void SysTick_Handler(void)
     static uint8_t gimbalMsCount;
 
     Motor_PwmTick100us();
-    Gimbal_YawTick100us();
-    Gimbal_PitchTick100us();
+    Gimbal_Tick100us();
     Servo_Tick100us();
     Ultrasonic_Tick100us();
 
