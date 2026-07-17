@@ -411,7 +411,7 @@ static void print_gimbal_page(void)
     const GimbalFeedback *gimbal = Gimbal_YawGetFeedback();
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("GYAW P11");
+    OLED_PrintString("GYAW P12B");
 
     OLED_SetCursor(2, 0);
     OLED_PrintString("C:");

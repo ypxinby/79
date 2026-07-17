@@ -33,6 +33,33 @@ static int64_t deg_to_x10(float deg)
     return (int64_t)(raw - 0.5f);
 }
 
+static int64_t wrap_x10_360(int64_t angle_deg_x10)
+{
+    int64_t wrapped = angle_deg_x10 % GIMBAL_DEG_X10_PER_REV;
+
+    if (wrapped < 0) {
+        wrapped += GIMBAL_DEG_X10_PER_REV;
+    }
+    return wrapped;
+}
+
+static int64_t shortest_error_x10(int64_t target_wrapped_deg_x10,
+    int64_t current_wrapped_deg_x10)
+{
+    int64_t error =
+        target_wrapped_deg_x10 - current_wrapped_deg_x10;
+
+    while (error > (GIMBAL_DEG_X10_PER_REV / 2)) {
+        error -= GIMBAL_DEG_X10_PER_REV;
+    }
+
+    while (error < -(GIMBAL_DEG_X10_PER_REV / 2)) {
+        error += GIMBAL_DEG_X10_PER_REV;
+    }
+
+    return error;
+}
+
 static int64_t floor_div_i64(int64_t numerator, int64_t denominator)
 {
     int64_t quotient = numerator / denominator;
@@ -156,6 +183,18 @@ void Gimbal_YawMoveToDeg(float target_deg)
     gimbal_yaw_move_to_x10(deg_to_x10(target_deg));
 }
 
+void Gimbal_YawMoveWrappedDeg(float target_deg)
+{
+    int64_t target_wrapped_deg_x10;
+    int64_t error_deg_x10;
+
+    gimbal_update_feedback();
+    target_wrapped_deg_x10 = wrap_x10_360(deg_to_x10(target_deg));
+    error_deg_x10 = shortest_error_x10(target_wrapped_deg_x10,
+        g_yawWrappedDegX10);
+    gimbal_yaw_move_to_x10(g_yawContinuousDegX10 + error_deg_x10);
+}
+
 void Gimbal_YawMoveRelativeDeg(float delta_deg)
 {
     gimbal_update_feedback();
@@ -203,6 +242,11 @@ void Gimbal_Update5ms(void)
 void Gimbal_MoveToDeg(float target_deg)
 {
     Gimbal_YawMoveToDeg(target_deg);
+}
+
+void Gimbal_MoveWrappedDeg(float target_deg)
+{
+    Gimbal_YawMoveWrappedDeg(target_deg);
 }
 
 void Gimbal_MoveRelativeDeg(float delta_deg)
