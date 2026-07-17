@@ -89,16 +89,16 @@ static void menu_handle_status_key(KeyEvent event)
                 CarState_Set(CAR_STATE_MENU);
                 break;
             case KEY2_SHORT:
-                Gimbal_PitchMoveRelativeDeg(5.0f);
+                Gimbal_YawMoveRelativeDeg(5.0f);
                 break;
             case KEY2_LONG:
-                Gimbal_PitchStopHold();
+                Gimbal_YawStopHold();
                 break;
             case KEY3_SHORT:
-                Gimbal_PitchRelease();
+                Gimbal_YawRelease();
                 break;
             case KEY3_LONG:
-                Gimbal_PitchRelease();
+                Gimbal_YawRelease();
                 break;
             default:
                 break;

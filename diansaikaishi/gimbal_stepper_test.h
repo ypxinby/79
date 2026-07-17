@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 typedef struct {
+    int64_t estimated_steps;
     int32_t target_steps;
     int32_t completed_steps;
     int8_t direction;

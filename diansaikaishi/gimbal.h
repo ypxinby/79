@@ -10,31 +10,41 @@ typedef enum {
 } GimbalMode;
 
 typedef struct {
+    int64_t estimated_steps;
     int32_t target_steps;
     int32_t completed_steps;
     int16_t target_deg_x10;
     int16_t completed_deg_x10;
+    int16_t continuous_deg_x10;
+    int16_t wrapped_deg_x10;
+    int32_t turn_count;
+    int16_t min_limit_deg_x10;
+    int16_t max_limit_deg_x10;
     uint32_t control_tick_5ms;
     GimbalMode mode;
     int8_t direction;
     uint8_t enabled;
     uint8_t running;
     uint8_t target_reached;
+    uint8_t limit_clamped;
+    uint8_t position_valid;
 } GimbalFeedback;
 
-/* P8 public pitch-axis interface. New business code should use this group. */
-void Gimbal_PitchInit(void);
-void Gimbal_PitchTick100us(void);
-void Gimbal_PitchUpdate5ms(void);
-void Gimbal_PitchMoveRelativeDeg(float delta_deg);
-void Gimbal_PitchStopHold(void);
-void Gimbal_PitchRelease(void);
-const GimbalFeedback *Gimbal_PitchGetFeedback(void);
+/* P11 public yaw-axis interface. New business code should use this group. */
+void Gimbal_YawInit(void);
+void Gimbal_YawTick100us(void);
+void Gimbal_YawUpdate5ms(void);
+void Gimbal_YawMoveToDeg(float target_deg);
+void Gimbal_YawMoveRelativeDeg(float delta_deg);
+void Gimbal_YawStopHold(void);
+void Gimbal_YawRelease(void);
+const GimbalFeedback *Gimbal_YawGetFeedback(void);
 
-/* Compatibility wrappers kept for early test code. */
+/* Compatibility wrappers kept for early single-axis test code. */
 void Gimbal_Init(void);
 void Gimbal_Tick100us(void);
 void Gimbal_Update5ms(void);
+void Gimbal_MoveToDeg(float target_deg);
 void Gimbal_MoveRelativeDeg(float delta_deg);
 void Gimbal_StopHold(void);
 void Gimbal_Release(void);

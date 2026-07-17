@@ -46,6 +46,7 @@
 #define GIMBAL_EN_ACTIVE_LOW                   (0)
 
 static uint16_t g_pitchHalfPeriodTicks;
+static int64_t g_pitchEstimatedSteps;
 static int32_t g_pitchTargetSteps;
 static int32_t g_pitchCompletedSteps;
 static int8_t g_pitchDirection;
@@ -161,11 +162,13 @@ void GimbalStepperTest_MoveRelativeDeg(float delta_deg)
 void GimbalStepperTest_Init(void)
 {
     g_pitchHalfPeriodTicks = 0U;
+    g_pitchEstimatedSteps = 0;
     g_pitchTargetSteps = 0;
     g_pitchCompletedSteps = 0;
     g_pitchDirection = 1;
     g_pitchStepHigh = false;
     g_pitchRunning = false;
+    g_feedback.estimated_steps = 0;
     g_feedback.target_steps = 0;
     g_feedback.completed_steps = 0;
     g_feedback.direction = 1;
@@ -211,6 +214,8 @@ void GimbalStepperTest_Tick100us(void)
         DL_GPIO_setPins(GPIO_GIMBAL_B_PORT, GPIO_GIMBAL_B_PITCH_STEP_PIN);
         g_pitchStepHigh = true;
         g_pitchCompletedSteps++;
+        g_pitchEstimatedSteps += g_pitchDirection;
+        g_feedback.estimated_steps = g_pitchEstimatedSteps;
         g_feedback.completed_steps = g_pitchCompletedSteps;
         if (g_pitchCompletedSteps >= g_pitchTargetSteps) {
             gimbal_stop_pitch_hold();

@@ -408,19 +408,22 @@ static const char *gimbal_mode_to_string(GimbalMode mode)
 
 static void print_gimbal_page(void)
 {
-    const GimbalFeedback *gimbal = Gimbal_PitchGetFeedback();
+    const GimbalFeedback *gimbal = Gimbal_YawGetFeedback();
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("GIMBAL P8");
+    OLED_PrintString("GYAW P11");
 
     OLED_SetCursor(2, 0);
-    OLED_PrintString("K2S:+5 K2L:H");
+    OLED_PrintString("C:");
+    OLED_PrintInt16(gimbal->continuous_deg_x10);
+    OLED_PrintString(" W:");
+    OLED_PrintInt16(gimbal->wrapped_deg_x10);
 
     OLED_SetCursor(4, 0);
-    OLED_PrintString("T10:");
+    OLED_PrintString("T:");
     OLED_PrintInt16(gimbal->target_deg_x10);
-    OLED_PrintString(" C10:");
-    OLED_PrintInt16(gimbal->completed_deg_x10);
+    OLED_PrintString(" N:");
+    OLED_PrintInt16(clamp_display_i16(gimbal->turn_count));
 
     OLED_SetCursor(6, 0);
     OLED_PrintString("M:");
