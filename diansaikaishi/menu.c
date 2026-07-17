@@ -18,6 +18,8 @@ static void menu_toggle_status_sensor_page(void)
 #if FEATURE_GIMBAL_OLED_TEST
     } else if (g_oledPage == OLED_PAGE_OBSTACLE) {
         g_oledPage = OLED_PAGE_GIMBAL;
+    } else if (g_oledPage == OLED_PAGE_GIMBAL) {
+        g_oledPage = OLED_PAGE_GIMBAL_PITCH;
 #endif
     } else {
         g_oledPage = OLED_PAGE_STATUS;
@@ -79,7 +81,8 @@ static void menu_handle_status_key(KeyEvent event)
     CarState state = CarState_Get();
 
 #if FEATURE_GIMBAL_OLED_TEST
-    if (g_oledPage == OLED_PAGE_GIMBAL) {
+    if ((g_oledPage == OLED_PAGE_GIMBAL) ||
+        (g_oledPage == OLED_PAGE_GIMBAL_PITCH)) {
         switch (event) {
             case KEY1_SHORT:
                 menu_toggle_status_sensor_page();
@@ -89,16 +92,32 @@ static void menu_handle_status_key(KeyEvent event)
                 CarState_Set(CAR_STATE_MENU);
                 break;
             case KEY2_SHORT:
-                Gimbal_YawMoveRelativeDeg(30.0f);
+                if (g_oledPage == OLED_PAGE_GIMBAL_PITCH) {
+                    Gimbal_PitchMoveRelativeDeg(5.0f);
+                } else {
+                    Gimbal_YawMoveRelativeDeg(30.0f);
+                }
                 break;
             case KEY2_LONG:
-                Gimbal_YawStopHold();
+                if (g_oledPage == OLED_PAGE_GIMBAL_PITCH) {
+                    Gimbal_PitchStopHold();
+                } else {
+                    Gimbal_YawStopHold();
+                }
                 break;
             case KEY3_SHORT:
-                Gimbal_YawRelease();
+                if (g_oledPage == OLED_PAGE_GIMBAL_PITCH) {
+                    Gimbal_PitchMoveRelativeDeg(-5.0f);
+                } else {
+                    Gimbal_YawRelease();
+                }
                 break;
             case KEY3_LONG:
-                Gimbal_YawToggleWorldLock();
+                if (g_oledPage == OLED_PAGE_GIMBAL_PITCH) {
+                    Gimbal_PitchRelease();
+                } else {
+                    Gimbal_YawToggleWorldLock();
+                }
                 break;
             default:
                 break;

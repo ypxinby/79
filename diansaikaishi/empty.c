@@ -48,6 +48,7 @@ int main(void)
 
             if (gimbalUpdateDue) {
                 Gimbal_YawUpdate5ms();
+                Gimbal_PitchUpdate5ms();
             }
         } while (gimbalUpdateDue);
 
@@ -66,6 +67,7 @@ void SysTick_Handler(void)
 
     Motor_PwmTick100us();
     Gimbal_YawTick100us();
+    Gimbal_PitchTick100us();
     Servo_Tick100us();
     Ultrasonic_Tick100us();
 

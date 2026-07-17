@@ -212,6 +212,18 @@ extern "C" {
 /* Defines for PITCH_STEP: GPIOB.4 with pinCMx 17 on package pin 52 */
 #define GPIO_GIMBAL_B_PITCH_STEP_PIN                             (DL_GPIO_PIN_4)
 #define GPIO_GIMBAL_B_PITCH_STEP_IOMUX                           (IOMUX_PINCM17)
+/* Port definition for Pin Group GPIO_GIMBAL_PITCH */
+#define GPIO_GIMBAL_PITCH_PORT                                           (GPIOB)
+
+/* Defines for STEP: GPIOB.5 with pinCMx 18 on package pin 53 */
+#define GPIO_GIMBAL_PITCH_STEP_PIN                               (DL_GPIO_PIN_5)
+#define GPIO_GIMBAL_PITCH_STEP_IOMUX                             (IOMUX_PINCM18)
+/* Defines for DIR: GPIOB.6 with pinCMx 23 on package pin 58 */
+#define GPIO_GIMBAL_PITCH_DIR_PIN                                (DL_GPIO_PIN_6)
+#define GPIO_GIMBAL_PITCH_DIR_IOMUX                              (IOMUX_PINCM23)
+/* Defines for EN: GPIOB.7 with pinCMx 24 on package pin 59 */
+#define GPIO_GIMBAL_PITCH_EN_PIN                                 (DL_GPIO_PIN_7)
+#define GPIO_GIMBAL_PITCH_EN_IOMUX                               (IOMUX_PINCM24)
 
 /* clang-format on */
 

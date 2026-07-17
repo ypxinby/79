@@ -55,6 +55,7 @@ void App_Init(void)
 {
     Motor_Init();
     Gimbal_YawInit();
+    Gimbal_PitchInit();
     Encoder_Reset();
     AppConfig_InitDefault();
 #if ENABLE_IMU

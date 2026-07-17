@@ -434,6 +434,34 @@ static void print_gimbal_page(void)
     OLED_PrintString(" H:");
     OLED_PrintInt16((int16_t)gimbal->step_half_period_ticks);
 }
+
+static void print_gimbal_pitch_page(void)
+{
+    const GimbalFeedback *gimbal = Gimbal_PitchGetFeedback();
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("GPIT P18");
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("T:");
+    OLED_PrintInt16(gimbal->target_deg_x10);
+    OLED_PrintString(" C:");
+    OLED_PrintInt16(gimbal->continuous_deg_x10);
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("S:");
+    OLED_PrintInt16(clamp_display_i16((int32_t)gimbal->estimated_steps));
+    OLED_PrintString(" D:");
+    OLED_PrintInt16((int16_t)gimbal->direction);
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("M:");
+    OLED_PrintString(gimbal_mode_to_string(gimbal->mode));
+    OLED_PrintString(" E:");
+    OLED_PrintInt16((int16_t)gimbal->enabled);
+    OLED_PrintString(" H:");
+    OLED_PrintInt16((int16_t)gimbal->step_half_period_ticks);
+}
 #endif
 
 void OledUi_Init(void)
@@ -474,6 +502,13 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
         case OLED_PAGE_GIMBAL:
 #if FEATURE_GIMBAL_OLED_TEST
             print_gimbal_page();
+#else
+            print_status_page(raw, error, keyEvent);
+#endif
+            break;
+        case OLED_PAGE_GIMBAL_PITCH:
+#if FEATURE_GIMBAL_OLED_TEST
+            print_gimbal_pitch_page();
 #else
             print_status_page(raw, error, keyEvent);
 #endif

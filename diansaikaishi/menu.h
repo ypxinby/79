@@ -12,7 +12,8 @@ typedef enum {
     OLED_PAGE_IMU,
     OLED_PAGE_HEADING,
     OLED_PAGE_OBSTACLE,
-    OLED_PAGE_GIMBAL
+    OLED_PAGE_GIMBAL,
+    OLED_PAGE_GIMBAL_PITCH
 } OledPage;
 
 typedef enum {
