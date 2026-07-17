@@ -17,7 +17,10 @@ typedef struct {
     int16_t completed_deg_x10;
     int16_t continuous_deg_x10;
     int16_t wrapped_deg_x10;
+    int16_t target_rpm_x10;
+    int16_t commanded_rpm_x10;
     int32_t turn_count;
+    uint16_t step_half_period_ticks;
     int16_t min_limit_deg_x10;
     int16_t max_limit_deg_x10;
     uint32_t control_tick_5ms;

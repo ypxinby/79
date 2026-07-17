@@ -411,7 +411,7 @@ static void print_gimbal_page(void)
     const GimbalFeedback *gimbal = Gimbal_YawGetFeedback();
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("GYAW P12B");
+    OLED_PrintString("GYAW P13");
 
     OLED_SetCursor(2, 0);
     OLED_PrintString("C:");
@@ -428,10 +428,10 @@ static void print_gimbal_page(void)
     OLED_SetCursor(6, 0);
     OLED_PrintString("M:");
     OLED_PrintString(gimbal_mode_to_string(gimbal->mode));
-    OLED_PrintString(" E:");
-    OLED_PrintInt16((int16_t)gimbal->enabled);
-    OLED_PrintString(" T5:");
-    OLED_PrintInt16(clamp_display_i16((int32_t)gimbal->control_tick_5ms));
+    OLED_PrintString(" R:");
+    OLED_PrintInt16(gimbal->commanded_rpm_x10);
+    OLED_PrintString(" H:");
+    OLED_PrintInt16((int16_t)gimbal->step_half_period_ticks);
 }
 #endif
 

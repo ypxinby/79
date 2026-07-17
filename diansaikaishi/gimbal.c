@@ -4,6 +4,11 @@
 
 #define GIMBAL_STEPS_PER_REV   (3200LL)
 #define GIMBAL_DEG_X10_PER_REV (3600LL)
+#define GIMBAL_CONTROL_DT_S    (0.005f)
+#define GIMBAL_MAX_POSITION_RPM (4.0f)
+#define GIMBAL_MIN_EFFECTIVE_RPM (0.5f)
+#define GIMBAL_ACCEL_LIMIT_RPM_PER_S (10.0f)
+#define GIMBAL_TICK_HZ         (10000.0f)
 
 static GimbalFeedback g_feedback;
 static int64_t g_yawContinuousDegX10;
@@ -11,6 +16,8 @@ static int64_t g_yawWrappedDegX10;
 static int64_t g_yawTargetContinuousDegX10;
 static int32_t g_yawTurnCount;
 static uint8_t g_yawPositionValid;
+static float g_yawTargetRpm;
+static float g_yawCommandedRpm;
 
 static int16_t clamp_i16(int64_t value)
 {
@@ -31,6 +38,45 @@ static int64_t deg_to_x10(float deg)
         return (int64_t)(raw + 0.5f);
     }
     return (int64_t)(raw - 0.5f);
+}
+
+static float abs_f32(float value)
+{
+    return (value < 0.0f) ? -value : value;
+}
+
+static int16_t rpm_to_x10(float rpm)
+{
+    float raw = rpm * 10.0f;
+
+    if (raw >= 0.0f) {
+        return clamp_i16((int64_t)(raw + 0.5f));
+    }
+    return clamp_i16((int64_t)(raw - 0.5f));
+}
+
+static uint16_t rpm_to_half_period_ticks(float rpm)
+{
+    float abs_rpm = abs_f32(rpm);
+    float step_frequency_hz;
+    float half_period_ticks;
+
+    if (abs_rpm < GIMBAL_MIN_EFFECTIVE_RPM) {
+        return 0U;
+    }
+
+    step_frequency_hz =
+        (abs_rpm * (float)GIMBAL_STEPS_PER_REV) / 60.0f;
+    half_period_ticks =
+        GIMBAL_TICK_HZ / (2.0f * step_frequency_hz);
+
+    if (half_period_ticks < 1.0f) {
+        return 1U;
+    }
+    if (half_period_ticks > 65535.0f) {
+        return 65535U;
+    }
+    return (uint16_t)(half_period_ticks + 0.5f);
 }
 
 static int64_t wrap_x10_360(int64_t angle_deg_x10)
@@ -116,7 +162,10 @@ static void gimbal_update_feedback(void)
         clamp_i16(g_yawContinuousDegX10);
     g_feedback.wrapped_deg_x10 =
         clamp_i16(g_yawWrappedDegX10);
+    g_feedback.target_rpm_x10 = rpm_to_x10(g_yawTargetRpm);
+    g_feedback.commanded_rpm_x10 = rpm_to_x10(g_yawCommandedRpm);
     g_feedback.turn_count = g_yawTurnCount;
+    g_feedback.step_half_period_ticks = src->step_half_period_ticks;
     g_feedback.min_limit_deg_x10 = 0;
     g_feedback.max_limit_deg_x10 = 0;
     g_feedback.enabled = src->enabled;
@@ -142,6 +191,8 @@ void Gimbal_YawInit(void)
     g_yawTargetContinuousDegX10 = 0;
     g_yawTurnCount = 0;
     g_yawPositionValid = 1U;
+    g_yawTargetRpm = 0.0f;
+    g_yawCommandedRpm = 0.0f;
     GimbalStepperTest_Init();
     gimbal_update_feedback();
 }
@@ -153,7 +204,39 @@ void Gimbal_YawTick100us(void)
 
 void Gimbal_YawUpdate5ms(void)
 {
+    const GimbalStepperTestFeedback *src;
+    float rpm_diff;
+    float max_delta_rpm;
+
     g_feedback.control_tick_5ms++;
+    gimbal_update_feedback();
+
+    src = GimbalStepperTest_GetFeedback();
+    if (src->running) {
+        g_yawTargetRpm =
+            (src->direction >= 0) ?
+                GIMBAL_MAX_POSITION_RPM : -GIMBAL_MAX_POSITION_RPM;
+    } else {
+        g_yawTargetRpm = 0.0f;
+    }
+
+    max_delta_rpm =
+        GIMBAL_ACCEL_LIMIT_RPM_PER_S * GIMBAL_CONTROL_DT_S;
+    rpm_diff = g_yawTargetRpm - g_yawCommandedRpm;
+    if (rpm_diff > max_delta_rpm) {
+        rpm_diff = max_delta_rpm;
+    } else if (rpm_diff < -max_delta_rpm) {
+        rpm_diff = -max_delta_rpm;
+    }
+    g_yawCommandedRpm += rpm_diff;
+
+    if (!src->running && (abs_f32(g_yawCommandedRpm) <
+        GIMBAL_MIN_EFFECTIVE_RPM)) {
+        g_yawCommandedRpm = 0.0f;
+    }
+
+    GimbalStepperTest_SetStepHalfPeriodTicks(
+        rpm_to_half_period_ticks(g_yawCommandedRpm));
     gimbal_update_feedback();
 }
 
@@ -174,6 +257,9 @@ static void gimbal_yaw_move_to_x10(int64_t target_continuous_deg_x10)
         return;
     }
 
+    g_yawTargetRpm = 0.0f;
+    g_yawCommandedRpm = 0.0f;
+    GimbalStepperTest_SetStepHalfPeriodTicks(0U);
     GimbalStepperTest_MoveRelativeDeg(x10_to_deg(delta_deg_x10));
     gimbal_update_feedback();
 }
@@ -205,6 +291,9 @@ void Gimbal_YawMoveRelativeDeg(float delta_deg)
 void Gimbal_YawStopHold(void)
 {
     GimbalStepperTest_StopHold();
+    g_yawTargetRpm = 0.0f;
+    g_yawCommandedRpm = 0.0f;
+    GimbalStepperTest_SetStepHalfPeriodTicks(0U);
     gimbal_update_feedback();
     g_yawTargetContinuousDegX10 = g_yawContinuousDegX10;
     gimbal_update_feedback();
@@ -214,6 +303,9 @@ void Gimbal_YawRelease(void)
 {
     gimbal_update_feedback();
     g_yawTargetContinuousDegX10 = g_yawContinuousDegX10;
+    g_yawTargetRpm = 0.0f;
+    g_yawCommandedRpm = 0.0f;
+    GimbalStepperTest_SetStepHalfPeriodTicks(0U);
     GimbalStepperTest_Release();
     gimbal_update_feedback();
 }

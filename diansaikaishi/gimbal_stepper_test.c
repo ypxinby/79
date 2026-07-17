@@ -38,7 +38,6 @@
 #define GPIO_GIMBAL_A_PITCH_EN_IOMUX           (IOMUX_PINCM7)
 #endif
 
-#define GIMBAL_P4_STEP_HALF_PERIOD_TICKS_100US (25U)
 #define GIMBAL_P4_SMOKE_TEST_DELTA_DEG         (-90.0f)
 #define GIMBAL_P4_STEPS_PER_REV                (3200.0f)
 #define GIMBAL_P4_DEGREES_PER_REV              (360.0f)
@@ -46,12 +45,14 @@
 #define GIMBAL_EN_ACTIVE_LOW                   (0)
 
 static uint16_t g_pitchHalfPeriodTicks;
+static uint16_t g_pitchStepHalfPeriodTicks;
 static int64_t g_pitchEstimatedSteps;
 static int32_t g_pitchTargetSteps;
 static int32_t g_pitchCompletedSteps;
 static int8_t g_pitchDirection;
 static bool g_pitchStepHigh;
 static bool g_pitchRunning;
+static bool g_pitchStopAfterStepLow;
 static GimbalStepperTestFeedback g_feedback;
 
 static void gimbal_set_enable(bool enable)
@@ -106,6 +107,7 @@ static void gimbal_stop_pitch_hold(void)
     g_pitchHalfPeriodTicks = 0U;
     g_pitchStepHigh = false;
     g_pitchRunning = false;
+    g_pitchStopAfterStepLow = false;
     g_feedback.running = 0U;
     g_feedback.target_reached =
         (g_pitchCompletedSteps >= g_pitchTargetSteps) ? 1U : 0U;
@@ -136,6 +138,7 @@ static void gimbal_start_pitch_fixed_steps(int32_t steps)
     g_pitchDirection = (steps < 0) ? -1 : 1;
     g_pitchTargetSteps = (steps < 0) ? -steps : steps;
     g_pitchCompletedSteps = 0;
+    g_pitchStopAfterStepLow = false;
     g_feedback.target_steps = steps;
     g_feedback.completed_steps = 0;
     g_feedback.direction = g_pitchDirection;
@@ -159,18 +162,27 @@ void GimbalStepperTest_MoveRelativeDeg(float delta_deg)
     gimbal_start_pitch_fixed_steps(steps);
 }
 
+void GimbalStepperTest_SetStepHalfPeriodTicks(uint16_t half_period_ticks)
+{
+    g_pitchStepHalfPeriodTicks = half_period_ticks;
+    g_feedback.step_half_period_ticks = half_period_ticks;
+}
+
 void GimbalStepperTest_Init(void)
 {
     g_pitchHalfPeriodTicks = 0U;
+    g_pitchStepHalfPeriodTicks = 0U;
     g_pitchEstimatedSteps = 0;
     g_pitchTargetSteps = 0;
     g_pitchCompletedSteps = 0;
     g_pitchDirection = 1;
     g_pitchStepHigh = false;
     g_pitchRunning = false;
+    g_pitchStopAfterStepLow = false;
     g_feedback.estimated_steps = 0;
     g_feedback.target_steps = 0;
     g_feedback.completed_steps = 0;
+    g_feedback.step_half_period_ticks = 0U;
     g_feedback.direction = 1;
     g_feedback.enabled = 0U;
     g_feedback.running = 0U;
@@ -197,12 +209,12 @@ void GimbalStepperTest_Init(void)
 
 void GimbalStepperTest_Tick100us(void)
 {
-    if (!g_pitchRunning) {
+    if (!g_pitchRunning || (g_pitchStepHalfPeriodTicks == 0U)) {
         return;
     }
 
     g_pitchHalfPeriodTicks++;
-    if (g_pitchHalfPeriodTicks < GIMBAL_P4_STEP_HALF_PERIOD_TICKS_100US) {
+    if (g_pitchHalfPeriodTicks < g_pitchStepHalfPeriodTicks) {
         return;
     }
 
@@ -210,6 +222,9 @@ void GimbalStepperTest_Tick100us(void)
     if (g_pitchStepHigh) {
         DL_GPIO_clearPins(GPIO_GIMBAL_B_PORT, GPIO_GIMBAL_B_PITCH_STEP_PIN);
         g_pitchStepHigh = false;
+        if (g_pitchStopAfterStepLow) {
+            gimbal_stop_pitch_hold();
+        }
     } else {
         DL_GPIO_setPins(GPIO_GIMBAL_B_PORT, GPIO_GIMBAL_B_PITCH_STEP_PIN);
         g_pitchStepHigh = true;
@@ -218,7 +233,8 @@ void GimbalStepperTest_Tick100us(void)
         g_feedback.estimated_steps = g_pitchEstimatedSteps;
         g_feedback.completed_steps = g_pitchCompletedSteps;
         if (g_pitchCompletedSteps >= g_pitchTargetSteps) {
-            gimbal_stop_pitch_hold();
+            g_feedback.target_reached = 1U;
+            g_pitchStopAfterStepLow = true;
         }
     }
 }
