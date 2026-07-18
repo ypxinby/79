@@ -503,7 +503,7 @@ static void print_gimbal_tracker_pitch_page(void)
     const GimbalFeedback *pitch = Gimbal_PitchGetFeedback();
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("GTRK P23Y E:");
+    OLED_PrintString("GTRK P23V E:");
     OLED_PrintInt16((int16_t)tracker->enabled);
     OLED_PrintString(" V:");
     OLED_PrintInt16((int16_t)tracker->target_valid);
@@ -517,8 +517,8 @@ static void print_gimbal_tracker_pitch_page(void)
     OLED_SetCursor(4, 0);
     OLED_PrintString("PS:");
     OLED_PrintInt16(tracker->pitch_speed_deg_s_x10);
-    OLED_PrintString(" PD:");
-    OLED_PrintInt16(tracker->pitch_delta_deg_x10);
+    OLED_PrintString(" R:");
+    OLED_PrintInt16(pitch->commanded_rpm_x10);
 
     OLED_SetCursor(6, 0);
     OLED_PrintString("PA:");

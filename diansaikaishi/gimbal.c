@@ -16,6 +16,10 @@
 #define GIMBAL_PITCH_STEPS_PER_REV (3200LL)
 #define GIMBAL_PITCH_MAX_POSITION_RPM (4.0f)
 #define GIMBAL_PITCH_ACCEL_LIMIT_RPM_PER_S (10.0f)
+#define GIMBAL_DEG_PER_REV             (360.0f)
+#define GIMBAL_SEC_PER_MIN             (60.0f)
+#define GIMBAL_DEG_S_PER_RPM           \
+    (GIMBAL_DEG_PER_REV / GIMBAL_SEC_PER_MIN)
 /*
  * PITCH uses a power-on relative zero:
  * - Before power-on, manually place the pitch axis at mechanical center.
@@ -60,6 +64,11 @@
 #define GIMBAL_PITCH_POSITIVE_DIR_HIGH         (1)
 #define GIMBAL_PITCH_EN_ACTIVE_LOW             (0)
 
+typedef enum {
+    GIMBAL_PITCH_CONTROL_POSITION = 0,
+    GIMBAL_PITCH_CONTROL_TRACK_SPEED
+} GimbalPitchControlMode;
+
 static GimbalFeedback g_feedback;
 static GimbalFeedback g_pitchFeedback;
 static int64_t g_yawContinuousDegX10;
@@ -89,6 +98,8 @@ static uint8_t g_pitchLimitClamped;
 static int8_t g_pitchLimitDirection;
 static float g_pitchTargetRpm;
 static float g_pitchCommandedRpm;
+static float g_pitchTrackingTargetRpm;
+static volatile GimbalPitchControlMode g_pitchControlMode;
 
 static int16_t clamp_i16(int64_t value)
 {
@@ -552,6 +563,8 @@ static void gimbal_pitch_set_target_steps(int64_t requested_steps,
     int8_t limit_direction;
 
     gimbal_pitch_ensure_initialized();
+    g_pitchControlMode = GIMBAL_PITCH_CONTROL_POSITION;
+    g_pitchTrackingTargetRpm = 0.0f;
     g_pitchTargetEstimatedSteps =
         gimbal_pitch_clamp_target_steps(requested_steps, &clamped,
             &limit_direction);
@@ -854,6 +867,8 @@ void Gimbal_PitchInit(void)
     g_pitchLimitDirection = 0;
     g_pitchTargetRpm = 0.0f;
     g_pitchCommandedRpm = 0.0f;
+    g_pitchTrackingTargetRpm = 0.0f;
+    g_pitchControlMode = GIMBAL_PITCH_CONTROL_POSITION;
     gimbal_pitch_reset_feedback();
 
     DL_GPIO_initDigitalOutput(GPIO_GIMBAL_PITCH_STEP_IOMUX);
@@ -901,12 +916,25 @@ void Gimbal_PitchTick100us(void)
         g_pitchStepHigh = 1U;
         g_pitchCompletedSteps++;
         g_pitchEstimatedSteps += g_pitchDirection;
-        if (((g_pitchDirection > 0) &&
+        if (g_pitchControlMode == GIMBAL_PITCH_CONTROL_TRACK_SPEED) {
+            if (((g_pitchDirection > 0) &&
+                    (g_pitchEstimatedSteps >=
+                        gimbal_pitch_max_limit_steps())) ||
+                ((g_pitchDirection < 0) &&
+                    (g_pitchEstimatedSteps <=
+                        gimbal_pitch_min_limit_steps()))) {
+                g_pitchLimitClamped = 1U;
+                g_pitchLimitDirection = g_pitchDirection;
+                g_pitchTrackingTargetRpm = 0.0f;
+                g_pitchFeedback.target_reached = 1U;
+                g_pitchStopAfterStepLow = 1U;
+            }
+        } else if (((g_pitchDirection > 0) &&
                 (g_pitchEstimatedSteps >= g_pitchTargetEstimatedSteps)) ||
             ((g_pitchDirection < 0) &&
                 (g_pitchEstimatedSteps <= g_pitchTargetEstimatedSteps))) {
-            g_pitchFeedback.target_reached = 1U;
-            g_pitchStopAfterStepLow = 1U;
+                g_pitchFeedback.target_reached = 1U;
+                g_pitchStopAfterStepLow = 1U;
         }
         gimbal_pitch_update_feedback();
     }
@@ -920,7 +948,10 @@ void Gimbal_PitchUpdate5ms(void)
     gimbal_pitch_ensure_initialized();
     g_pitchFeedback.control_tick_5ms++;
 
-    if (g_pitchRunning != 0U) {
+    if ((g_pitchControlMode == GIMBAL_PITCH_CONTROL_TRACK_SPEED) &&
+        (g_pitchRunning != 0U)) {
+        g_pitchTargetRpm = g_pitchTrackingTargetRpm;
+    } else if (g_pitchRunning != 0U) {
         g_pitchTargetRpm =
             (g_pitchDirection >= 0) ?
                 GIMBAL_PITCH_MAX_POSITION_RPM :
@@ -995,9 +1026,94 @@ void Gimbal_PitchMoveRelativeSteps(int32_t delta_steps)
         g_pitchEstimatedSteps + (int64_t)delta_steps, 0U, 0U, 0);
 }
 
+void Gimbal_PitchSetTrackingSpeedDegS(float speed_deg_s)
+{
+    float requested_rpm = speed_deg_s / GIMBAL_DEG_S_PER_RPM;
+    int8_t requested_direction;
+    uint32_t interrupt_state;
+
+    gimbal_pitch_ensure_initialized();
+
+    if (requested_rpm > GIMBAL_PITCH_MAX_POSITION_RPM) {
+        requested_rpm = GIMBAL_PITCH_MAX_POSITION_RPM;
+    } else if (requested_rpm < -GIMBAL_PITCH_MAX_POSITION_RPM) {
+        requested_rpm = -GIMBAL_PITCH_MAX_POSITION_RPM;
+    }
+
+    if (abs_f32(requested_rpm) < 0.01f) {
+        Gimbal_PitchStopTrackingHold();
+        return;
+    }
+
+    requested_direction = (requested_rpm < 0.0f) ? -1 : 1;
+    interrupt_state = __get_PRIMASK();
+    __disable_irq();
+
+    if (((requested_direction > 0) &&
+            (g_pitchEstimatedSteps >= gimbal_pitch_max_limit_steps())) ||
+        ((requested_direction < 0) &&
+            (g_pitchEstimatedSteps <= gimbal_pitch_min_limit_steps()))) {
+        g_pitchControlMode = GIMBAL_PITCH_CONTROL_TRACK_SPEED;
+        g_pitchTrackingTargetRpm = 0.0f;
+        g_pitchLimitClamped = 1U;
+        g_pitchLimitDirection = requested_direction;
+        g_pitchTargetEstimatedSteps = g_pitchEstimatedSteps;
+        g_pitchTargetDegX10 = pitch_steps_to_deg_x10(g_pitchEstimatedSteps);
+        gimbal_pitch_stop_hold_and_reset_ramp();
+        gimbal_pitch_set_enable(1U);
+        if ((interrupt_state & 1U) == 0U) {
+            __enable_irq();
+        }
+        return;
+    }
+
+    if ((g_pitchControlMode != GIMBAL_PITCH_CONTROL_TRACK_SPEED) ||
+        (requested_direction != g_pitchDirection)) {
+        /*
+         * Tracking prioritizes deterministic reversal. Stop STEP while low,
+         * clear the old signed speed, then switch DIR and accelerate again.
+         */
+        gimbal_pitch_stop_hold_and_reset_ramp();
+        g_pitchDirection = requested_direction;
+        gimbal_pitch_set_dir(g_pitchDirection);
+    }
+
+    g_pitchControlMode = GIMBAL_PITCH_CONTROL_TRACK_SPEED;
+    g_pitchTrackingTargetRpm = requested_rpm;
+    g_pitchTargetEstimatedSteps =
+        (requested_direction > 0) ?
+            gimbal_pitch_max_limit_steps() :
+            gimbal_pitch_min_limit_steps();
+    g_pitchTargetDegX10 =
+        pitch_steps_to_deg_x10(g_pitchTargetEstimatedSteps);
+    g_pitchLimitClamped = 0U;
+    g_pitchLimitDirection = 0;
+    g_pitchCompletedSteps = 0;
+    g_pitchStopAfterStepLow = 0U;
+    g_pitchFeedback.target_reached = 0U;
+    gimbal_pitch_set_enable(1U);
+    g_pitchRunning = 1U;
+    gimbal_pitch_update_feedback();
+
+    if ((interrupt_state & 1U) == 0U) {
+        __enable_irq();
+    }
+}
+
+void Gimbal_PitchStopTrackingHold(void)
+{
+    Gimbal_PitchStopHold();
+}
+
 void Gimbal_PitchStopHold(void)
 {
+    uint32_t interrupt_state;
+
     gimbal_pitch_ensure_initialized();
+    interrupt_state = __get_PRIMASK();
+    __disable_irq();
+    g_pitchControlMode = GIMBAL_PITCH_CONTROL_POSITION;
+    g_pitchTrackingTargetRpm = 0.0f;
     g_pitchTargetDegX10 = g_pitchContinuousDegX10;
     g_pitchTargetEstimatedSteps = g_pitchEstimatedSteps;
     g_pitchLimitClamped = 0U;
@@ -1005,6 +1121,9 @@ void Gimbal_PitchStopHold(void)
     gimbal_pitch_stop_hold_and_reset_ramp();
     gimbal_pitch_set_enable(1U);
     gimbal_pitch_update_feedback();
+    if ((interrupt_state & 1U) == 0U) {
+        __enable_irq();
+    }
 }
 
 uint8_t Gimbal_PitchConfirmZero(void)
@@ -1028,6 +1147,8 @@ uint8_t Gimbal_PitchConfirmZero(void)
     g_pitchStopAfterStepLow = 0U;
     g_pitchTargetRpm = 0.0f;
     g_pitchCommandedRpm = 0.0f;
+    g_pitchTrackingTargetRpm = 0.0f;
+    g_pitchControlMode = GIMBAL_PITCH_CONTROL_POSITION;
     g_pitchLimitClamped = 0U;
     g_pitchLimitDirection = 0;
     gimbal_pitch_update_feedback();
@@ -1036,7 +1157,13 @@ uint8_t Gimbal_PitchConfirmZero(void)
 
 void Gimbal_PitchRelease(void)
 {
+    uint32_t interrupt_state;
+
     gimbal_pitch_ensure_initialized();
+    interrupt_state = __get_PRIMASK();
+    __disable_irq();
+    g_pitchControlMode = GIMBAL_PITCH_CONTROL_POSITION;
+    g_pitchTrackingTargetRpm = 0.0f;
     g_pitchTargetDegX10 = g_pitchContinuousDegX10;
     g_pitchTargetEstimatedSteps = g_pitchEstimatedSteps;
     g_pitchCompletedSteps = 0;
@@ -1045,6 +1172,9 @@ void Gimbal_PitchRelease(void)
     gimbal_pitch_stop_hold_and_reset_ramp();
     gimbal_pitch_set_enable(0U);
     gimbal_pitch_update_feedback();
+    if ((interrupt_state & 1U) == 0U) {
+        __enable_irq();
+    }
 }
 
 const GimbalFeedback *Gimbal_PitchGetFeedback(void)

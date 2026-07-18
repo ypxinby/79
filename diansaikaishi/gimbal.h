@@ -68,6 +68,8 @@ void Gimbal_PitchMoveRelativeDeg(float delta_deg);
 void Gimbal_PitchMoveToSteps(int64_t target_steps);
 void Gimbal_PitchSetTargetSteps(int64_t target_steps);
 void Gimbal_PitchMoveRelativeSteps(int32_t delta_steps);
+void Gimbal_PitchSetTrackingSpeedDegS(float speed_deg_s);
+void Gimbal_PitchStopTrackingHold(void);
 uint8_t Gimbal_PitchConfirmZero(void);
 void Gimbal_PitchStopHold(void);
 void Gimbal_PitchRelease(void);
