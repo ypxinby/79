@@ -4,6 +4,7 @@
 #include "car_controller.h"
 #include "car_state.h"
 #include "gimbal.h"
+#include "gimbal_tracker.h"
 #include "mission_manager.h"
 
 static OledPage g_oledPage;
@@ -20,6 +21,8 @@ static void menu_toggle_status_sensor_page(void)
         g_oledPage = OLED_PAGE_GIMBAL;
     } else if (g_oledPage == OLED_PAGE_GIMBAL) {
         g_oledPage = OLED_PAGE_GIMBAL_PITCH;
+    } else if (g_oledPage == OLED_PAGE_GIMBAL_PITCH) {
+        g_oledPage = OLED_PAGE_GIMBAL_TRACKER;
 #endif
     } else {
         g_oledPage = OLED_PAGE_STATUS;
@@ -81,6 +84,61 @@ static void menu_handle_status_key(KeyEvent event)
     CarState state = CarState_Get();
 
 #if FEATURE_GIMBAL_OLED_TEST
+    if (g_oledPage == OLED_PAGE_GIMBAL_TRACKER) {
+        static uint16_t trackerSequence;
+
+        switch (event) {
+            case KEY1_SHORT:
+                menu_toggle_status_sensor_page();
+                break;
+            case KEY1_LONG:
+                g_oledPage = OLED_PAGE_PARAM;
+                CarState_Set(CAR_STATE_MENU);
+                break;
+            case KEY2_SHORT:
+            {
+                GimbalTargetObservation observation = {
+                    .error_x_px = 80,
+                    .error_y_px = 0,
+                    .valid = 1U,
+                    .sequence = ++trackerSequence,
+                    .timestamp_ms = 0U
+                };
+
+                GimbalTracker_PushObservation(&observation);
+                break;
+            }
+            case KEY2_LONG:
+            {
+                const GimbalTrackerFeedback *tracker =
+                    GimbalTracker_GetFeedback();
+
+                GimbalTracker_Enable(
+                    (tracker->enabled == 0U) ? 1U : 0U);
+                break;
+            }
+            case KEY3_SHORT:
+            {
+                GimbalTargetObservation observation = {
+                    .error_x_px = -80,
+                    .error_y_px = 0,
+                    .valid = 1U,
+                    .sequence = ++trackerSequence,
+                    .timestamp_ms = 0U
+                };
+
+                GimbalTracker_PushObservation(&observation);
+                break;
+            }
+            case KEY3_LONG:
+                GimbalTracker_ClearObservation();
+                break;
+            default:
+                break;
+        }
+        return;
+    }
+
     if ((g_oledPage == OLED_PAGE_GIMBAL) ||
         (g_oledPage == OLED_PAGE_GIMBAL_PITCH)) {
         switch (event) {

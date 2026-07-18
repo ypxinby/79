@@ -5,6 +5,7 @@
 #include "car_controller.h"
 #include "car_state.h"
 #include "gimbal.h"
+#include "gimbal_tracker.h"
 #include "heading_control.h"
 #include "imu.h"
 #include "menu.h"
@@ -464,6 +465,36 @@ static void print_gimbal_pitch_page(void)
     OLED_PrintString(" H:");
     OLED_PrintInt16((int16_t)gimbal->step_half_period_ticks);
 }
+
+static void print_gimbal_tracker_page(void)
+{
+    const GimbalTrackerFeedback *tracker =
+        GimbalTracker_GetFeedback();
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("GTRK P23X E:");
+    OLED_PrintInt16((int16_t)tracker->enabled);
+    OLED_PrintString(" V:");
+    OLED_PrintInt16((int16_t)tracker->target_valid);
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("EX:");
+    OLED_PrintInt16(tracker->raw_error_x_px);
+    OLED_PrintString(" FX:");
+    OLED_PrintInt16(tracker->filtered_error_x_px);
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("YS:");
+    OLED_PrintInt16(tracker->yaw_speed_deg_s_x10);
+    OLED_PrintString(" YD:");
+    OLED_PrintInt16(tracker->yaw_delta_deg_x10);
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("YT:");
+    OLED_PrintInt16(tracker->yaw_target_deg_x10);
+    OLED_PrintString(" DB:");
+    OLED_PrintInt16((int16_t)tracker->yaw_deadbanded);
+}
 #endif
 
 void OledUi_Init(void)
@@ -511,6 +542,13 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
         case OLED_PAGE_GIMBAL_PITCH:
 #if FEATURE_GIMBAL_OLED_TEST
             print_gimbal_pitch_page();
+#else
+            print_status_page(raw, error, keyEvent);
+#endif
+            break;
+        case OLED_PAGE_GIMBAL_TRACKER:
+#if FEATURE_GIMBAL_OLED_TEST
+            print_gimbal_tracker_page();
 #else
             print_status_page(raw, error, keyEvent);
 #endif
