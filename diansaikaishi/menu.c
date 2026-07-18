@@ -100,7 +100,14 @@ static void menu_handle_status_key(KeyEvent event)
                 break;
             case KEY2_LONG:
                 if (g_oledPage == OLED_PAGE_GIMBAL_PITCH) {
-                    Gimbal_PitchStopHold();
+                    const GimbalFeedback *pitch = Gimbal_PitchGetFeedback();
+
+                    if (pitch->running != 0U) {
+                        Gimbal_PitchStopHold();
+                    } else {
+                        (void)Gimbal_PitchConfirmZero();
+                        Gimbal_PitchStopHold();
+                    }
                 } else {
                     Gimbal_YawStopHold();
                 }

@@ -16,8 +16,18 @@
 #define GIMBAL_PITCH_STEPS_PER_REV (3200LL)
 #define GIMBAL_PITCH_MAX_POSITION_RPM (4.0f)
 #define GIMBAL_PITCH_ACCEL_LIMIT_RPM_PER_S (10.0f)
-#define GIMBAL_PITCH_MIN_LIMIT_DEG_X10 (-900LL)
-#define GIMBAL_PITCH_MAX_LIMIT_DEG_X10 (900LL)
+/*
+ * PITCH uses a power-on relative zero:
+ * - Before power-on, manually place the pitch axis at mechanical center.
+ * - Gimbal_PitchInit() treats that position as 0 deg and 0 accumulated steps.
+ * - If the power-on position is not centered, this +/-50 deg software limit
+ *   shifts with that initial physical position.
+ *
+ * Current stage deliberately does not add limit switches, encoders, IMU
+ * homing, mechanical-boundary homing, or power-off position restore.
+ */
+#define GIMBAL_PITCH_MIN_LIMIT_DEG_X10 (-500LL)
+#define GIMBAL_PITCH_MAX_LIMIT_DEG_X10 (500LL)
 
 #ifndef GPIO_GIMBAL_PITCH_PORT
 #define GPIO_GIMBAL_PITCH_PORT                 (GPIOB)
@@ -76,6 +86,7 @@ static uint8_t g_pitchStepHigh;
 static uint8_t g_pitchRunning;
 static uint8_t g_pitchStopAfterStepLow;
 static uint8_t g_pitchLimitClamped;
+static int8_t g_pitchLimitDirection;
 static float g_pitchTargetRpm;
 static float g_pitchCommandedRpm;
 
@@ -244,15 +255,68 @@ static int64_t pitch_deg_x10_to_steps(int64_t deg_x10)
 
 static int64_t pitch_steps_to_deg_x10(int64_t steps)
 {
-    return (steps * GIMBAL_DEG_X10_PER_REV) / GIMBAL_PITCH_STEPS_PER_REV;
+    int64_t numerator = steps * GIMBAL_DEG_X10_PER_REV;
+
+    if (numerator >= 0) {
+        return (numerator + (GIMBAL_PITCH_STEPS_PER_REV / 2)) /
+            GIMBAL_PITCH_STEPS_PER_REV;
+    }
+    return (numerator - (GIMBAL_PITCH_STEPS_PER_REV / 2)) /
+        GIMBAL_PITCH_STEPS_PER_REV;
+}
+
+static int64_t gimbal_pitch_min_limit_steps(void)
+{
+    return pitch_deg_x10_to_steps(GIMBAL_PITCH_MIN_LIMIT_DEG_X10);
+}
+
+static int64_t gimbal_pitch_max_limit_steps(void)
+{
+    return pitch_deg_x10_to_steps(GIMBAL_PITCH_MAX_LIMIT_DEG_X10);
+}
+
+static int64_t gimbal_pitch_clamp_target_steps(int64_t requested_steps,
+    uint8_t *clamped, int8_t *limit_direction)
+{
+    int64_t min_steps = gimbal_pitch_min_limit_steps();
+    int64_t max_steps = gimbal_pitch_max_limit_steps();
+
+    if (requested_steps < min_steps) {
+        if (clamped != 0) {
+            *clamped = 1U;
+        }
+        if (limit_direction != 0) {
+            *limit_direction = -1;
+        }
+        return min_steps;
+    }
+    if (requested_steps > max_steps) {
+        if (clamped != 0) {
+            *clamped = 1U;
+        }
+        if (limit_direction != 0) {
+            *limit_direction = 1;
+        }
+        return max_steps;
+    }
+    if (clamped != 0) {
+        *clamped = 0U;
+    }
+    if (limit_direction != 0) {
+        *limit_direction = 0;
+    }
+    return requested_steps;
 }
 
 static int64_t gimbal_pitch_clamp_target_x10(int64_t target_deg_x10,
-    uint8_t *clamped)
+    uint8_t *clamped, int8_t *limit_direction)
 {
     if (target_deg_x10 < GIMBAL_PITCH_MIN_LIMIT_DEG_X10) {
         if (clamped != 0) {
             *clamped = 1U;
+        }
+        if (limit_direction != 0) {
+            *limit_direction = -1;
         }
         return GIMBAL_PITCH_MIN_LIMIT_DEG_X10;
     }
@@ -260,15 +324,24 @@ static int64_t gimbal_pitch_clamp_target_x10(int64_t target_deg_x10,
         if (clamped != 0) {
             *clamped = 1U;
         }
+        if (limit_direction != 0) {
+            *limit_direction = 1;
+        }
         return GIMBAL_PITCH_MAX_LIMIT_DEG_X10;
     }
     if (clamped != 0) {
         *clamped = 0U;
     }
+    if (limit_direction != 0) {
+        *limit_direction = 0;
+    }
     return target_deg_x10;
 }
 
 static void gimbal_pitch_ensure_initialized(void);
+static void gimbal_pitch_set_target_steps(int64_t requested_steps,
+    uint8_t reset_speed, uint8_t command_clamped,
+    int8_t command_limit_direction);
 
 static void gimbal_update_angle_from_steps(int64_t estimated_steps)
 {
@@ -320,6 +393,9 @@ static void gimbal_update_feedback(void)
     g_feedback.running = src->running;
     g_feedback.target_reached = src->target_reached;
     g_feedback.limit_clamped = 0U;
+    g_feedback.limit_direction = 0;
+    g_feedback.positive_limit = 0U;
+    g_feedback.negative_limit = 0U;
     g_feedback.position_valid = g_yawPositionValid;
     g_feedback.world_lock_enabled = g_yawWorldLockEnabled;
     if (src->running) {
@@ -407,6 +483,13 @@ static void gimbal_pitch_update_feedback(void)
     g_pitchFeedback.direction = g_pitchDirection;
     g_pitchFeedback.running = g_pitchRunning;
     g_pitchFeedback.limit_clamped = g_pitchLimitClamped;
+    g_pitchFeedback.limit_direction = g_pitchLimitDirection;
+    g_pitchFeedback.positive_limit =
+        (g_pitchEstimatedSteps >= gimbal_pitch_max_limit_steps()) ?
+            1U : 0U;
+    g_pitchFeedback.negative_limit =
+        (g_pitchEstimatedSteps <= gimbal_pitch_min_limit_steps()) ?
+            1U : 0U;
     g_pitchFeedback.position_valid = 1U;
     if (g_pitchRunning != 0U) {
         g_pitchFeedback.mode = GIMBAL_MODE_MOVING;
@@ -436,16 +519,38 @@ static void gimbal_pitch_stop_hold_internal(void)
 static void gimbal_pitch_set_target_x10(int64_t target_deg_x10,
     uint8_t reset_speed)
 {
+    uint8_t clamped;
+    int8_t limit_direction;
+    int64_t clamped_deg_x10 =
+        gimbal_pitch_clamp_target_x10(target_deg_x10, &clamped,
+            &limit_direction);
+    int64_t target_steps = pitch_deg_x10_to_steps(clamped_deg_x10);
+
+    gimbal_pitch_set_target_steps(target_steps, reset_speed, clamped,
+        limit_direction);
+}
+
+static void gimbal_pitch_set_target_steps(int64_t requested_steps,
+    uint8_t reset_speed, uint8_t command_clamped,
+    int8_t command_limit_direction)
+{
     int64_t delta_steps;
     int8_t next_direction;
     uint8_t clamped;
+    int8_t limit_direction;
 
     gimbal_pitch_ensure_initialized();
-    g_pitchTargetDegX10 =
-        gimbal_pitch_clamp_target_x10(target_deg_x10, &clamped);
-    g_pitchLimitClamped = clamped;
     g_pitchTargetEstimatedSteps =
-        pitch_deg_x10_to_steps(g_pitchTargetDegX10);
+        gimbal_pitch_clamp_target_steps(requested_steps, &clamped,
+            &limit_direction);
+    g_pitchLimitClamped =
+        ((command_clamped != 0U) || (clamped != 0U)) ? 1U : 0U;
+    if (command_limit_direction != 0) {
+        g_pitchLimitDirection = command_limit_direction;
+    } else {
+        g_pitchLimitDirection = limit_direction;
+    }
+    g_pitchTargetDegX10 = pitch_steps_to_deg_x10(g_pitchTargetEstimatedSteps);
     delta_steps = g_pitchTargetEstimatedSteps - g_pitchEstimatedSteps;
 
     if (delta_steps == 0) {
@@ -702,6 +807,11 @@ const GimbalFeedback *Gimbal_YawGetFeedback(void)
 
 void Gimbal_PitchInit(void)
 {
+    /*
+     * Scheme A: power-on relative zero. The physical pitch axis must be
+     * manually centered before power-on. From this point, software position
+     * starts at 0 deg and 0 accumulated steps.
+     */
     g_pitchContinuousDegX10 = 0;
     g_pitchTargetDegX10 = 0;
     g_pitchEstimatedSteps = 0;
@@ -714,6 +824,7 @@ void Gimbal_PitchInit(void)
     g_pitchRunning = 0U;
     g_pitchStopAfterStepLow = 0U;
     g_pitchLimitClamped = 0U;
+    g_pitchLimitDirection = 0;
     g_pitchTargetRpm = 0.0f;
     g_pitchCommandedRpm = 0.0f;
     gimbal_pitch_reset_feedback();
@@ -830,9 +941,31 @@ void Gimbal_PitchSetTargetDeg(float target_deg)
 
 void Gimbal_PitchMoveRelativeDeg(float delta_deg)
 {
+    int64_t delta_steps;
+
     gimbal_pitch_ensure_initialized();
     gimbal_pitch_update_feedback();
-    gimbal_pitch_move_to_x10(g_pitchTargetDegX10 + deg_to_x10(delta_deg));
+    delta_steps = pitch_deg_x10_to_steps(deg_to_x10(delta_deg));
+    gimbal_pitch_set_target_steps(g_pitchEstimatedSteps + delta_steps,
+        1U, 0U, 0);
+}
+
+void Gimbal_PitchMoveToSteps(int64_t target_steps)
+{
+    gimbal_pitch_set_target_steps(target_steps, 1U, 0U, 0);
+}
+
+void Gimbal_PitchSetTargetSteps(int64_t target_steps)
+{
+    gimbal_pitch_set_target_steps(target_steps, 0U, 0U, 0);
+}
+
+void Gimbal_PitchMoveRelativeSteps(int32_t delta_steps)
+{
+    gimbal_pitch_ensure_initialized();
+    gimbal_pitch_update_feedback();
+    gimbal_pitch_set_target_steps(
+        g_pitchEstimatedSteps + (int64_t)delta_steps, 0U, 0U, 0);
 }
 
 void Gimbal_PitchStopHold(void)
@@ -841,9 +974,37 @@ void Gimbal_PitchStopHold(void)
     g_pitchTargetDegX10 = g_pitchContinuousDegX10;
     g_pitchTargetEstimatedSteps = g_pitchEstimatedSteps;
     g_pitchLimitClamped = 0U;
+    g_pitchLimitDirection = 0;
     gimbal_pitch_stop_hold_internal();
     gimbal_pitch_set_enable(1U);
     gimbal_pitch_update_feedback();
+}
+
+uint8_t Gimbal_PitchConfirmZero(void)
+{
+    gimbal_pitch_ensure_initialized();
+    gimbal_pitch_update_feedback();
+
+    if (g_pitchRunning != 0U) {
+        return 0U;
+    }
+
+    DL_GPIO_clearPins(GPIO_GIMBAL_PITCH_PORT, GPIO_GIMBAL_PITCH_STEP_PIN);
+    g_pitchContinuousDegX10 = 0;
+    g_pitchTargetDegX10 = 0;
+    g_pitchEstimatedSteps = 0;
+    g_pitchTargetEstimatedSteps = 0;
+    g_pitchCompletedSteps = 0;
+    g_pitchHalfPeriodTicks = 0U;
+    g_pitchStepHalfPeriodTicks = 0U;
+    g_pitchStepHigh = 0U;
+    g_pitchStopAfterStepLow = 0U;
+    g_pitchTargetRpm = 0.0f;
+    g_pitchCommandedRpm = 0.0f;
+    g_pitchLimitClamped = 0U;
+    g_pitchLimitDirection = 0;
+    gimbal_pitch_update_feedback();
+    return 1U;
 }
 
 void Gimbal_PitchRelease(void)
@@ -853,6 +1014,7 @@ void Gimbal_PitchRelease(void)
     g_pitchTargetEstimatedSteps = g_pitchEstimatedSteps;
     g_pitchCompletedSteps = 0;
     g_pitchLimitClamped = 0U;
+    g_pitchLimitDirection = 0;
     gimbal_pitch_stop_hold_internal();
     gimbal_pitch_set_enable(0U);
     gimbal_pitch_update_feedback();

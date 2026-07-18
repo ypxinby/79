@@ -440,7 +440,7 @@ static void print_gimbal_pitch_page(void)
     const GimbalFeedback *gimbal = Gimbal_PitchGetFeedback();
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("GPIT P20");
+    OLED_PrintString("GPIT P21");
 
     OLED_SetCursor(2, 0);
     OLED_PrintString("T:");
@@ -454,7 +454,7 @@ static void print_gimbal_pitch_page(void)
     OLED_PrintString(" D:");
     OLED_PrintInt16((int16_t)gimbal->direction);
     OLED_PrintString(" L:");
-    OLED_PrintInt16((int16_t)gimbal->limit_clamped);
+    OLED_PrintInt16((int16_t)gimbal->limit_direction);
 
     OLED_SetCursor(6, 0);
     OLED_PrintString("M:");
