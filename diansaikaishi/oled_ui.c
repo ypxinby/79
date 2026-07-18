@@ -495,6 +495,37 @@ static void print_gimbal_tracker_page(void)
     OLED_PrintString(" DB:");
     OLED_PrintInt16((int16_t)tracker->yaw_deadbanded);
 }
+
+static void print_gimbal_tracker_pitch_page(void)
+{
+    const GimbalTrackerFeedback *tracker =
+        GimbalTracker_GetFeedback();
+    const GimbalFeedback *pitch = Gimbal_PitchGetFeedback();
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("GTRK P23Y E:");
+    OLED_PrintInt16((int16_t)tracker->enabled);
+    OLED_PrintString(" V:");
+    OLED_PrintInt16((int16_t)tracker->target_valid);
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("EY:");
+    OLED_PrintInt16(tracker->raw_error_y_px);
+    OLED_PrintString(" FY:");
+    OLED_PrintInt16(tracker->filtered_error_y_px);
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("PS:");
+    OLED_PrintInt16(tracker->pitch_speed_deg_s_x10);
+    OLED_PrintString(" PD:");
+    OLED_PrintInt16(tracker->pitch_delta_deg_x10);
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("PA:");
+    OLED_PrintInt16(pitch->continuous_deg_x10);
+    OLED_PrintString(" D:");
+    OLED_PrintInt16((int16_t)pitch->direction);
+}
 #endif
 
 void OledUi_Init(void)
@@ -549,6 +580,13 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
         case OLED_PAGE_GIMBAL_TRACKER:
 #if FEATURE_GIMBAL_OLED_TEST
             print_gimbal_tracker_page();
+#else
+            print_status_page(raw, error, keyEvent);
+#endif
+            break;
+        case OLED_PAGE_GIMBAL_TRACKER_PITCH:
+#if FEATURE_GIMBAL_OLED_TEST
+            print_gimbal_tracker_pitch_page();
 #else
             print_status_page(raw, error, keyEvent);
 #endif

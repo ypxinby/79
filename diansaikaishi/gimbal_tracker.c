@@ -13,7 +13,7 @@
 #define GIMBAL_TRACKER_MAX_PITCH_SPEED_DEG_S (20.0f)
 #define GIMBAL_TRACKER_MAX_YAW_DELTA_DEG     (1.0f)
 #define GIMBAL_TRACKER_MAX_PITCH_DELTA_DEG   (1.0f)
-#define GIMBAL_TRACKER_SIM_OBSERVATION_UPDATES (30U)
+#define GIMBAL_TRACKER_SIM_OBSERVATION_UPDATES (50U)
 
 /*
  * Direction mapping is intentionally centralized here for P23实测校正.
@@ -177,6 +177,7 @@ void GimbalTracker_Enable(uint8_t enable)
     g_enabled = (enable != 0U) ? 1U : 0U;
     if (g_enabled == 0U) {
         stop_tracking_hold();
+        sync_targets_from_gimbal();
         g_filterReady = 0U;
     } else {
         sync_targets_from_gimbal();
@@ -202,11 +203,13 @@ void GimbalTracker_PushObservation(
         g_feedback.pitch_deadbanded = 0U;
         g_feedback.command_limited = 0U;
     } else if (g_observation.timestamp_ms == 0U) {
+        sync_targets_from_gimbal();
         /*
-         * P23按键模拟输入没有真实时间戳。为了避免短按一次后
-         * 固定error被Tracker永久复用，timestamp=0的模拟Observation
-         * 只保持约300ms；真实K230观测后续应填入非0时间戳并连续刷新。
+         * P23 key simulation has no real timestamp. Keep timestamp=0 input
+         * active for about 500 ms, and restart from the current gimbal
+         * position with a fresh filter for every K2/K3 press.
          */
+        g_filterReady = 0U;
         g_simObservationUpdatesRemaining =
             GIMBAL_TRACKER_SIM_OBSERVATION_UPDATES;
     } else {

@@ -23,6 +23,8 @@ static void menu_toggle_status_sensor_page(void)
         g_oledPage = OLED_PAGE_GIMBAL_PITCH;
     } else if (g_oledPage == OLED_PAGE_GIMBAL_PITCH) {
         g_oledPage = OLED_PAGE_GIMBAL_TRACKER;
+    } else if (g_oledPage == OLED_PAGE_GIMBAL_TRACKER) {
+        g_oledPage = OLED_PAGE_GIMBAL_TRACKER_PITCH;
 #endif
     } else {
         g_oledPage = OLED_PAGE_STATUS;
@@ -84,7 +86,8 @@ static void menu_handle_status_key(KeyEvent event)
     CarState state = CarState_Get();
 
 #if FEATURE_GIMBAL_OLED_TEST
-    if (g_oledPage == OLED_PAGE_GIMBAL_TRACKER) {
+    if ((g_oledPage == OLED_PAGE_GIMBAL_TRACKER) ||
+        (g_oledPage == OLED_PAGE_GIMBAL_TRACKER_PITCH)) {
         static uint16_t trackerSequence;
 
         switch (event) {
@@ -98,8 +101,12 @@ static void menu_handle_status_key(KeyEvent event)
             case KEY2_SHORT:
             {
                 GimbalTargetObservation observation = {
-                    .error_x_px = 80,
-                    .error_y_px = 0,
+                    .error_x_px =
+                        (g_oledPage == OLED_PAGE_GIMBAL_TRACKER) ?
+                            80 : 0,
+                    .error_y_px =
+                        (g_oledPage == OLED_PAGE_GIMBAL_TRACKER_PITCH) ?
+                            240 : 0,
                     .valid = 1U,
                     .sequence = ++trackerSequence,
                     .timestamp_ms = 0U
@@ -120,8 +127,12 @@ static void menu_handle_status_key(KeyEvent event)
             case KEY3_SHORT:
             {
                 GimbalTargetObservation observation = {
-                    .error_x_px = -80,
-                    .error_y_px = 0,
+                    .error_x_px =
+                        (g_oledPage == OLED_PAGE_GIMBAL_TRACKER) ?
+                            -80 : 0,
+                    .error_y_px =
+                        (g_oledPage == OLED_PAGE_GIMBAL_TRACKER_PITCH) ?
+                            -240 : 0,
                     .valid = 1U,
                     .sequence = ++trackerSequence,
                     .timestamp_ms = 0U

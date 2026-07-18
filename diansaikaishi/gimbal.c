@@ -502,17 +502,29 @@ static void gimbal_pitch_update_feedback(void)
 
 static void gimbal_pitch_stop_hold_internal(void)
 {
+    /*
+     * Internal target-reached stops keep the same-direction speed ramp so a
+     * 10 ms tracker target refresh does not have to accelerate from zero for
+     * every one- or two-step target. Direction changes reset the ramp in
+     * gimbal_pitch_set_target_steps() before DIR is switched.
+     */
     DL_GPIO_clearPins(GPIO_GIMBAL_PITCH_PORT, GPIO_GIMBAL_PITCH_STEP_PIN);
     g_pitchHalfPeriodTicks = 0U;
-    g_pitchStepHalfPeriodTicks = 0U;
     g_pitchStepHigh = 0U;
     g_pitchRunning = 0U;
     g_pitchStopAfterStepLow = 0U;
-    g_pitchTargetRpm = 0.0f;
-    g_pitchCommandedRpm = 0.0f;
     g_pitchFeedback.running = 0U;
     g_pitchFeedback.target_reached =
         (g_pitchEstimatedSteps == g_pitchTargetEstimatedSteps) ? 1U : 0U;
+    gimbal_pitch_update_feedback();
+}
+
+static void gimbal_pitch_stop_hold_and_reset_ramp(void)
+{
+    gimbal_pitch_stop_hold_internal();
+    g_pitchStepHalfPeriodTicks = 0U;
+    g_pitchTargetRpm = 0.0f;
+    g_pitchCommandedRpm = 0.0f;
     gimbal_pitch_update_feedback();
 }
 
@@ -562,12 +574,27 @@ static void gimbal_pitch_set_target_steps(int64_t requested_steps,
     }
 
     next_direction = (delta_steps < 0) ? -1 : 1;
-    g_pitchCompletedSteps = 0;
-    if ((reset_speed == 0U) && (g_pitchStepHigh != 0U) &&
-        (next_direction != g_pitchDirection)) {
-        DL_GPIO_clearPins(GPIO_GIMBAL_PITCH_PORT,
-            GPIO_GIMBAL_PITCH_STEP_PIN);
-        g_pitchStepHigh = 0U;
+    if (next_direction != g_pitchDirection) {
+        /*
+         * A stopped axis may still retain the previous same-direction ramp.
+         * Reset it before changing DIR, otherwise rpm_matches_direction()
+         * suppresses all reverse STEP pulses until the stale RPM crosses 0.
+         */
+        gimbal_pitch_stop_hold_and_reset_ramp();
+        delta_steps = g_pitchTargetEstimatedSteps - g_pitchEstimatedSteps;
+        if (delta_steps == 0) {
+            g_pitchCompletedSteps = 0;
+            g_pitchFeedback.completed_steps = 0;
+            g_pitchFeedback.target_reached = 1U;
+            return;
+        }
+        next_direction = (delta_steps < 0) ? -1 : 1;
+    }
+
+    if (g_pitchRunning == 0U) {
+        gimbal_pitch_stop_hold_internal();
+        g_pitchCompletedSteps = 0;
+        g_pitchFeedback.completed_steps = 0;
         g_pitchHalfPeriodTicks = 0U;
     }
     g_pitchDirection = next_direction;
@@ -975,7 +1002,7 @@ void Gimbal_PitchStopHold(void)
     g_pitchTargetEstimatedSteps = g_pitchEstimatedSteps;
     g_pitchLimitClamped = 0U;
     g_pitchLimitDirection = 0;
-    gimbal_pitch_stop_hold_internal();
+    gimbal_pitch_stop_hold_and_reset_ramp();
     gimbal_pitch_set_enable(1U);
     gimbal_pitch_update_feedback();
 }
@@ -1015,7 +1042,7 @@ void Gimbal_PitchRelease(void)
     g_pitchCompletedSteps = 0;
     g_pitchLimitClamped = 0U;
     g_pitchLimitDirection = 0;
-    gimbal_pitch_stop_hold_internal();
+    gimbal_pitch_stop_hold_and_reset_ramp();
     gimbal_pitch_set_enable(0U);
     gimbal_pitch_update_feedback();
 }
