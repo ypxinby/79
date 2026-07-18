@@ -13,6 +13,7 @@
 #define GIMBAL_TRACKER_MAX_PITCH_SPEED_DEG_S (20.0f)
 #define GIMBAL_TRACKER_MAX_YAW_DELTA_DEG     (1.0f)
 #define GIMBAL_TRACKER_MAX_PITCH_DELTA_DEG   (1.0f)
+#define GIMBAL_TRACKER_SIM_OBSERVATION_UPDATES (30U)
 
 /*
  * Direction mapping is intentionally centralized here for P23实测校正.
@@ -35,6 +36,7 @@ static uint8_t g_targetValid;
 static uint8_t g_trackingActive;
 static uint8_t g_filterReady;
 static uint8_t g_targetsSynced;
+static uint8_t g_simObservationUpdatesRemaining;
 
 static float abs_f32(float value)
 {
@@ -165,6 +167,7 @@ void GimbalTracker_Init(void)
     g_trackingActive = 0U;
     g_filterReady = 0U;
     g_targetsSynced = 0U;
+    g_simObservationUpdatesRemaining = 0U;
     sync_targets_from_gimbal();
     update_feedback(0.0f, 0.0f, 0.0f, 0.0f);
 }
@@ -194,9 +197,20 @@ void GimbalTracker_PushObservation(
     g_targetValid = g_observation.valid;
     if (g_targetValid == 0U) {
         g_filterReady = 0U;
+        g_simObservationUpdatesRemaining = 0U;
         g_feedback.yaw_deadbanded = 0U;
         g_feedback.pitch_deadbanded = 0U;
         g_feedback.command_limited = 0U;
+    } else if (g_observation.timestamp_ms == 0U) {
+        /*
+         * P23按键模拟输入没有真实时间戳。为了避免短按一次后
+         * 固定error被Tracker永久复用，timestamp=0的模拟Observation
+         * 只保持约300ms；真实K230观测后续应填入非0时间戳并连续刷新。
+         */
+        g_simObservationUpdatesRemaining =
+            GIMBAL_TRACKER_SIM_OBSERVATION_UPDATES;
+    } else {
+        g_simObservationUpdatesRemaining = 0U;
     }
     update_feedback(0.0f, 0.0f, 0.0f, 0.0f);
 }
@@ -206,6 +220,7 @@ void GimbalTracker_ClearObservation(void)
     g_observation.valid = 0U;
     g_targetValid = 0U;
     g_filterReady = 0U;
+    g_simObservationUpdatesRemaining = 0U;
     g_feedback.yaw_deadbanded = 0U;
     g_feedback.pitch_deadbanded = 0U;
     g_feedback.command_limited = 0U;
@@ -310,6 +325,17 @@ void GimbalTracker_Update(float dt_s)
     g_feedback.pitch_deadbanded = pitch_deadbanded;
     g_feedback.command_limited = command_limited;
     update_feedback(yaw_speed, pitch_speed, yaw_delta, pitch_delta);
+
+    if (g_simObservationUpdatesRemaining != 0U) {
+        g_simObservationUpdatesRemaining--;
+        if (g_simObservationUpdatesRemaining == 0U) {
+            g_observation.valid = 0U;
+            g_targetValid = 0U;
+            g_filterReady = 0U;
+            stop_tracking_hold();
+            update_feedback(0.0f, 0.0f, 0.0f, 0.0f);
+        }
+    }
 }
 
 const GimbalTrackerFeedback *GimbalTracker_GetFeedback(void)
