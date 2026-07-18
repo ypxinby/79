@@ -14,7 +14,10 @@
 #define GIMBAL_LOCK_ACCEL_LIMIT_RPM_PER_S (30.0f)
 #define GIMBAL_TICK_HZ         (10000.0f)
 #define GIMBAL_PITCH_STEPS_PER_REV (3200LL)
-#define GIMBAL_PITCH_STEP_HALF_PERIOD_TICKS (25U)
+#define GIMBAL_PITCH_MAX_POSITION_RPM (4.0f)
+#define GIMBAL_PITCH_ACCEL_LIMIT_RPM_PER_S (10.0f)
+#define GIMBAL_PITCH_MIN_LIMIT_DEG_X10 (-300LL)
+#define GIMBAL_PITCH_MAX_LIMIT_DEG_X10 (300LL)
 
 #ifndef GPIO_GIMBAL_PITCH_PORT
 #define GPIO_GIMBAL_PITCH_PORT                 (GPIOB)
@@ -67,10 +70,14 @@ static int64_t g_pitchEstimatedSteps;
 static int64_t g_pitchTargetEstimatedSteps;
 static int32_t g_pitchCompletedSteps;
 static uint16_t g_pitchHalfPeriodTicks;
+static uint16_t g_pitchStepHalfPeriodTicks;
 static int8_t g_pitchDirection;
 static uint8_t g_pitchStepHigh;
 static uint8_t g_pitchRunning;
 static uint8_t g_pitchStopAfterStepLow;
+static uint8_t g_pitchLimitClamped;
+static float g_pitchTargetRpm;
+static float g_pitchCommandedRpm;
 
 static int16_t clamp_i16(int64_t value)
 {
@@ -131,6 +138,30 @@ static uint16_t rpm_to_half_period_ticks(float rpm)
 
     step_frequency_hz =
         (abs_rpm * (float)GIMBAL_STEPS_PER_REV) / 60.0f;
+    half_period_ticks =
+        GIMBAL_TICK_HZ / (2.0f * step_frequency_hz);
+
+    if (half_period_ticks < 1.0f) {
+        return 1U;
+    }
+    if (half_period_ticks > 65535.0f) {
+        return 65535U;
+    }
+    return (uint16_t)(half_period_ticks + 0.5f);
+}
+
+static uint16_t pitch_rpm_to_half_period_ticks(float rpm)
+{
+    float abs_rpm = abs_f32(rpm);
+    float step_frequency_hz;
+    float half_period_ticks;
+
+    if (abs_rpm < GIMBAL_MIN_EFFECTIVE_RPM) {
+        return 0U;
+    }
+
+    step_frequency_hz =
+        (abs_rpm * (float)GIMBAL_PITCH_STEPS_PER_REV) / 60.0f;
     half_period_ticks =
         GIMBAL_TICK_HZ / (2.0f * step_frequency_hz);
 
@@ -211,6 +242,32 @@ static int64_t pitch_deg_x10_to_steps(int64_t deg_x10)
         GIMBAL_DEG_X10_PER_REV;
 }
 
+static int64_t pitch_steps_to_deg_x10(int64_t steps)
+{
+    return (steps * GIMBAL_DEG_X10_PER_REV) / GIMBAL_PITCH_STEPS_PER_REV;
+}
+
+static int64_t gimbal_pitch_clamp_target_x10(int64_t target_deg_x10,
+    uint8_t *clamped)
+{
+    if (target_deg_x10 < GIMBAL_PITCH_MIN_LIMIT_DEG_X10) {
+        if (clamped != 0) {
+            *clamped = 1U;
+        }
+        return GIMBAL_PITCH_MIN_LIMIT_DEG_X10;
+    }
+    if (target_deg_x10 > GIMBAL_PITCH_MAX_LIMIT_DEG_X10) {
+        if (clamped != 0) {
+            *clamped = 1U;
+        }
+        return GIMBAL_PITCH_MAX_LIMIT_DEG_X10;
+    }
+    if (clamped != 0) {
+        *clamped = 0U;
+    }
+    return target_deg_x10;
+}
+
 static void gimbal_pitch_ensure_initialized(void);
 
 static void gimbal_update_angle_from_steps(int64_t estimated_steps)
@@ -277,6 +334,10 @@ static void gimbal_update_feedback(void)
 static void gimbal_pitch_reset_feedback(void)
 {
     g_pitchFeedback = (GimbalFeedback){0};
+    g_pitchFeedback.min_limit_deg_x10 =
+        (int16_t)GIMBAL_PITCH_MIN_LIMIT_DEG_X10;
+    g_pitchFeedback.max_limit_deg_x10 =
+        (int16_t)GIMBAL_PITCH_MAX_LIMIT_DEG_X10;
     g_pitchFeedback.mode = GIMBAL_MODE_RELEASED;
     g_pitchFeedback.target_reached = 1U;
     g_pitchFeedback.position_valid = 0U;
@@ -321,7 +382,7 @@ static void gimbal_pitch_set_dir(int8_t direction)
 static void gimbal_pitch_update_feedback(void)
 {
     g_pitchContinuousDegX10 =
-        steps_to_deg_x10(g_pitchEstimatedSteps);
+        pitch_steps_to_deg_x10(g_pitchEstimatedSteps);
     g_pitchFeedback.estimated_steps = g_pitchEstimatedSteps;
     g_pitchFeedback.target_steps = (int32_t)(
         g_pitchTargetEstimatedSteps - g_pitchEstimatedSteps);
@@ -335,10 +396,17 @@ static void gimbal_pitch_update_feedback(void)
         clamp_i16(g_pitchContinuousDegX10);
     g_pitchFeedback.wrapped_deg_x10 =
         clamp_i16(wrap_x10_360(g_pitchContinuousDegX10));
+    g_pitchFeedback.min_limit_deg_x10 =
+        (int16_t)GIMBAL_PITCH_MIN_LIMIT_DEG_X10;
+    g_pitchFeedback.max_limit_deg_x10 =
+        (int16_t)GIMBAL_PITCH_MAX_LIMIT_DEG_X10;
+    g_pitchFeedback.target_rpm_x10 = rpm_to_x10(g_pitchTargetRpm);
+    g_pitchFeedback.commanded_rpm_x10 = rpm_to_x10(g_pitchCommandedRpm);
     g_pitchFeedback.step_half_period_ticks =
-        g_pitchRunning ? GIMBAL_PITCH_STEP_HALF_PERIOD_TICKS : 0U;
+        g_pitchRunning ? g_pitchStepHalfPeriodTicks : 0U;
     g_pitchFeedback.direction = g_pitchDirection;
     g_pitchFeedback.running = g_pitchRunning;
+    g_pitchFeedback.limit_clamped = g_pitchLimitClamped;
     g_pitchFeedback.position_valid = 1U;
     if (g_pitchRunning != 0U) {
         g_pitchFeedback.mode = GIMBAL_MODE_MOVING;
@@ -353,21 +421,29 @@ static void gimbal_pitch_stop_hold_internal(void)
 {
     DL_GPIO_clearPins(GPIO_GIMBAL_PITCH_PORT, GPIO_GIMBAL_PITCH_STEP_PIN);
     g_pitchHalfPeriodTicks = 0U;
+    g_pitchStepHalfPeriodTicks = 0U;
     g_pitchStepHigh = 0U;
     g_pitchRunning = 0U;
     g_pitchStopAfterStepLow = 0U;
+    g_pitchTargetRpm = 0.0f;
+    g_pitchCommandedRpm = 0.0f;
     g_pitchFeedback.running = 0U;
     g_pitchFeedback.target_reached =
         (g_pitchEstimatedSteps == g_pitchTargetEstimatedSteps) ? 1U : 0U;
     gimbal_pitch_update_feedback();
 }
 
-static void gimbal_pitch_move_to_x10(int64_t target_deg_x10)
+static void gimbal_pitch_set_target_x10(int64_t target_deg_x10,
+    uint8_t reset_speed)
 {
     int64_t delta_steps;
+    int8_t next_direction;
+    uint8_t clamped;
 
     gimbal_pitch_ensure_initialized();
-    g_pitchTargetDegX10 = target_deg_x10;
+    g_pitchTargetDegX10 =
+        gimbal_pitch_clamp_target_x10(target_deg_x10, &clamped);
+    g_pitchLimitClamped = clamped;
     g_pitchTargetEstimatedSteps =
         pitch_deg_x10_to_steps(g_pitchTargetDegX10);
     delta_steps = g_pitchTargetEstimatedSteps - g_pitchEstimatedSteps;
@@ -380,16 +456,34 @@ static void gimbal_pitch_move_to_x10(int64_t target_deg_x10)
         return;
     }
 
-    g_pitchDirection = (delta_steps < 0) ? -1 : 1;
+    next_direction = (delta_steps < 0) ? -1 : 1;
     g_pitchCompletedSteps = 0;
-    g_pitchHalfPeriodTicks = 0U;
-    g_pitchStepHigh = 0U;
+    if ((reset_speed == 0U) && (g_pitchStepHigh != 0U) &&
+        (next_direction != g_pitchDirection)) {
+        DL_GPIO_clearPins(GPIO_GIMBAL_PITCH_PORT,
+            GPIO_GIMBAL_PITCH_STEP_PIN);
+        g_pitchStepHigh = 0U;
+        g_pitchHalfPeriodTicks = 0U;
+    }
+    g_pitchDirection = next_direction;
+    if (reset_speed != 0U) {
+        g_pitchHalfPeriodTicks = 0U;
+        g_pitchStepHigh = 0U;
+        g_pitchTargetRpm = 0.0f;
+        g_pitchCommandedRpm = 0.0f;
+        g_pitchStepHalfPeriodTicks = 0U;
+    }
     g_pitchStopAfterStepLow = 0U;
     g_pitchFeedback.target_reached = 0U;
     gimbal_pitch_set_dir(g_pitchDirection);
     gimbal_pitch_set_enable(1U);
     g_pitchRunning = 1U;
     gimbal_pitch_update_feedback();
+}
+
+static void gimbal_pitch_move_to_x10(int64_t target_deg_x10)
+{
+    gimbal_pitch_set_target_x10(target_deg_x10, 1U);
 }
 
 static void gimbal_pitch_ensure_initialized(void)
@@ -614,10 +708,14 @@ void Gimbal_PitchInit(void)
     g_pitchTargetEstimatedSteps = 0;
     g_pitchCompletedSteps = 0;
     g_pitchHalfPeriodTicks = 0U;
+    g_pitchStepHalfPeriodTicks = 0U;
     g_pitchDirection = 1;
     g_pitchStepHigh = 0U;
     g_pitchRunning = 0U;
     g_pitchStopAfterStepLow = 0U;
+    g_pitchLimitClamped = 0U;
+    g_pitchTargetRpm = 0.0f;
+    g_pitchCommandedRpm = 0.0f;
     gimbal_pitch_reset_feedback();
 
     DL_GPIO_initDigitalOutput(GPIO_GIMBAL_PITCH_STEP_IOMUX);
@@ -642,8 +740,12 @@ void Gimbal_PitchTick100us(void)
         return;
     }
 
+    if (g_pitchStepHalfPeriodTicks == 0U) {
+        return;
+    }
+
     g_pitchHalfPeriodTicks++;
-    if (g_pitchHalfPeriodTicks < GIMBAL_PITCH_STEP_HALF_PERIOD_TICKS) {
+    if (g_pitchHalfPeriodTicks < g_pitchStepHalfPeriodTicks) {
         return;
     }
 
@@ -674,14 +776,56 @@ void Gimbal_PitchTick100us(void)
 
 void Gimbal_PitchUpdate5ms(void)
 {
+    float rpm_diff;
+    float max_delta_rpm;
+
     gimbal_pitch_ensure_initialized();
     g_pitchFeedback.control_tick_5ms++;
+
+    if (g_pitchRunning != 0U) {
+        g_pitchTargetRpm =
+            (g_pitchDirection >= 0) ?
+                GIMBAL_PITCH_MAX_POSITION_RPM :
+                -GIMBAL_PITCH_MAX_POSITION_RPM;
+    } else {
+        g_pitchTargetRpm = 0.0f;
+    }
+
+    max_delta_rpm =
+        GIMBAL_PITCH_ACCEL_LIMIT_RPM_PER_S * GIMBAL_CONTROL_DT_S;
+    rpm_diff = g_pitchTargetRpm - g_pitchCommandedRpm;
+    if (rpm_diff > max_delta_rpm) {
+        rpm_diff = max_delta_rpm;
+    } else if (rpm_diff < -max_delta_rpm) {
+        rpm_diff = -max_delta_rpm;
+    }
+    g_pitchCommandedRpm += rpm_diff;
+
+    if ((g_pitchRunning == 0U) &&
+        (abs_f32(g_pitchCommandedRpm) < GIMBAL_MIN_EFFECTIVE_RPM)) {
+        g_pitchCommandedRpm = 0.0f;
+    }
+
+    if ((g_pitchRunning != 0U) &&
+        (rpm_matches_direction(g_pitchCommandedRpm,
+            g_pitchDirection) != 0U)) {
+        g_pitchStepHalfPeriodTicks =
+            pitch_rpm_to_half_period_ticks(g_pitchCommandedRpm);
+    } else {
+        g_pitchStepHalfPeriodTicks = 0U;
+    }
+
     gimbal_pitch_update_feedback();
 }
 
 void Gimbal_PitchMoveToDeg(float target_deg)
 {
     gimbal_pitch_move_to_x10(deg_to_x10(target_deg));
+}
+
+void Gimbal_PitchSetTargetDeg(float target_deg)
+{
+    gimbal_pitch_set_target_x10(deg_to_x10(target_deg), 0U);
 }
 
 void Gimbal_PitchMoveRelativeDeg(float delta_deg)
@@ -696,6 +840,7 @@ void Gimbal_PitchStopHold(void)
     gimbal_pitch_ensure_initialized();
     g_pitchTargetDegX10 = g_pitchContinuousDegX10;
     g_pitchTargetEstimatedSteps = g_pitchEstimatedSteps;
+    g_pitchLimitClamped = 0U;
     gimbal_pitch_stop_hold_internal();
     gimbal_pitch_set_enable(1U);
     gimbal_pitch_update_feedback();
@@ -707,6 +852,7 @@ void Gimbal_PitchRelease(void)
     g_pitchTargetDegX10 = g_pitchContinuousDegX10;
     g_pitchTargetEstimatedSteps = g_pitchEstimatedSteps;
     g_pitchCompletedSteps = 0;
+    g_pitchLimitClamped = 0U;
     gimbal_pitch_stop_hold_internal();
     gimbal_pitch_set_enable(0U);
     gimbal_pitch_update_feedback();
@@ -753,7 +899,7 @@ void Gimbal_SetWrappedYawPitchTargetDeg(float yaw_wrapped_deg,
     float pitch_deg)
 {
     Gimbal_YawSetWrappedTargetDeg(yaw_wrapped_deg);
-    Gimbal_PitchMoveToDeg(pitch_deg);
+    Gimbal_PitchSetTargetDeg(pitch_deg);
 }
 
 void Gimbal_MoveRelativeYawPitchDeg(float yaw_delta_deg,

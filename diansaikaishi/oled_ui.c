@@ -440,7 +440,7 @@ static void print_gimbal_pitch_page(void)
     const GimbalFeedback *gimbal = Gimbal_PitchGetFeedback();
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("GPIT P18");
+    OLED_PrintString("GPIT P20");
 
     OLED_SetCursor(2, 0);
     OLED_PrintString("T:");
@@ -453,12 +453,14 @@ static void print_gimbal_pitch_page(void)
     OLED_PrintInt16(clamp_display_i16((int32_t)gimbal->estimated_steps));
     OLED_PrintString(" D:");
     OLED_PrintInt16((int16_t)gimbal->direction);
+    OLED_PrintString(" L:");
+    OLED_PrintInt16((int16_t)gimbal->limit_clamped);
 
     OLED_SetCursor(6, 0);
     OLED_PrintString("M:");
     OLED_PrintString(gimbal_mode_to_string(gimbal->mode));
-    OLED_PrintString(" E:");
-    OLED_PrintInt16((int16_t)gimbal->enabled);
+    OLED_PrintString(" R:");
+    OLED_PrintInt16(gimbal->commanded_rpm_x10);
     OLED_PrintString(" H:");
     OLED_PrintInt16((int16_t)gimbal->step_half_period_ticks);
 }

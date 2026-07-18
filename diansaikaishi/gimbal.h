@@ -60,6 +60,7 @@ void Gimbal_PitchInit(void);
 void Gimbal_PitchTick100us(void);
 void Gimbal_PitchUpdate5ms(void);
 void Gimbal_PitchMoveToDeg(float target_deg);
+void Gimbal_PitchSetTargetDeg(float target_deg);
 void Gimbal_PitchMoveRelativeDeg(float delta_deg);
 void Gimbal_PitchStopHold(void);
 void Gimbal_PitchRelease(void);
