@@ -6,6 +6,7 @@
 #include "car_state.h"
 #include "encoder.h"
 #include "gimbal.h"
+#include "gimbal_tracker.h"
 #include "heading_control.h"
 #include "imu.h"
 #include "key.h"
@@ -55,6 +56,7 @@ void App_Init(void)
 {
     Motor_Init();
     Gimbal_Init();
+    GimbalTracker_Init();
     Encoder_Reset();
     AppConfig_InitDefault();
 #if ENABLE_IMU

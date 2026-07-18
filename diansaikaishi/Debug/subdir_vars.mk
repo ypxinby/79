@@ -19,6 +19,7 @@ C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/m0p/startup_system_files/ticlan
 ../encoder.c \
 ../gimbal.c \
 ../gimbal_stepper.c \
+../gimbal_tracker.c \
 ../heading_control.c \
 ../imu.c \
 ../key.c \
@@ -57,6 +58,7 @@ C_DEPS += \
 ./encoder.d \
 ./gimbal.d \
 ./gimbal_stepper.d \
+./gimbal_tracker.d \
 ./heading_control.d \
 ./imu.d \
 ./key.d \
@@ -90,6 +92,7 @@ OBJS += \
 ./encoder.o \
 ./gimbal.o \
 ./gimbal_stepper.o \
+./gimbal_tracker.o \
 ./heading_control.o \
 ./imu.o \
 ./key.o \
@@ -125,6 +128,7 @@ OBJS__QUOTED += \
 "encoder.o" \
 "gimbal.o" \
 "gimbal_stepper.o" \
+"gimbal_tracker.o" \
 "heading_control.o" \
 "imu.o" \
 "key.o" \
@@ -160,6 +164,7 @@ C_DEPS__QUOTED += \
 "encoder.d" \
 "gimbal.d" \
 "gimbal_stepper.d" \
+"gimbal_tracker.d" \
 "heading_control.d" \
 "imu.d" \
 "key.d" \
@@ -195,6 +200,7 @@ C_SRCS__QUOTED += \
 "../encoder.c" \
 "../gimbal.c" \
 "../gimbal_stepper.c" \
+"../gimbal_tracker.c" \
 "../heading_control.c" \
 "../imu.c" \
 "../key.c" \
