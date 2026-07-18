@@ -316,8 +316,14 @@ void GimbalTracker_Update(float dt_s)
     Gimbal_PitchSetTrackingSpeedDegS(pitch_speed);
 
     {
+        const GimbalFeedback *yaw = Gimbal_YawGetFeedback();
         const GimbalFeedback *pitch = Gimbal_PitchGetFeedback();
 
+        if ((yaw->position_valid == 0U) ||
+            (yaw->limit_clamped != 0U)) {
+            g_yawTargetWrappedDeg =
+                wrap_deg_360((float)yaw->wrapped_deg_x10 / 10.0f);
+        }
         g_pitchTargetDeg = (float)pitch->continuous_deg_x10 / 10.0f;
     }
 

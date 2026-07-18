@@ -226,6 +226,39 @@ void GimbalStepper_MoveRelativeDeg(float delta_deg)
     gimbal_stepper_start_to_estimated_steps(g_stepperEstimatedSteps + steps);
 }
 
+uint8_t GimbalStepper_ConfirmZero(void)
+{
+    uint32_t interrupt_state = __get_PRIMASK();
+
+    __disable_irq();
+    if (g_stepperRunning) {
+        if ((interrupt_state & 1U) == 0U) {
+            __enable_irq();
+        }
+        return 0U;
+    }
+
+    DL_GPIO_clearPins(GPIO_GIMBAL_B_PORT, GPIO_GIMBAL_YAW_STEP_PIN);
+    g_stepperHalfPeriodTicks = 0U;
+    g_stepperStepHalfPeriodTicks = 0U;
+    g_stepperEstimatedSteps = 0;
+    g_stepperTargetEstimatedSteps = 0;
+    g_stepperCompletedSteps = 0;
+    g_stepperStepHigh = false;
+    g_stepperStopAfterStepLow = false;
+    g_feedback.estimated_steps = 0;
+    g_feedback.target_steps = 0;
+    g_feedback.completed_steps = 0;
+    g_feedback.step_half_period_ticks = 0U;
+    g_feedback.running = 0U;
+    g_feedback.target_reached = 1U;
+
+    if ((interrupt_state & 1U) == 0U) {
+        __enable_irq();
+    }
+    return 1U;
+}
+
 void GimbalStepper_SetStepHalfPeriodTicks(uint16_t half_period_ticks)
 {
     g_stepperStepHalfPeriodTicks = half_period_ticks;

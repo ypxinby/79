@@ -12,6 +12,15 @@
 #define GIMBAL_MIN_EFFECTIVE_RPM (0.5f)
 #define GIMBAL_ACCEL_LIMIT_RPM_PER_S (10.0f)
 #define GIMBAL_LOCK_ACCEL_LIMIT_RPM_PER_S (30.0f)
+/* No slip ring: confirm the cable-neutral pose as 0 deg after every boot. */
+#define GIMBAL_YAW_HAS_SLIP_RING (0)
+#if GIMBAL_YAW_HAS_SLIP_RING
+#define GIMBAL_YAW_CONTINUOUS_LIMIT_ENABLED (0)
+#else
+#define GIMBAL_YAW_CONTINUOUS_LIMIT_ENABLED (1)
+#endif
+#define GIMBAL_YAW_MIN_LIMIT_DEG_X10 (-1700LL)
+#define GIMBAL_YAW_MAX_LIMIT_DEG_X10 (1700LL)
 #define GIMBAL_TICK_HZ         (10000.0f)
 #define GIMBAL_PITCH_STEPS_PER_REV (3200LL)
 #define GIMBAL_PITCH_MAX_POSITION_RPM (4.0f)
@@ -78,6 +87,8 @@ static int64_t g_yawWrappedDegX10;
 static int64_t g_yawTargetContinuousDegX10;
 static int32_t g_yawTurnCount;
 static uint8_t g_yawPositionValid;
+static uint8_t g_yawLimitClamped;
+static int8_t g_yawLimitDirection;
 static float g_yawTargetRpm;
 static float g_yawCommandedRpm;
 static uint8_t g_yawWorldLockEnabled;
@@ -224,6 +235,100 @@ static int64_t shortest_error_x10(int64_t target_wrapped_deg_x10,
     }
 
     return error;
+}
+
+static int64_t abs_i64(int64_t value)
+{
+    return (value < 0) ? -value : value;
+}
+
+static int64_t gimbal_yaw_clamp_target_x10(int64_t requested_deg_x10,
+    uint8_t *clamped, int8_t *limit_direction)
+{
+#if GIMBAL_YAW_CONTINUOUS_LIMIT_ENABLED
+    if (requested_deg_x10 < GIMBAL_YAW_MIN_LIMIT_DEG_X10) {
+        if (clamped != 0) {
+            *clamped = 1U;
+        }
+        if (limit_direction != 0) {
+            *limit_direction = -1;
+        }
+        return GIMBAL_YAW_MIN_LIMIT_DEG_X10;
+    }
+    if (requested_deg_x10 > GIMBAL_YAW_MAX_LIMIT_DEG_X10) {
+        if (clamped != 0) {
+            *clamped = 1U;
+        }
+        if (limit_direction != 0) {
+            *limit_direction = 1;
+        }
+        return GIMBAL_YAW_MAX_LIMIT_DEG_X10;
+    }
+#endif
+    if (clamped != 0) {
+        *clamped = 0U;
+    }
+    if (limit_direction != 0) {
+        *limit_direction = 0;
+    }
+    return requested_deg_x10;
+}
+
+static uint8_t gimbal_yaw_select_wrapped_target_x10(
+    int64_t target_wrapped_deg_x10, int64_t *selected_deg_x10,
+    int8_t *rejected_direction)
+{
+#if GIMBAL_YAW_CONTINUOUS_LIMIT_ENABLED
+    int32_t turn_offset;
+    int64_t best_target = 0;
+    int64_t best_distance = 0;
+    uint8_t found = 0U;
+
+    for (turn_offset = -2; turn_offset <= 2; turn_offset++) {
+        int64_t candidate = target_wrapped_deg_x10 +
+            ((int64_t)turn_offset * GIMBAL_DEG_X10_PER_REV);
+
+        if ((candidate < GIMBAL_YAW_MIN_LIMIT_DEG_X10) ||
+            (candidate > GIMBAL_YAW_MAX_LIMIT_DEG_X10)) {
+            continue;
+        }
+
+        if ((found == 0U) ||
+            (abs_i64(candidate - g_yawContinuousDegX10) < best_distance)) {
+            best_target = candidate;
+            best_distance = abs_i64(candidate - g_yawContinuousDegX10);
+            found = 1U;
+        }
+    }
+
+    if (found != 0U) {
+        if (selected_deg_x10 != 0) {
+            *selected_deg_x10 = best_target;
+        }
+        if (rejected_direction != 0) {
+            *rejected_direction = 0;
+        }
+        return 1U;
+    }
+
+    if (rejected_direction != 0) {
+        int64_t shortest = shortest_error_x10(target_wrapped_deg_x10,
+            g_yawWrappedDegX10);
+
+        *rejected_direction = (shortest < 0) ? -1 : 1;
+    }
+    return 0U;
+#else
+    if (selected_deg_x10 != 0) {
+        *selected_deg_x10 = g_yawContinuousDegX10 +
+            shortest_error_x10(target_wrapped_deg_x10,
+                g_yawWrappedDegX10);
+    }
+    if (rejected_direction != 0) {
+        *rejected_direction = 0;
+    }
+    return 1U;
+#endif
 }
 
 static int64_t floor_div_i64(int64_t numerator, int64_t denominator)
@@ -400,16 +505,29 @@ static void gimbal_update_feedback(void)
     g_feedback.locked_world_yaw_deg_x10 =
         clamp_i16(g_yawLockedWorldYawDegX10);
     g_feedback.world_target_deg_x10 = clamp_i16(g_yawWorldTargetDegX10);
-    g_feedback.min_limit_deg_x10 = 0;
-    g_feedback.max_limit_deg_x10 = 0;
+    g_feedback.min_limit_deg_x10 =
+        (int16_t)GIMBAL_YAW_MIN_LIMIT_DEG_X10;
+    g_feedback.max_limit_deg_x10 =
+        (int16_t)GIMBAL_YAW_MAX_LIMIT_DEG_X10;
     g_feedback.enabled = src->enabled;
     g_feedback.direction = src->direction;
     g_feedback.running = src->running;
     g_feedback.target_reached = src->target_reached;
-    g_feedback.limit_clamped = 0U;
-    g_feedback.limit_direction = 0;
+    g_feedback.limit_clamped = g_yawLimitClamped;
+    g_feedback.limit_direction = g_yawLimitDirection;
+#if GIMBAL_YAW_CONTINUOUS_LIMIT_ENABLED
+    g_feedback.positive_limit =
+        (src->estimated_steps >=
+            deg_x10_to_steps(GIMBAL_YAW_MAX_LIMIT_DEG_X10)) ?
+            1U : 0U;
+    g_feedback.negative_limit =
+        (src->estimated_steps <=
+            deg_x10_to_steps(GIMBAL_YAW_MIN_LIMIT_DEG_X10)) ?
+            1U : 0U;
+#else
     g_feedback.positive_limit = 0U;
     g_feedback.negative_limit = 0U;
+#endif
     g_feedback.position_valid = g_yawPositionValid;
     g_feedback.world_lock_enabled = g_yawWorldLockEnabled;
     if (src->running) {
@@ -652,7 +770,9 @@ void Gimbal_YawInit(void)
     g_yawWrappedDegX10 = 0;
     g_yawTargetContinuousDegX10 = 0;
     g_yawTurnCount = 0;
-    g_yawPositionValid = 1U;
+    g_yawPositionValid = 0U;
+    g_yawLimitClamped = 0U;
+    g_yawLimitDirection = 0;
     g_yawTargetRpm = 0.0f;
     g_yawCommandedRpm = 0.0f;
     g_yawWorldLockEnabled = 0U;
@@ -681,10 +801,16 @@ void Gimbal_YawUpdate5ms(void)
     gimbal_update_feedback();
 
     if (g_yawWorldLockEnabled != 0U) {
+        uint8_t clamped;
+        int8_t limit_direction;
+
         g_yawCarYawDegX10 = deg_to_x10(Imu_GetYaw());
         g_yawWorldTargetDegX10 =
             g_yawLockedWorldYawDegX10 - g_yawCarYawDegX10;
-        g_yawTargetContinuousDegX10 = g_yawWorldTargetDegX10;
+        g_yawTargetContinuousDegX10 = gimbal_yaw_clamp_target_x10(
+            g_yawWorldTargetDegX10, &clamped, &limit_direction);
+        g_yawLimitClamped = clamped;
+        g_yawLimitDirection = limit_direction;
         GimbalStepper_MoveToEstimatedSteps(
             deg_x10_to_steps(g_yawTargetContinuousDegX10));
         gimbal_update_feedback();
@@ -734,8 +860,19 @@ void Gimbal_YawUpdate5ms(void)
 static void gimbal_yaw_set_target_x10(int64_t target_continuous_deg_x10,
     uint8_t reset_speed)
 {
+    uint8_t clamped;
+    int8_t limit_direction;
+
+    if (g_yawPositionValid == 0U) {
+        Gimbal_YawStopHold();
+        return;
+    }
+
     gimbal_update_feedback();
-    g_yawTargetContinuousDegX10 = target_continuous_deg_x10;
+    g_yawTargetContinuousDegX10 = gimbal_yaw_clamp_target_x10(
+        target_continuous_deg_x10, &clamped, &limit_direction);
+    g_yawLimitClamped = clamped;
+    g_yawLimitDirection = limit_direction;
     g_yawWorldTargetDegX10 = target_continuous_deg_x10;
     if (reset_speed != 0U) {
         g_yawTargetRpm = 0.0f;
@@ -761,25 +898,39 @@ void Gimbal_YawMoveToDeg(float target_deg)
 void Gimbal_YawMoveWrappedDeg(float target_deg)
 {
     int64_t target_wrapped_deg_x10;
-    int64_t error_deg_x10;
+    int64_t selected_deg_x10;
+    int8_t rejected_direction;
 
     gimbal_update_feedback();
     target_wrapped_deg_x10 = wrap_x10_360(deg_to_x10(target_deg));
-    error_deg_x10 = shortest_error_x10(target_wrapped_deg_x10,
-        g_yawWrappedDegX10);
-    gimbal_yaw_move_to_x10(g_yawContinuousDegX10 + error_deg_x10);
+    if (gimbal_yaw_select_wrapped_target_x10(target_wrapped_deg_x10,
+        &selected_deg_x10, &rejected_direction) == 0U) {
+        Gimbal_YawStopHold();
+        g_yawLimitClamped = 1U;
+        g_yawLimitDirection = rejected_direction;
+        gimbal_update_feedback();
+        return;
+    }
+    gimbal_yaw_move_to_x10(selected_deg_x10);
 }
 
 void Gimbal_YawSetWrappedTargetDeg(float target_deg)
 {
     int64_t target_wrapped_deg_x10;
-    int64_t error_deg_x10;
+    int64_t selected_deg_x10;
+    int8_t rejected_direction;
 
     gimbal_update_feedback();
     target_wrapped_deg_x10 = wrap_x10_360(deg_to_x10(target_deg));
-    error_deg_x10 = shortest_error_x10(target_wrapped_deg_x10,
-        g_yawWrappedDegX10);
-    gimbal_yaw_set_target_x10(g_yawContinuousDegX10 + error_deg_x10, 0U);
+    if (gimbal_yaw_select_wrapped_target_x10(target_wrapped_deg_x10,
+        &selected_deg_x10, &rejected_direction) == 0U) {
+        Gimbal_YawStopHold();
+        g_yawLimitClamped = 1U;
+        g_yawLimitDirection = rejected_direction;
+        gimbal_update_feedback();
+        return;
+    }
+    gimbal_yaw_set_target_x10(selected_deg_x10, 0U);
 }
 
 void Gimbal_YawMoveRelativeDeg(float delta_deg)
@@ -791,6 +942,11 @@ void Gimbal_YawMoveRelativeDeg(float delta_deg)
 
 void Gimbal_YawEnableWorldLock(void)
 {
+    if (g_yawPositionValid == 0U) {
+        Gimbal_YawStopHold();
+        return;
+    }
+
     gimbal_update_feedback();
     g_yawCarYawDegX10 = deg_to_x10(Imu_GetYaw());
     g_yawLockedWorldYawDegX10 = g_yawCarYawDegX10 + g_yawContinuousDegX10;
@@ -829,8 +985,42 @@ void Gimbal_YawStopHold(void)
     GimbalStepper_StopHold();
     g_yawTargetRpm = 0.0f;
     g_yawCommandedRpm = 0.0f;
+    g_yawLimitClamped = 0U;
+    g_yawLimitDirection = 0;
     GimbalStepper_SetStepHalfPeriodTicks(0U);
     gimbal_update_feedback();
+}
+
+uint8_t Gimbal_YawConfirmZero(void)
+{
+    const GimbalStepperFeedback *stepper = GimbalStepper_GetFeedback();
+
+    if (g_yawPositionValid != 0U) {
+        return 0U;
+    }
+    if (stepper->running != 0U) {
+        return 0U;
+    }
+    if (GimbalStepper_ConfirmZero() == 0U) {
+        return 0U;
+    }
+
+    g_yawContinuousDegX10 = 0;
+    g_yawWrappedDegX10 = 0;
+    g_yawTargetContinuousDegX10 = 0;
+    g_yawTurnCount = 0;
+    g_yawPositionValid = 1U;
+    g_yawLimitClamped = 0U;
+    g_yawLimitDirection = 0;
+    g_yawTargetRpm = 0.0f;
+    g_yawCommandedRpm = 0.0f;
+    g_yawWorldLockEnabled = 0U;
+    g_yawCarYawDegX10 = deg_to_x10(Imu_GetYaw());
+    g_yawLockedWorldYawDegX10 = g_yawCarYawDegX10;
+    g_yawWorldTargetDegX10 = 0;
+    GimbalStepper_SetStepHalfPeriodTicks(0U);
+    gimbal_update_feedback();
+    return 1U;
 }
 
 void Gimbal_YawRelease(void)
@@ -841,6 +1031,9 @@ void Gimbal_YawRelease(void)
     g_yawWorldTargetDegX10 = g_yawTargetContinuousDegX10;
     g_yawTargetRpm = 0.0f;
     g_yawCommandedRpm = 0.0f;
+    g_yawPositionValid = 0U;
+    g_yawLimitClamped = 0U;
+    g_yawLimitDirection = 0;
     GimbalStepper_SetStepHalfPeriodTicks(0U);
     GimbalStepper_Release();
     gimbal_update_feedback();

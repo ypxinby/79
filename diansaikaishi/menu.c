@@ -178,7 +178,16 @@ static void menu_handle_status_key(KeyEvent event)
                         Gimbal_PitchStopHold();
                     }
                 } else {
-                    Gimbal_YawStopHold();
+                    const GimbalFeedback *yaw = Gimbal_YawGetFeedback();
+
+                    if (yaw->running != 0U) {
+                        Gimbal_YawStopHold();
+                    } else if (yaw->position_valid == 0U) {
+                        (void)Gimbal_YawConfirmZero();
+                        Gimbal_YawStopHold();
+                    } else {
+                        Gimbal_YawStopHold();
+                    }
                 }
                 break;
             case KEY3_SHORT:

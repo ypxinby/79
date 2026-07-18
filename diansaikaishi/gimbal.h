@@ -52,6 +52,9 @@ void Gimbal_YawEnableWorldLock(void);
 void Gimbal_YawDisableWorldLock(void);
 void Gimbal_YawToggleWorldLock(void);
 void Gimbal_YawStopHold(void);
+/* Confirms the stopped cable-neutral position as yaw 0 deg. */
+uint8_t Gimbal_YawConfirmZero(void);
+/* Release allows manual movement and therefore clears position_valid. */
 void Gimbal_YawRelease(void);
 const GimbalFeedback *Gimbal_YawGetFeedback(void);
 

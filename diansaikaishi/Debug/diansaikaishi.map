@@ -1,18 +1,18 @@
 ******************************************************************************
             TI ARM Clang Linker PC v4.0.4                      
 ******************************************************************************
->> Linked Sat Jul 18 22:56:09 2026
+>> Linked Sat Jul 18 23:41:09 2026
 
 OUTPUT FILE NAME:   <diansaikaishi.out>
-ENTRY POINT SYMBOL: "_c_int00_noargs"  address: 0000790d
+ENTRY POINT SYMBOL: "_c_int00_noargs"  address: 00007ee5
 
 
 MEMORY CONFIGURATION
 
          name            origin    length      used     unused   attr    fill
 ----------------------  --------  ---------  --------  --------  ----  --------
-  FLASH                 00000000   00020000  00008460  00017ba0  R  X
-  SRAM                  20200000   00008000  000004f1  00007b0f  RW X
+  FLASH                 00000000   00020000  00008a30  000175d0  R  X
+  SRAM                  20200000   00008000  000004f3  00007b0d  RW X
   BCR_CONFIG            41c00000   000000ff  00000000  000000ff  R   
   BSL_CONFIG            41c00100   00000080  00000000  00000080  R   
 
@@ -21,14 +21,14 @@ SEGMENT ALLOCATION MAP
 
 run origin  load origin   length   init length attrs members
 ----------  ----------- ---------- ----------- ----- -------
-00000000    00000000    00008460   00008460    r-x
+00000000    00000000    00008a30   00008a30    r-x
   00000000    00000000    000000c0   000000c0    r-- .intvecs
-  000000c0    000000c0    00007d58   00007d58    r-x .text
-  00007e18    00007e18    00000618   00000618    r-- .rodata
-  00008430    00008430    00000030   00000030    r-- .cinit
-20200000    20200000    000002f1   00000000    rw-
-  20200000    20200000    000002f0   00000000    rw- .bss
-  202002f0    202002f0    00000001   00000000    rw- .data
+  000000c0    000000c0    00008330   00008330    r-x .text
+  000083f0    000083f0    00000610   00000610    r-- .rodata
+  00008a00    00008a00    00000030   00000030    r-- .cinit
+20200000    20200000    000002f3   00000000    rw-
+  20200000    20200000    000002f2   00000000    rw- .bss
+  202002f2    202002f2    00000001   00000000    rw- .data
 20207e00    20207e00    00000200   00000000    rw-
   20207e00    20207e00    00000200   00000000    rw- .stack
 
@@ -41,395 +41,396 @@ section   page    origin      length       input sections
 .intvecs   0    00000000    000000c0     
                   00000000    000000c0     startup_mspm0g350x_ticlang.o (.intvecs)
 
-.text      0    000000c0    00007d58     
-                  000000c0    000008fc     oled_ui.o (.text.OledUi_Update_20ms)
-                  000009bc    000006f4     car_controller.o (.text.CarController_Update_20ms)
-                  000010b0    000003ac     gimbal_tracker.o (.text.GimbalTracker_Update)
-                  0000145c    00000330     menu.o (.text.Menu_HandleKeyEvent)
-                  0000178c    00000324     gimbal.o (.text.gimbal_update_feedback)
-                  00001ab0    000002f0     imu.o (.text.mpu6050_read_regs)
-                  00001da0    000002d8     imu.o (.text.Imu_Init)
-                  00002078    000002a8     gimbal_tracker.o (.text.update_feedback)
-                  00002320    00000290     gimbal.o (.text.Gimbal_PitchSetTrackingSpeedDegS)
-                  000025b0    00000288     app_config.o (.text.AppConfig_LimitAll)
-                  00002838    00000278     obstacle_avoidance.o (.text.ObstacleAvoidance_Update_20ms)
-                  00002ab0    00000260     gimbal.o (.text.gimbal_pitch_set_target_steps)
-                  00002d10    00000254     oled.o (.text.OLED_Clear)
-                  00002f64    00000238     gimbal.o (.text.gimbal_pitch_update_feedback)
-                  0000319c    0000022c     gimbal.o (.text.Gimbal_YawUpdate5ms)
-                  000033c8    00000214     imu.o (.text.Imu_CalibrateGyroBias)
-                  000035dc    00000208     motion_action.o (.text.MotionAction_Update_20ms)
-                  000037e4    000001cc     imu.o (.text.imu_i2c_write_byte)
-                  000039b0    000001bc     gimbal.o (.text.Gimbal_PitchUpdate5ms)
-                  00003b6c    000001b8     gimbal.o (.text.Gimbal_YawSetWrappedTargetDeg)
-                  00003d24    000001b8     oled.o (.text.oled_i2c_write_byte)
-                  00003edc    000001a0     ultrasonic.o (.text.Ultrasonic_Tick100us)
-                  0000407c    00000194     gimbal_stepper.o (.text.GimbalStepper_Tick100us)
-                  00004210    00000180     gimbal.o (.text.Gimbal_PitchTick100us)
-                  00004390    0000017c     gimbal_stepper.o (.text.GimbalStepper_MoveToEstimatedSteps)
-                  0000450c    00000174     key.o (.text.Key_Update_20ms)
-                  00004680    00000160     heading_control.o (.text.HeadingControl_Update)
-                  000047e0    0000015c     gimbal.o (.text.Gimbal_Init)
-                  0000493c    00000140     motion_action.o (.text.MotionAction_Start)
-                  00004a7c    0000013c     oled.o (.text.OLED_PrintInt16)
-                  00004bb8    00000134     imu.o (.text.Imu_Update)
-                  00004cec    0000012c     imu.o (.text.imu_i2c_recover_bus)
-                  00004e18    000000fc     gimbal.o (.text.Gimbal_PitchRelease)
-                  00004f14    000000f8     mission_manager.o (.text.MissionManager_Update_20ms)
-                  0000500c    000000f8     empty.o (.text.main)
-                  00005104    000000f0     gimbal.o (.text.Gimbal_PitchStopHold)
-                  000051f4    000000f0     mission_manager.o (.text.MissionManager_SelectNext)
-                  000052e4    000000ec     car_controller.o (.text.handle_turn_90)
-                  000053d0    000000ec     gimbal_tracker.o (.text.sync_targets_from_gimbal)
-                  000054bc    000000dc     gimbal.o (.text.Gimbal_PitchConfirmZero)
-                  00005598    000000d8     mission_manager.o (.text.MissionManager_SelectPrevious)
-                  00005670    000000d8     libclang_rt.builtins.a : addsf3.S.obj (.text)
-                  00005748    000000d4     oled.o (.text.OLED_Init)
-                  0000581c    000000d0     oled.o (.text.OLED_PrintChar)
-                  000058ec    000000c4     app.o (.text.App_Update_20ms)
-                  000059b0    000000c0     ti_msp_dl_config.o (.text.SYSCFG_DL_GPIO_init)
-                  00005a70    000000bc     obstacle_safety.o (.text.ObstacleSafety_Update_20ms)
-                  00005b2c    000000b8     app_config.o (.text.AppConfig_InitDefault)
-                  00005be4    000000b4     gimbal_stepper.o (.text.GimbalStepper_StopHold)
-                  00005c98    000000b4     gimbal.o (.text.Gimbal_YawMoveRelativeDeg)
-                  00005d4c    000000b0     gimbal_stepper.o (.text.GimbalStepper_Init)
-                  00005dfc    000000b0     gimbal.o (.text.Gimbal_PitchMoveRelativeDeg)
-                  00005eac    000000b0     motor.o (.text.Motor_SetSpeed)
-                  00005f5c    000000aa     mission_library.o (.text.MissionLibrary_Validate)
-                  00006006    00000002     startup_mspm0g350x_ticlang.o (.text.Default_Handler)
-                  00006008    000000a4     gimbal.o (.text.Gimbal_YawEnableWorldLock)
-                  000060ac    000000a2     libclang_rt.builtins.a : udivmoddi4.S.obj (.text)
-                  0000614e    00000002     track_sensor.o (.text.TrackSensor_Init)
-                  00006150    0000009c     obstacle_monitor.o (.text.ObstacleMonitor_Update_20ms)
-                  000061ec    0000009a     libc.a : memcpy16.S.obj (.text:memcpy)
-                  00006286    00000002     libclang_rt.builtins.a : aeabi_div0.c.obj (.text.__aeabi_idiv0)
-                  00006288    00000098     car_controller.o (.text.CarController_StartSeekLine)
-                  00006320    00000098     imu.o (.text.mpu6050_write_reg)
-                  000063b8    00000094     car_controller.o (.text.CarController_StartDriveHeading)
-                  0000644c    00000094     empty.o (.text.SysTick_Handler)
-                  000064e0    0000008c     libclang_rt.builtins.a : mulsf3.S.obj (.text.__mulsf3)
-                  0000656c    00000088     car_controller.o (.text.CarController_StartTurnToYawRelative)
-                  000065f4    00000088     gimbal.o (.text.Gimbal_YawToggleWorldLock)
-                  0000667c    00000084     gimbal_tracker.o (.text.GimbalTracker_PushObservation)
-                  00006700    00000082     libclang_rt.builtins.a : divsf3.S.obj (.text.__divsf3)
-                  00006782    00000002                            : aeabi_div0.c.obj (.text.__aeabi_ldiv0)
-                  00006784    00000080     gimbal_tracker.o (.text.GimbalTracker_Init)
-                  00006804    0000007c     car_controller.o (.text.CarController_Init)
-                  00006880    0000007c     car_controller.o (.text.CarController_ResetRuntime)
-                  000068fc    0000007c     car_controller.o (.text.CarController_StartFollowLine)
-                  00006978    0000007c     gimbal.o (.text.Gimbal_YawStopHold)
-                  000069f4    0000007c     libc.a : copy_decompress_lzss.c.obj (.text:decompress:lzss)
-                  00006a70    00000078     oled.o (.text.oled_write_command)
-                  00006ae8    00000074     car_controller.o (.text.CarController_StartTurnRight90)
-                  00006b5c    00000070     car_controller.o (.text.CarController_StartTurnLeft90)
-                  00006bcc    00000070     gimbal_stepper.o (.text.GimbalStepper_Release)
-                  00006c3c    0000006e     track_sensor.o (.text.TrackSensor_DetectTurn)
-                  00006caa    00000002     --HOLE-- [fill = 0]
-                  00006cac    0000006c     encoder.o (.text.Encoder_HandleGpioInterrupt)
-                  00006d18    00000068     mission_manager.o (.text.MissionManager_GetSelectedMissionIndex)
-                  00006d80    00000066     track_sensor.o (.text.TrackSensor_GetErrorFromRaw)
-                  00006de6    00000002     --HOLE-- [fill = 0]
-                  00006de8    00000064     menu.o (.text.Menu_GetParamValue)
-                  00006e4c    00000062     app.o (.text.App_Init)
-                  00006eae    00000002     --HOLE-- [fill = 0]
-                  00006eb0    00000062     libclang_rt.builtins.a : aeabi_fcmp.S.obj (.text.__aeabi_fcmp)
-                  00006f12    00000062     libc.a : memset16.S.obj (.text:memset)
-                  00006f74    00000060     gimbal_tracker.o (.text.GimbalTracker_Enable)
-                  00006fd4    00000060     gimbal_tracker.o (.text.GimbalTracker_GetFeedback)
-                  00007034    00000060     libclang_rt.builtins.a : fixsfdi.S.obj (.text.__fixsfdi)
-                  00007094    0000005e     oled.o (.text.OLED_PrintBinary7)
-                  000070f2    00000002     --HOLE-- [fill = 0]
-                  000070f4    0000005c     ultrasonic.o (.text.Ultrasonic_Update_20ms)
-                  00007150    00000056     libclang_rt.builtins.a : aeabi_idivmod.S.obj (.text.__aeabi_idivmod)
-                  000071a6    00000002     --HOLE-- [fill = 0]
-                  000071a8    00000054     track_sensor.o (.text.TrackSensor_ReadRaw)
-                  000071fc    00000050     car_controller.o (.text.CarController_SetSafetyHold)
-                  0000724c    00000050     motor.o (.text.Motor_PwmTick100us)
-                  0000729c    00000050     ultrasonic.o (.text.Ultrasonic_Init)
-                  000072ec    0000004c     gimbal.o (.text.Gimbal_YawRelease)
-                  00007338    00000048     mission_manager.o (.text.MissionManager_Init)
-                  00007380    00000044     servo.o (.text.Servo_Tick100us)
-                  000073c4    00000040     mission_manager.o (.text.MissionManager_Start)
-                  00007404    00000040     ti_msp_dl_config.o (.text.SYSCFG_DL_SYSCTL_init)
-                  00007444    00000040     libclang_rt.builtins.a : aeabi_uidivmod.S.obj (.text.__aeabi_uidivmod)
-                  00007484    0000003e                            : divmoddi4.c.obj (.text.__divmoddi4)
-                  000074c2    00000002     --HOLE-- [fill = 0]
-                  000074c4    0000003c     gimbal_tracker.o (.text.GimbalTracker_ClearObservation)
-                  00007500    0000003c     servo.o (.text.Servo_SetAngleDeg)
-                  0000753c    0000003c     libclang_rt.builtins.a : floatsisf.S.obj (.text.__floatsisf)
-                  00007578    0000003c                            : comparesf2.S.obj (.text.__gtsf2)
-                  000075b4    0000003c     libc.a : autoinit.c.obj (.text:__TI_auto_init_nobinit_nopinit)
-                  000075f0    0000003a     libclang_rt.builtins.a : comparesf2.S.obj (.text.__eqsf2)
-                  0000762a    00000002     --HOLE-- [fill = 0]
-                  0000762c    0000003a                            : muldsi3.S.obj (.text.__muldsi3)
-                  00007666    00000002     --HOLE-- [fill = 0]
-                  00007668    00000038     motion_action.o (.text.MotionAction_ReapplyControllerTarget)
-                  000076a0    00000038     motor.o (.text.Motor_Init)
-                  000076d8    00000038     libclang_rt.builtins.a : fixsfsi.S.obj (.text.__fixsfsi)
-                  00007710    00000034     oled.o (.text.OLED_SetCursor)
-                  00007744    00000032     oled.o (.text.OLED_PrintString)
-                  00007776    00000002     --HOLE-- [fill = 0]
-                  00007778    00000030     gimbal.o (.text.Gimbal_PitchGetFeedback)
-                  000077a8    00000030     key.o (.text.Key_Init)
-                  000077d8    00000030     mission_manager.o (.text.MissionManager_Cancel)
-                  00007808    00000030     mission_manager.o (.text.MissionManager_Reset)
-                  00007838    0000002c     motor.o (.text.Motor_Stop)
-                  00007864    0000002c     ti_msp_dl_config.o (.text.SYSCFG_DL_initPower)
-                  00007890    0000002c     track_sensor.o (.text.TrackSensor_CountBlack)
-                  000078bc    00000028     servo.o (.text.Servo_Init)
-                  000078e4    00000028     obstacle_avoidance.o (.text.avoid_fail)
-                  0000790c    00000028     libc.a : boot_cortex_m.c.obj (.text:_c_int00_noargs)
-                  00007934    00000024     encoder.o (.text.Encoder_Reset)
-                  00007958    00000024     libclang_rt.builtins.a : muldi3.S.obj (.text.__muldi3)
-                  0000797c    00000020     car_controller.o (.text.CarController_Stop)
-                  0000799c    00000020     mission_manager.o (.text.MissionManager_Pause)
-                  000079bc    00000020     mission_manager.o (.text.MissionManager_Resume)
-                  000079dc    00000020     motion_action.o (.text.MotionAction_GetCurrentBypassDirection)
-                  000079fc    00000020     motion_action.o (.text.MotionAction_GetCurrentObstaclePolicy)
-                  00007a1c    00000020     obstacle_avoidance.o (.text.ObstacleAvoidance_Init)
-                  00007a3c    00000020     mission_manager.o (.text.mission_finish_error)
-                  00007a5c    0000001e     libclang_rt.builtins.a : ashldi3.S.obj (.text.__ashldi3)
-                  00007a7a    00000002     --HOLE-- [fill = 0]
-                  00007a7c    0000001c     imu.o (.text.Imu_IsReady)
-                  00007a98    0000001c     obstacle_monitor.o (.text.ObstacleMonitor_Init)
-                  00007ab4    0000001c     obstacle_safety.o (.text.ObstacleSafety_Init)
-                  00007ad0    00000018     car_controller.o (.text.CarController_RunModeToString)
-                  00007ae8    00000018     heading_control.o (.text.HeadingControl_LockCurrentYaw)
-                  00007b00    00000018     heading_control.o (.text.HeadingControl_SetTargetYaw)
-                  00007b18    00000018     menu.o (.text.Menu_ParamItemToString)
-                  00007b30    00000018     mission_library.o (.text.MissionLibrary_FindById)
-                  00007b48    00000018     motion_action.o (.text.MotionAction_Cancel)
-                  00007b60    00000018     motion_action.o (.text.MotionAction_Init)
-                  00007b78    00000016     libc.a : copy_zero_init.c.obj (.text:decompress:ZI:__TI_zero_init_nomemset)
-                  00007b8e    00000002     --HOLE-- [fill = 0]
-                  00007b90    00000014     empty.o (.text.GROUP1_IRQHandler)
-                  00007ba4    00000014     gimbal_stepper.o (.text.GimbalStepper_SetStepHalfPeriodTicks)
-                  00007bb8    00000014     heading_control.o (.text.HeadingControl_Enable)
-                  00007bcc    00000014     heading_control.o (.text.HeadingControl_Init)
-                  00007be0    00000014     heading_control.o (.text.HeadingControl_Reset)
-                  00007bf4    00000014     menu.o (.text.Menu_Init)
-                  00007c08    00000014     mission_library.o (.text.MissionLibrary_GetByIndex)
-                  00007c1c    00000014     mission_manager.o (.text.MissionManager_GetSelectedMissionId)
-                  00007c30    00000014     libclang_rt.builtins.a : aeabi_ldivmod.S.obj (.text.__aeabi_ldivmod)
-                  00007c44    00000014                            : aeabi_uldivmod.S.obj (.text.__aeabi_uldivmod)
-                  00007c58    00000012     libc.a : copy_decompress_none.c.obj (.text:decompress:none)
-                  00007c6a    00000002     --HOLE-- [fill = 0]
-                  00007c6c    00000010     gimbal.o (.text.Gimbal_YawGetFeedback)
-                  00007c7c    00000010     key.o (.text.Key_GetEvent)
-                  00007c8c    00000010     obstacle_avoidance.o (.text.ObstacleAvoidance_IsResumeGraceActive)
-                  00007c9c    00000010     ti_msp_dl_config.o (.text.SYSCFG_DL_init)
-                  00007cac    0000000c     car_controller.o (.text.CarController_GetRunMode)
-                  00007cb8    0000000c     car_state.o (.text.CarState_Get)
-                  00007cc4    0000000c     car_state.o (.text.CarState_Init)
-                  00007cd0    0000000c     car_state.o (.text.CarState_Set)
-                  00007cdc    0000000c     gimbal.o (.text.Gimbal_Tick100us)
-                  00007ce8    0000000c     gimbal.o (.text.Gimbal_Update5ms)
-                  00007cf4    0000000c     imu.o (.text.Imu_GetCorrectedGyroZDps)
-                  00007d00    0000000c     imu.o (.text.Imu_GetYaw)
-                  00007d0c    0000000c     imu.o (.text.Imu_ResetYaw)
-                  00007d18    0000000c     menu.o (.text.Menu_GetPage)
-                  00007d24    0000000c     menu.o (.text.Menu_GetParamItem)
-                  00007d30    0000000c     mission_manager.o (.text.MissionManager_SetExternalHold)
-                  00007d3c    0000000c     obstacle_avoidance.o (.text.ObstacleAvoidance_IsActive)
-                  00007d48    0000000c     obstacle_avoidance.o (.text.ObstacleAvoidance_IsFailed)
-                  00007d54    0000000c     obstacle_safety.o (.text.ObstacleSafety_IsHolding)
-                  00007d60    0000000c     oled_ui.o (.text.OledUi_Init)
-                  00007d6c    0000000c     libclang_rt.builtins.a : aeabi_memset.S.obj (.text.__aeabi_memclr)
-                  00007d78    0000000a     driverlib.a : dl_common.o (.text.DL_Common_delayCycles)
-                  00007d82    0000000a     track_sensor.o (.text.TrackSensor_IsCenterDetected)
-                  00007d8c    0000000a     track_sensor.o (.text.TrackSensor_IsLineDetected)
-                  00007d96    0000000a     track_sensor.o (.text.TrackSensor_IsLineLost)
-                  00007da0    00000008     car_controller.o (.text.CarController_GetFeedback)
-                  00007da8    00000008     gimbal_stepper.o (.text.GimbalStepper_GetFeedback)
-                  00007db0    00000008     heading_control.o (.text.HeadingControl_GetRuntime)
-                  00007db8    00000008     imu.o (.text.Imu_GetRuntime)
-                  00007dc0    00000008     mission_manager.o (.text.MissionManager_GetMissionCount)
-                  00007dc8    00000008     mission_manager.o (.text.MissionManager_GetRuntime)
-                  00007dd0    00000008     motion_action.o (.text.MotionAction_GetRuntime)
-                  00007dd8    00000008     obstacle_avoidance.o (.text.ObstacleAvoidance_GetFeedback)
-                  00007de0    00000008     obstacle_monitor.o (.text.ObstacleMonitor_GetFeedback)
-                  00007de8    00000008     servo.o (.text.Servo_GetFeedback)
-                  00007df0    00000008     ultrasonic.o (.text.Ultrasonic_GetFeedback)
-                  00007df8    00000008     libclang_rt.builtins.a : aeabi_memcpy.S.obj (.text.__aeabi_memcpy)
-                  00007e00    00000006     libc.a : exit.c.obj (.text:abort)
-                  00007e06    00000004     libsysbm.a : hostexit.c.obj (.text.HOSTexit)
-                  00007e0a    00000004     mission_library.o (.text.MissionLibrary_GetCount)
-                  00007e0e    00000004     startup_mspm0g350x_ticlang.o (.text.Reset_Handler)
-                  00007e12    00000004     libc.a : pre_init.c.obj (.text._system_pre_init)
-                  00007e16    00000002     --HOLE-- [fill = 0]
+.text      0    000000c0    00008330     
+                  000000c0    00000930     oled_ui.o (.text.OledUi_Update_20ms)
+                  000009f0    000006f4     car_controller.o (.text.CarController_Update_20ms)
+                  000010e4    0000047c     gimbal_tracker.o (.text.GimbalTracker_Update)
+                  00001560    00000370     gimbal.o (.text.gimbal_update_feedback)
+                  000018d0    00000354     menu.o (.text.Menu_HandleKeyEvent)
+                  00001c24    000002f0     imu.o (.text.mpu6050_read_regs)
+                  00001f14    000002d8     imu.o (.text.Imu_Init)
+                  000021ec    000002a8     gimbal_tracker.o (.text.update_feedback)
+                  00002494    00000298     gimbal.o (.text.Gimbal_YawSetWrappedTargetDeg)
+                  0000272c    00000294     gimbal.o (.text.Gimbal_YawUpdate5ms)
+                  000029c0    00000290     gimbal.o (.text.Gimbal_PitchSetTrackingSpeedDegS)
+                  00002c50    00000288     app_config.o (.text.AppConfig_LimitAll)
+                  00002ed8    00000278     obstacle_avoidance.o (.text.ObstacleAvoidance_Update_20ms)
+                  00003150    00000260     gimbal.o (.text.gimbal_pitch_set_target_steps)
+                  000033b0    00000254     oled.o (.text.OLED_Clear)
+                  00003604    00000238     gimbal.o (.text.gimbal_pitch_update_feedback)
+                  0000383c    00000214     imu.o (.text.Imu_CalibrateGyroBias)
+                  00003a50    00000208     motion_action.o (.text.MotionAction_Update_20ms)
+                  00003c58    000001cc     imu.o (.text.imu_i2c_write_byte)
+                  00003e24    000001bc     gimbal.o (.text.Gimbal_PitchUpdate5ms)
+                  00003fe0    000001b8     oled.o (.text.oled_i2c_write_byte)
+                  00004198    000001a0     ultrasonic.o (.text.Ultrasonic_Tick100us)
+                  00004338    00000194     gimbal_stepper.o (.text.GimbalStepper_Tick100us)
+                  000044cc    00000180     gimbal.o (.text.Gimbal_PitchTick100us)
+                  0000464c    0000017c     gimbal_stepper.o (.text.GimbalStepper_MoveToEstimatedSteps)
+                  000047c8    00000174     key.o (.text.Key_Update_20ms)
+                  0000493c    0000016c     gimbal.o (.text.Gimbal_Init)
+                  00004aa8    00000160     heading_control.o (.text.HeadingControl_Update)
+                  00004c08    00000160     gimbal.o (.text.gimbal_yaw_set_target_x10)
+                  00004d68    00000140     motion_action.o (.text.MotionAction_Start)
+                  00004ea8    0000013c     oled.o (.text.OLED_PrintInt16)
+                  00004fe4    00000134     imu.o (.text.Imu_Update)
+                  00005118    0000012c     imu.o (.text.imu_i2c_recover_bus)
+                  00005244    00000128     gimbal.o (.text.Gimbal_YawEnableWorldLock)
+                  0000536c    000000fc     gimbal.o (.text.Gimbal_PitchRelease)
+                  00005468    000000f8     mission_manager.o (.text.MissionManager_Update_20ms)
+                  00005560    000000f8     empty.o (.text.main)
+                  00005658    000000f0     gimbal.o (.text.Gimbal_PitchStopHold)
+                  00005748    000000f0     mission_manager.o (.text.MissionManager_SelectNext)
+                  00005838    000000ec     car_controller.o (.text.handle_turn_90)
+                  00005924    000000ec     gimbal_tracker.o (.text.sync_targets_from_gimbal)
+                  00005a10    000000dc     gimbal.o (.text.Gimbal_PitchConfirmZero)
+                  00005aec    000000d8     mission_manager.o (.text.MissionManager_SelectPrevious)
+                  00005bc4    000000d8     libclang_rt.builtins.a : addsf3.S.obj (.text)
+                  00005c9c    000000d4     oled.o (.text.OLED_Init)
+                  00005d70    000000d0     oled.o (.text.OLED_PrintChar)
+                  00005e40    000000c8     gimbal.o (.text.Gimbal_YawConfirmZero)
+                  00005f08    000000c4     app.o (.text.App_Update_20ms)
+                  00005fcc    000000c0     ti_msp_dl_config.o (.text.SYSCFG_DL_GPIO_init)
+                  0000608c    000000bc     obstacle_safety.o (.text.ObstacleSafety_Update_20ms)
+                  00006148    000000b8     app_config.o (.text.AppConfig_InitDefault)
+                  00006200    000000b4     gimbal_stepper.o (.text.GimbalStepper_StopHold)
+                  000062b4    000000b0     gimbal_stepper.o (.text.GimbalStepper_Init)
+                  00006364    000000b0     gimbal.o (.text.Gimbal_PitchMoveRelativeDeg)
+                  00006414    000000b0     motor.o (.text.Motor_SetSpeed)
+                  000064c4    000000aa     mission_library.o (.text.MissionLibrary_Validate)
+                  0000656e    00000002     startup_mspm0g350x_ticlang.o (.text.Default_Handler)
+                  00006570    000000a2     libclang_rt.builtins.a : udivmoddi4.S.obj (.text)
+                  00006612    00000002     track_sensor.o (.text.TrackSensor_Init)
+                  00006614    0000009c     obstacle_monitor.o (.text.ObstacleMonitor_Update_20ms)
+                  000066b0    0000009a     libc.a : memcpy16.S.obj (.text:memcpy)
+                  0000674a    00000002     libclang_rt.builtins.a : aeabi_div0.c.obj (.text.__aeabi_idiv0)
+                  0000674c    00000098     car_controller.o (.text.CarController_StartSeekLine)
+                  000067e4    00000098     gimbal.o (.text.Gimbal_YawToggleWorldLock)
+                  0000687c    00000098     imu.o (.text.mpu6050_write_reg)
+                  00006914    00000094     car_controller.o (.text.CarController_StartDriveHeading)
+                  000069a8    00000094     empty.o (.text.SysTick_Handler)
+                  00006a3c    0000008c     gimbal.o (.text.Gimbal_YawStopHold)
+                  00006ac8    0000008c     libclang_rt.builtins.a : mulsf3.S.obj (.text.__mulsf3)
+                  00006b54    00000088     car_controller.o (.text.CarController_StartTurnToYawRelative)
+                  00006bdc    00000084     gimbal_stepper.o (.text.GimbalStepper_ConfirmZero)
+                  00006c60    00000084     gimbal_tracker.o (.text.GimbalTracker_PushObservation)
+                  00006ce4    00000082     libclang_rt.builtins.a : divsf3.S.obj (.text.__divsf3)
+                  00006d66    00000002                            : aeabi_div0.c.obj (.text.__aeabi_ldiv0)
+                  00006d68    00000080     gimbal_tracker.o (.text.GimbalTracker_Init)
+                  00006de8    0000007c     car_controller.o (.text.CarController_Init)
+                  00006e64    0000007c     car_controller.o (.text.CarController_ResetRuntime)
+                  00006ee0    0000007c     car_controller.o (.text.CarController_StartFollowLine)
+                  00006f5c    0000007c     libc.a : copy_decompress_lzss.c.obj (.text:decompress:lzss)
+                  00006fd8    00000078     oled.o (.text.oled_write_command)
+                  00007050    00000074     car_controller.o (.text.CarController_StartTurnRight90)
+                  000070c4    00000070     car_controller.o (.text.CarController_StartTurnLeft90)
+                  00007134    00000070     gimbal_stepper.o (.text.GimbalStepper_Release)
+                  000071a4    0000006e     track_sensor.o (.text.TrackSensor_DetectTurn)
+                  00007212    00000002     --HOLE-- [fill = 0]
+                  00007214    0000006c     encoder.o (.text.Encoder_HandleGpioInterrupt)
+                  00007280    00000068     mission_manager.o (.text.MissionManager_GetSelectedMissionIndex)
+                  000072e8    00000066     track_sensor.o (.text.TrackSensor_GetErrorFromRaw)
+                  0000734e    00000002     --HOLE-- [fill = 0]
+                  00007350    00000064     gimbal.o (.text.Gimbal_YawRelease)
+                  000073b4    00000064     menu.o (.text.Menu_GetParamValue)
+                  00007418    00000062     app.o (.text.App_Init)
+                  0000747a    00000002     --HOLE-- [fill = 0]
+                  0000747c    00000062     libclang_rt.builtins.a : aeabi_fcmp.S.obj (.text.__aeabi_fcmp)
+                  000074de    00000062     libc.a : memset16.S.obj (.text:memset)
+                  00007540    00000060     gimbal_tracker.o (.text.GimbalTracker_Enable)
+                  000075a0    00000060     gimbal_tracker.o (.text.GimbalTracker_GetFeedback)
+                  00007600    00000060     libclang_rt.builtins.a : fixsfdi.S.obj (.text.__fixsfdi)
+                  00007660    0000005e     oled.o (.text.OLED_PrintBinary7)
+                  000076be    00000002     --HOLE-- [fill = 0]
+                  000076c0    0000005c     ultrasonic.o (.text.Ultrasonic_Update_20ms)
+                  0000771c    00000058     gimbal.o (.text.Gimbal_YawMoveRelativeDeg)
+                  00007774    00000056     libclang_rt.builtins.a : aeabi_idivmod.S.obj (.text.__aeabi_idivmod)
+                  000077ca    00000002     --HOLE-- [fill = 0]
+                  000077cc    00000054     track_sensor.o (.text.TrackSensor_ReadRaw)
+                  00007820    00000050     car_controller.o (.text.CarController_SetSafetyHold)
+                  00007870    00000050     motor.o (.text.Motor_PwmTick100us)
+                  000078c0    00000050     ultrasonic.o (.text.Ultrasonic_Init)
+                  00007910    00000048     mission_manager.o (.text.MissionManager_Init)
+                  00007958    00000044     servo.o (.text.Servo_Tick100us)
+                  0000799c    00000040     mission_manager.o (.text.MissionManager_Start)
+                  000079dc    00000040     ti_msp_dl_config.o (.text.SYSCFG_DL_SYSCTL_init)
+                  00007a1c    00000040     libclang_rt.builtins.a : aeabi_uidivmod.S.obj (.text.__aeabi_uidivmod)
+                  00007a5c    0000003e                            : divmoddi4.c.obj (.text.__divmoddi4)
+                  00007a9a    00000002     --HOLE-- [fill = 0]
+                  00007a9c    0000003c     gimbal_tracker.o (.text.GimbalTracker_ClearObservation)
+                  00007ad8    0000003c     servo.o (.text.Servo_SetAngleDeg)
+                  00007b14    0000003c     libclang_rt.builtins.a : floatsisf.S.obj (.text.__floatsisf)
+                  00007b50    0000003c                            : comparesf2.S.obj (.text.__gtsf2)
+                  00007b8c    0000003c     libc.a : autoinit.c.obj (.text:__TI_auto_init_nobinit_nopinit)
+                  00007bc8    0000003a     libclang_rt.builtins.a : comparesf2.S.obj (.text.__eqsf2)
+                  00007c02    00000002     --HOLE-- [fill = 0]
+                  00007c04    0000003a                            : muldsi3.S.obj (.text.__muldsi3)
+                  00007c3e    00000002     --HOLE-- [fill = 0]
+                  00007c40    00000038     motion_action.o (.text.MotionAction_ReapplyControllerTarget)
+                  00007c78    00000038     motor.o (.text.Motor_Init)
+                  00007cb0    00000038     libclang_rt.builtins.a : fixsfsi.S.obj (.text.__fixsfsi)
+                  00007ce8    00000034     oled.o (.text.OLED_SetCursor)
+                  00007d1c    00000032     oled.o (.text.OLED_PrintString)
+                  00007d4e    00000002     --HOLE-- [fill = 0]
+                  00007d50    00000030     gimbal.o (.text.Gimbal_PitchGetFeedback)
+                  00007d80    00000030     key.o (.text.Key_Init)
+                  00007db0    00000030     mission_manager.o (.text.MissionManager_Cancel)
+                  00007de0    00000030     mission_manager.o (.text.MissionManager_Reset)
+                  00007e10    0000002c     motor.o (.text.Motor_Stop)
+                  00007e3c    0000002c     ti_msp_dl_config.o (.text.SYSCFG_DL_initPower)
+                  00007e68    0000002c     track_sensor.o (.text.TrackSensor_CountBlack)
+                  00007e94    00000028     servo.o (.text.Servo_Init)
+                  00007ebc    00000028     obstacle_avoidance.o (.text.avoid_fail)
+                  00007ee4    00000028     libc.a : boot_cortex_m.c.obj (.text:_c_int00_noargs)
+                  00007f0c    00000024     encoder.o (.text.Encoder_Reset)
+                  00007f30    00000024     libclang_rt.builtins.a : muldi3.S.obj (.text.__muldi3)
+                  00007f54    00000020     car_controller.o (.text.CarController_Stop)
+                  00007f74    00000020     mission_manager.o (.text.MissionManager_Pause)
+                  00007f94    00000020     mission_manager.o (.text.MissionManager_Resume)
+                  00007fb4    00000020     motion_action.o (.text.MotionAction_GetCurrentBypassDirection)
+                  00007fd4    00000020     motion_action.o (.text.MotionAction_GetCurrentObstaclePolicy)
+                  00007ff4    00000020     obstacle_avoidance.o (.text.ObstacleAvoidance_Init)
+                  00008014    00000020     mission_manager.o (.text.mission_finish_error)
+                  00008034    0000001e     libclang_rt.builtins.a : ashldi3.S.obj (.text.__ashldi3)
+                  00008052    00000002     --HOLE-- [fill = 0]
+                  00008054    0000001c     imu.o (.text.Imu_IsReady)
+                  00008070    0000001c     obstacle_monitor.o (.text.ObstacleMonitor_Init)
+                  0000808c    0000001c     obstacle_safety.o (.text.ObstacleSafety_Init)
+                  000080a8    00000018     car_controller.o (.text.CarController_RunModeToString)
+                  000080c0    00000018     heading_control.o (.text.HeadingControl_LockCurrentYaw)
+                  000080d8    00000018     heading_control.o (.text.HeadingControl_SetTargetYaw)
+                  000080f0    00000018     menu.o (.text.Menu_ParamItemToString)
+                  00008108    00000018     mission_library.o (.text.MissionLibrary_FindById)
+                  00008120    00000018     motion_action.o (.text.MotionAction_Cancel)
+                  00008138    00000018     motion_action.o (.text.MotionAction_Init)
+                  00008150    00000016     libc.a : copy_zero_init.c.obj (.text:decompress:ZI:__TI_zero_init_nomemset)
+                  00008166    00000002     --HOLE-- [fill = 0]
+                  00008168    00000014     empty.o (.text.GROUP1_IRQHandler)
+                  0000817c    00000014     gimbal_stepper.o (.text.GimbalStepper_SetStepHalfPeriodTicks)
+                  00008190    00000014     heading_control.o (.text.HeadingControl_Enable)
+                  000081a4    00000014     heading_control.o (.text.HeadingControl_Init)
+                  000081b8    00000014     heading_control.o (.text.HeadingControl_Reset)
+                  000081cc    00000014     menu.o (.text.Menu_Init)
+                  000081e0    00000014     mission_library.o (.text.MissionLibrary_GetByIndex)
+                  000081f4    00000014     mission_manager.o (.text.MissionManager_GetSelectedMissionId)
+                  00008208    00000014     libclang_rt.builtins.a : aeabi_ldivmod.S.obj (.text.__aeabi_ldivmod)
+                  0000821c    00000014                            : aeabi_uldivmod.S.obj (.text.__aeabi_uldivmod)
+                  00008230    00000012     libc.a : copy_decompress_none.c.obj (.text:decompress:none)
+                  00008242    00000002     --HOLE-- [fill = 0]
+                  00008244    00000010     gimbal.o (.text.Gimbal_YawGetFeedback)
+                  00008254    00000010     key.o (.text.Key_GetEvent)
+                  00008264    00000010     obstacle_avoidance.o (.text.ObstacleAvoidance_IsResumeGraceActive)
+                  00008274    00000010     ti_msp_dl_config.o (.text.SYSCFG_DL_init)
+                  00008284    0000000c     car_controller.o (.text.CarController_GetRunMode)
+                  00008290    0000000c     car_state.o (.text.CarState_Get)
+                  0000829c    0000000c     car_state.o (.text.CarState_Init)
+                  000082a8    0000000c     car_state.o (.text.CarState_Set)
+                  000082b4    0000000c     gimbal.o (.text.Gimbal_Tick100us)
+                  000082c0    0000000c     gimbal.o (.text.Gimbal_Update5ms)
+                  000082cc    0000000c     imu.o (.text.Imu_GetCorrectedGyroZDps)
+                  000082d8    0000000c     imu.o (.text.Imu_GetYaw)
+                  000082e4    0000000c     imu.o (.text.Imu_ResetYaw)
+                  000082f0    0000000c     menu.o (.text.Menu_GetPage)
+                  000082fc    0000000c     menu.o (.text.Menu_GetParamItem)
+                  00008308    0000000c     mission_manager.o (.text.MissionManager_SetExternalHold)
+                  00008314    0000000c     obstacle_avoidance.o (.text.ObstacleAvoidance_IsActive)
+                  00008320    0000000c     obstacle_avoidance.o (.text.ObstacleAvoidance_IsFailed)
+                  0000832c    0000000c     obstacle_safety.o (.text.ObstacleSafety_IsHolding)
+                  00008338    0000000c     oled_ui.o (.text.OledUi_Init)
+                  00008344    0000000c     libclang_rt.builtins.a : aeabi_memset.S.obj (.text.__aeabi_memclr)
+                  00008350    0000000a     driverlib.a : dl_common.o (.text.DL_Common_delayCycles)
+                  0000835a    0000000a     track_sensor.o (.text.TrackSensor_IsCenterDetected)
+                  00008364    0000000a     track_sensor.o (.text.TrackSensor_IsLineDetected)
+                  0000836e    0000000a     track_sensor.o (.text.TrackSensor_IsLineLost)
+                  00008378    00000008     car_controller.o (.text.CarController_GetFeedback)
+                  00008380    00000008     gimbal_stepper.o (.text.GimbalStepper_GetFeedback)
+                  00008388    00000008     heading_control.o (.text.HeadingControl_GetRuntime)
+                  00008390    00000008     imu.o (.text.Imu_GetRuntime)
+                  00008398    00000008     mission_manager.o (.text.MissionManager_GetMissionCount)
+                  000083a0    00000008     mission_manager.o (.text.MissionManager_GetRuntime)
+                  000083a8    00000008     motion_action.o (.text.MotionAction_GetRuntime)
+                  000083b0    00000008     obstacle_avoidance.o (.text.ObstacleAvoidance_GetFeedback)
+                  000083b8    00000008     obstacle_monitor.o (.text.ObstacleMonitor_GetFeedback)
+                  000083c0    00000008     servo.o (.text.Servo_GetFeedback)
+                  000083c8    00000008     ultrasonic.o (.text.Ultrasonic_GetFeedback)
+                  000083d0    00000008     libclang_rt.builtins.a : aeabi_memcpy.S.obj (.text.__aeabi_memcpy)
+                  000083d8    00000006     libc.a : exit.c.obj (.text:abort)
+                  000083de    00000004     libsysbm.a : hostexit.c.obj (.text.HOSTexit)
+                  000083e2    00000004     mission_library.o (.text.MissionLibrary_GetCount)
+                  000083e6    00000004     startup_mspm0g350x_ticlang.o (.text.Reset_Handler)
+                  000083ea    00000004     libc.a : pre_init.c.obj (.text._system_pre_init)
+                  000083ee    00000002     --HOLE-- [fill = 0]
 
-.cinit     0    00008430    00000030     
-                  00008430    0000000c     (__TI_handler_table)
-                  0000843c    00000008     (.cinit..bss.load) [load image, compression = zero_init]
-                  00008444    00000005     (.cinit..data.load) [load image, compression = lzss]
-                  00008449    00000003     --HOLE-- [fill = 0]
-                  0000844c    00000010     (__TI_cinit_table)
-                  0000845c    00000004     --HOLE-- [fill = 0]
+.cinit     0    00008a00    00000030     
+                  00008a00    0000000c     (__TI_handler_table)
+                  00008a0c    00000008     (.cinit..bss.load) [load image, compression = zero_init]
+                  00008a14    00000005     (.cinit..data.load) [load image, compression = lzss]
+                  00008a19    00000003     --HOLE-- [fill = 0]
+                  00008a1c    00000010     (__TI_cinit_table)
+                  00008a2c    00000004     --HOLE-- [fill = 0]
 
-.rodata    0    00007e18    00000618     
-                  00007e18    000000d8     oled.o (.rodata..Lswitch.table.OLED_PrintChar)
-                  00007ef0    000000a8     mission_library.o (.rodata.g_missionMapA)
-                  00007f98    000000a8     mission_library.o (.rodata.g_missionMapB)
-                  00008040    00000078     mission_library.o (.rodata.g_missionMapC)
-                  000080b8    00000030     mission_library.o (.rodata.g_missionRegistry)
-                  000080e8    00000024     oled_ui.o (.rodata..Lswitch.table.OledUi_Update_20ms.86)
-                  0000810c    00000020     menu.o (.rodata..Lswitch.table.Menu_ParamItemToString)
-                  0000812c    0000001c     car_controller.o (.rodata..Lswitch.table.CarController_RunModeToString)
-                  00008148    00000018     oled_ui.o (.rodata..Lswitch.table.OledUi_Update_20ms.87)
-                  00008160    0000000d     oled_ui.o (.rodata.str1.16526439943277383452.1)
-                  0000816d    0000000d     oled_ui.o (.rodata.str1.9611283282870761829.1)
-                  0000817a    00000002     --HOLE-- [fill = 0]
-                  0000817c    0000000c     mission_library.o (.rodata..Lswitch.table.MissionLibrary_FindById)
-                  00008188    0000000c     oled_ui.o (.rodata..Lswitch.table.OledUi_Update_20ms.85)
-                  00008194    0000000c     oled_ui.o (.rodata.str1.8460525935980491721.1)
-                  000081a0    00000009     menu.o (.rodata..Lswitch.table.Menu_HandleKeyEvent)
-                  000081a9    00000009     oled_ui.o (.rodata.str1.18266126048138325213.1)
-                  000081b2    00000008     oled_ui.o (.rodata.str1.15613891207764622616.1)
-                  000081ba    00000007     oled_ui.o (.rodata.str1.9544068167406571052.1)
-                  000081c1    00000006     oled_ui.o (.rodata.str1.11428648044669318875.1)
-                  000081c7    00000006     mission_library.o (.rodata.str1.13636476544574750902.1)
-                  000081cd    00000006     oled_ui.o (.rodata.str1.1445687256832830955.1)
-                  000081d3    00000006     oled_ui.o (.rodata.str1.15008238333949226094.1)
-                  000081d9    00000006     mission_library.o (.rodata.str1.15668266851434757964.1)
-                  000081df    00000006     oled_ui.o (.rodata.str1.17540787658903907660.1)
-                  000081e5    00000006     oled_ui.o (.rodata.str1.17763087492223448992.1)
-                  000081eb    00000006     oled_ui.o (.rodata.str1.17763996158807330232.1)
-                  000081f1    00000006     oled_ui.o (.rodata.str1.17884296644359297425.1)
-                  000081f7    00000006     mission_library.o (.rodata.str1.199678142196697465.1)
-                  000081fd    00000006     oled_ui.o (.rodata.str1.5965450730569173784.1)
-                  00008203    00000006     oled_ui.o (.rodata.str1.9584387800903135389.1)
-                  00008209    00000005     oled.o (.rodata.oled_get_glyph.colon)
-                  0000820e    00000005     oled.o (.rodata.oled_get_glyph.eight)
-                  00008213    00000005     oled.o (.rodata.oled_get_glyph.five)
-                  00008218    00000005     oled.o (.rodata.oled_get_glyph.four)
-                  0000821d    00000005     oled.o (.rodata.oled_get_glyph.glyphA)
-                  00008222    00000005     oled.o (.rodata.oled_get_glyph.glyphB)
-                  00008227    00000005     oled.o (.rodata.oled_get_glyph.glyphC)
-                  0000822c    00000005     oled.o (.rodata.oled_get_glyph.glyphD)
-                  00008231    00000005     oled.o (.rodata.oled_get_glyph.glyphE)
-                  00008236    00000005     oled.o (.rodata.oled_get_glyph.glyphG)
-                  0000823b    00000005     oled.o (.rodata.oled_get_glyph.glyphH)
-                  00008240    00000005     oled.o (.rodata.oled_get_glyph.glyphI)
-                  00008245    00000005     oled.o (.rodata.oled_get_glyph.glyphK)
-                  0000824a    00000005     oled.o (.rodata.oled_get_glyph.glyphL)
-                  0000824f    00000005     oled.o (.rodata.oled_get_glyph.glyphM)
-                  00008254    00000005     oled.o (.rodata.oled_get_glyph.glyphN)
-                  00008259    00000005     oled.o (.rodata.oled_get_glyph.glyphO)
-                  0000825e    00000005     oled.o (.rodata.oled_get_glyph.glyphP)
-                  00008263    00000005     oled.o (.rodata.oled_get_glyph.glyphR)
-                  00008268    00000005     oled.o (.rodata.oled_get_glyph.glyphS)
-                  0000826d    00000005     oled.o (.rodata.oled_get_glyph.glyphT)
-                  00008272    00000005     oled.o (.rodata.oled_get_glyph.glyphU)
-                  00008277    00000005     oled.o (.rodata.oled_get_glyph.glyphV)
-                  0000827c    00000005     oled.o (.rodata.oled_get_glyph.glyphW)
-                  00008281    00000005     oled.o (.rodata.oled_get_glyph.glyphX)
-                  00008286    00000005     oled.o (.rodata.oled_get_glyph.glyphY)
-                  0000828b    00000005     oled.o (.rodata.oled_get_glyph.glyphb)
-                  00008290    00000005     oled.o (.rodata.oled_get_glyph.gt)
-                  00008295    00000005     oled.o (.rodata.oled_get_glyph.minus)
-                  0000829a    00000005     oled.o (.rodata.oled_get_glyph.nine)
-                  0000829f    00000005     oled.o (.rodata.oled_get_glyph.one)
-                  000082a4    00000005     oled.o (.rodata.oled_get_glyph.seven)
-                  000082a9    00000005     oled.o (.rodata.oled_get_glyph.six)
-                  000082ae    00000005     oled.o (.rodata.oled_get_glyph.space)
-                  000082b3    00000005     oled.o (.rodata.oled_get_glyph.three)
-                  000082b8    00000005     oled.o (.rodata.oled_get_glyph.two)
-                  000082bd    00000005     oled.o (.rodata.oled_get_glyph.zero)
-                  000082c2    00000005     oled_ui.o (.rodata.str1.10430294223631918979.1)
-                  000082c7    00000005     oled_ui.o (.rodata.str1.10509309789429088155.1)
-                  000082cc    00000005     oled_ui.o (.rodata.str1.1108652269057166745.1)
-                  000082d1    00000005     oled_ui.o (.rodata.str1.12182588061437138428.1)
-                  000082d6    00000005     oled_ui.o (.rodata.str1.12493748764729730277.1)
-                  000082db    00000005     oled_ui.o (.rodata.str1.13882251010780863896.1)
-                  000082e0    00000005     oled_ui.o (.rodata.str1.14134189893851348960.1)
-                  000082e5    00000005     oled_ui.o (.rodata.str1.15575624326185233262.1)
-                  000082ea    00000005     oled_ui.o (.rodata.str1.15802367878353263018.1)
-                  000082ef    00000005     oled_ui.o (.rodata.str1.15829239520183577662.1)
-                  000082f4    00000005     oled_ui.o (.rodata.str1.15917848551323629232.1)
-                  000082f9    00000005     oled_ui.o (.rodata.str1.15935041339501476673.1)
-                  000082fe    00000005     car_controller.o (.rodata.str1.1652194605229746967.1)
-                  00008303    00000005     oled_ui.o (.rodata.str1.16939060351352778619.1)
-                  00008308    00000005     oled_ui.o (.rodata.str1.17274519358952562110.1)
-                  0000830d    00000005     oled_ui.o (.rodata.str1.17464849429964608858.1)
-                  00008312    00000005     oled_ui.o (.rodata.str1.2522137003438374266.1)
-                  00008317    00000005     oled_ui.o (.rodata.str1.270145429241168923.1)
-                  0000831c    00000005     oled_ui.o (.rodata.str1.3467953211977455017.1)
-                  00008321    00000005     car_controller.o (.rodata.str1.4164979912472006574.1)
-                  00008326    00000005     oled_ui.o (.rodata.str1.4402311448527872260.1)
-                  0000832b    00000005     oled_ui.o (.rodata.str1.4581472623415959594.1)
-                  00008330    00000005     menu.o (.rodata.str1.4862307748908978627.1)
-                  00008335    00000005     oled_ui.o (.rodata.str1.6954814719705590448.1)
-                  0000833a    00000005     oled_ui.o (.rodata.str1.7219546930854689545.1)
-                  0000833f    00000005     oled_ui.o (.rodata.str1.8426569189266129334.1)
-                  00008344    00000005     car_controller.o (.rodata.str1.9234375891235759983.1)
-                  00008349    00000005     car_controller.o (.rodata.str1.9981487771679760427.1)
-                  0000834e    00000004     oled_ui.o (.rodata.str1.1019225241002246410.1)
-                  00008352    00000004     oled_ui.o (.rodata.str1.10416366799939242409.1)
-                  00008356    00000004     oled_ui.o (.rodata.str1.10568433575767188072.1)
-                  0000835a    00000004     menu.o (.rodata.str1.12110183915172842339.1)
-                  0000835e    00000004     car_controller.o (.rodata.str1.12442237994239546032.1)
-                  00008362    00000004     oled_ui.o (.rodata.str1.12617122458660443890.1)
-                  00008366    00000004     oled_ui.o (.rodata.str1.12928245060369742404.1)
-                  0000836a    00000004     oled_ui.o (.rodata.str1.130772507669342127.1)
-                  0000836e    00000004     menu.o (.rodata.str1.13124720451672825294.1)
-                  00008372    00000004     oled_ui.o (.rodata.str1.13244290092665904221.1)
-                  00008376    00000004     oled_ui.o (.rodata.str1.13567883086814673087.1)
-                  0000837a    00000004     oled_ui.o (.rodata.str1.13790669171379415506.1)
-                  0000837e    00000004     menu.o (.rodata.str1.14098755746347272832.1)
-                  00008382    00000004     oled_ui.o (.rodata.str1.14521350379984854626.1)
-                  00008386    00000004     oled_ui.o (.rodata.str1.14740362735394205067.1)
-                  0000838a    00000004     oled_ui.o (.rodata.str1.15577080202403550426.1)
-                  0000838e    00000004     oled_ui.o (.rodata.str1.15817398807211891688.1)
-                  00008392    00000004     oled_ui.o (.rodata.str1.16411631209783952401.1)
-                  00008396    00000004     oled_ui.o (.rodata.str1.16554583589798097927.1)
-                  0000839a    00000004     oled_ui.o (.rodata.str1.16895433903389883335.1)
-                  0000839e    00000004     menu.o (.rodata.str1.17041139162815566052.1)
-                  000083a2    00000004     car_controller.o (.rodata.str1.17172356789460551389.1)
-                  000083a6    00000004     car_controller.o (.rodata.str1.18191498530309206443.1)
-                  000083aa    00000004     oled_ui.o (.rodata.str1.18379317056176403938.1)
-                  000083ae    00000004     oled_ui.o (.rodata.str1.2308938766145545715.1)
-                  000083b2    00000004     oled_ui.o (.rodata.str1.3025253791635144717.1)
-                  000083b6    00000004     oled_ui.o (.rodata.str1.3407221357956504873.1)
-                  000083ba    00000004     oled_ui.o (.rodata.str1.3455423528827705371.1)
-                  000083be    00000004     oled_ui.o (.rodata.str1.3702290527496711532.1)
-                  000083c2    00000004     oled_ui.o (.rodata.str1.4581686099848791648.1)
-                  000083c6    00000004     oled_ui.o (.rodata.str1.4610220316623841660.1)
-                  000083ca    00000004     oled_ui.o (.rodata.str1.5853739094453432564.1)
-                  000083ce    00000004     oled_ui.o (.rodata.str1.6806727740681590176.1)
-                  000083d2    00000004     car_controller.o (.rodata.str1.702403006289709404.1)
-                  000083d6    00000004     oled_ui.o (.rodata.str1.7185587941321649510.1)
-                  000083da    00000004     oled_ui.o (.rodata.str1.7419768602719733415.1)
-                  000083de    00000004     oled_ui.o (.rodata.str1.7774807581888385879.1)
-                  000083e2    00000004     oled_ui.o (.rodata.str1.8236579331345056500.1)
-                  000083e6    00000004     oled_ui.o (.rodata.str1.8403269972884532600.1)
-                  000083ea    00000004     oled_ui.o (.rodata.str1.8471462185882660445.1)
-                  000083ee    00000004     oled_ui.o (.rodata.str1.8783421139296713095.1)
-                  000083f2    00000004     oled_ui.o (.rodata.str1.9102528229756940648.1)
-                  000083f6    00000004     oled_ui.o (.rodata.str1.9159586779647977165.1)
-                  000083fa    00000004     oled_ui.o (.rodata.str1.9295666102996717355.1)
-                  000083fe    00000004     menu.o (.rodata.str1.9546740394641817443.1)
-                  00008402    00000004     oled_ui.o (.rodata.str1.967006512144173535.1)
-                  00008406    00000004     oled_ui.o (.rodata.str1.9854382722193312766.1)
-                  0000840a    00000003     oled_ui.o (.rodata.str1.11232419324784801130.1)
-                  0000840d    00000003     oled_ui.o (.rodata.str1.12983537867572525563.1)
-                  00008410    00000003     oled_ui.o (.rodata.str1.14358698208395374265.1)
-                  00008413    00000003     oled_ui.o (.rodata.str1.14556837007311414654.1)
-                  00008416    00000003     oled_ui.o (.rodata.str1.15859922799842739878.1)
-                  00008419    00000003     menu.o (.rodata.str1.16312125044762562515.1)
-                  0000841c    00000003     oled_ui.o (.rodata.str1.16849766574302683489.1)
-                  0000841f    00000003     oled_ui.o (.rodata.str1.16931641404301806744.1)
-                  00008422    00000003     oled_ui.o (.rodata.str1.17812014771544466701.1)
-                  00008425    00000003     menu.o (.rodata.str1.4646809750356241979.1)
-                  00008428    00000003     menu.o (.rodata.str1.6857549598058878762.1)
-                  0000842b    00000003     oled_ui.o (.rodata.str1.8693388333057100694.1)
-                  0000842e    00000002     --HOLE-- [fill = 0]
+.rodata    0    000083f0    00000610     
+                  000083f0    000000d8     oled.o (.rodata..Lswitch.table.OLED_PrintChar)
+                  000084c8    000000a8     mission_library.o (.rodata.g_missionMapA)
+                  00008570    000000a8     mission_library.o (.rodata.g_missionMapB)
+                  00008618    00000078     mission_library.o (.rodata.g_missionMapC)
+                  00008690    00000030     mission_library.o (.rodata.g_missionRegistry)
+                  000086c0    00000024     oled_ui.o (.rodata..Lswitch.table.OledUi_Update_20ms.85)
+                  000086e4    00000020     menu.o (.rodata..Lswitch.table.Menu_ParamItemToString)
+                  00008704    0000001c     car_controller.o (.rodata..Lswitch.table.CarController_RunModeToString)
+                  00008720    00000018     oled_ui.o (.rodata..Lswitch.table.OledUi_Update_20ms.86)
+                  00008738    0000000d     oled_ui.o (.rodata.str1.16526439943277383452.1)
+                  00008745    00000003     oled_ui.o (.rodata.str1.11232419324784801130.1)
+                  00008748    0000000c     mission_library.o (.rodata..Lswitch.table.MissionLibrary_FindById)
+                  00008754    0000000c     oled_ui.o (.rodata..Lswitch.table.OledUi_Update_20ms.84)
+                  00008760    0000000c     oled_ui.o (.rodata.str1.12983537867572525563.1)
+                  0000876c    00000009     menu.o (.rodata..Lswitch.table.Menu_HandleKeyEvent)
+                  00008775    00000009     oled_ui.o (.rodata.str1.18266126048138325213.1)
+                  0000877e    00000008     oled_ui.o (.rodata.str1.15613891207764622616.1)
+                  00008786    00000008     oled_ui.o (.rodata.str1.7419768602719733415.1)
+                  0000878e    00000007     oled_ui.o (.rodata.str1.9544068167406571052.1)
+                  00008795    00000006     oled_ui.o (.rodata.str1.10509309789429088155.1)
+                  0000879b    00000006     mission_library.o (.rodata.str1.13636476544574750902.1)
+                  000087a1    00000006     oled_ui.o (.rodata.str1.1445687256832830955.1)
+                  000087a7    00000006     oled_ui.o (.rodata.str1.14521350379984854626.1)
+                  000087ad    00000006     oled_ui.o (.rodata.str1.15008238333949226094.1)
+                  000087b3    00000006     mission_library.o (.rodata.str1.15668266851434757964.1)
+                  000087b9    00000006     oled_ui.o (.rodata.str1.15829239520183577662.1)
+                  000087bf    00000006     oled_ui.o (.rodata.str1.17540787658903907660.1)
+                  000087c5    00000006     oled_ui.o (.rodata.str1.17884296644359297425.1)
+                  000087cb    00000006     mission_library.o (.rodata.str1.199678142196697465.1)
+                  000087d1    00000006     oled_ui.o (.rodata.str1.5965450730569173784.1)
+                  000087d7    00000006     oled_ui.o (.rodata.str1.8471462185882660445.1)
+                  000087dd    00000005     oled.o (.rodata.oled_get_glyph.colon)
+                  000087e2    00000005     oled.o (.rodata.oled_get_glyph.eight)
+                  000087e7    00000005     oled.o (.rodata.oled_get_glyph.five)
+                  000087ec    00000005     oled.o (.rodata.oled_get_glyph.four)
+                  000087f1    00000005     oled.o (.rodata.oled_get_glyph.glyphA)
+                  000087f6    00000005     oled.o (.rodata.oled_get_glyph.glyphB)
+                  000087fb    00000005     oled.o (.rodata.oled_get_glyph.glyphC)
+                  00008800    00000005     oled.o (.rodata.oled_get_glyph.glyphD)
+                  00008805    00000005     oled.o (.rodata.oled_get_glyph.glyphE)
+                  0000880a    00000005     oled.o (.rodata.oled_get_glyph.glyphG)
+                  0000880f    00000005     oled.o (.rodata.oled_get_glyph.glyphH)
+                  00008814    00000005     oled.o (.rodata.oled_get_glyph.glyphI)
+                  00008819    00000005     oled.o (.rodata.oled_get_glyph.glyphK)
+                  0000881e    00000005     oled.o (.rodata.oled_get_glyph.glyphL)
+                  00008823    00000005     oled.o (.rodata.oled_get_glyph.glyphM)
+                  00008828    00000005     oled.o (.rodata.oled_get_glyph.glyphN)
+                  0000882d    00000005     oled.o (.rodata.oled_get_glyph.glyphO)
+                  00008832    00000005     oled.o (.rodata.oled_get_glyph.glyphP)
+                  00008837    00000005     oled.o (.rodata.oled_get_glyph.glyphR)
+                  0000883c    00000005     oled.o (.rodata.oled_get_glyph.glyphS)
+                  00008841    00000005     oled.o (.rodata.oled_get_glyph.glyphT)
+                  00008846    00000005     oled.o (.rodata.oled_get_glyph.glyphU)
+                  0000884b    00000005     oled.o (.rodata.oled_get_glyph.glyphV)
+                  00008850    00000005     oled.o (.rodata.oled_get_glyph.glyphW)
+                  00008855    00000005     oled.o (.rodata.oled_get_glyph.glyphX)
+                  0000885a    00000005     oled.o (.rodata.oled_get_glyph.glyphY)
+                  0000885f    00000005     oled.o (.rodata.oled_get_glyph.glyphb)
+                  00008864    00000005     oled.o (.rodata.oled_get_glyph.gt)
+                  00008869    00000005     oled.o (.rodata.oled_get_glyph.minus)
+                  0000886e    00000005     oled.o (.rodata.oled_get_glyph.nine)
+                  00008873    00000005     oled.o (.rodata.oled_get_glyph.one)
+                  00008878    00000005     oled.o (.rodata.oled_get_glyph.seven)
+                  0000887d    00000005     oled.o (.rodata.oled_get_glyph.six)
+                  00008882    00000005     oled.o (.rodata.oled_get_glyph.space)
+                  00008887    00000005     oled.o (.rodata.oled_get_glyph.three)
+                  0000888c    00000005     oled.o (.rodata.oled_get_glyph.two)
+                  00008891    00000005     oled.o (.rodata.oled_get_glyph.zero)
+                  00008896    00000005     oled_ui.o (.rodata.str1.1108652269057166745.1)
+                  0000889b    00000005     oled_ui.o (.rodata.str1.11428648044669318875.1)
+                  000088a0    00000005     oled_ui.o (.rodata.str1.12182588061437138428.1)
+                  000088a5    00000005     oled_ui.o (.rodata.str1.12928245060369742404.1)
+                  000088aa    00000005     oled_ui.o (.rodata.str1.13882251010780863896.1)
+                  000088af    00000005     oled_ui.o (.rodata.str1.14134189893851348960.1)
+                  000088b4    00000005     oled_ui.o (.rodata.str1.14740362735394205067.1)
+                  000088b9    00000005     oled_ui.o (.rodata.str1.15802367878353263018.1)
+                  000088be    00000005     oled_ui.o (.rodata.str1.15917848551323629232.1)
+                  000088c3    00000005     oled_ui.o (.rodata.str1.15935041339501476673.1)
+                  000088c8    00000005     car_controller.o (.rodata.str1.1652194605229746967.1)
+                  000088cd    00000005     oled_ui.o (.rodata.str1.16554583589798097927.1)
+                  000088d2    00000005     oled_ui.o (.rodata.str1.16939060351352778619.1)
+                  000088d7    00000005     oled_ui.o (.rodata.str1.17274519358952562110.1)
+                  000088dc    00000005     oled_ui.o (.rodata.str1.17464849429964608858.1)
+                  000088e1    00000005     oled_ui.o (.rodata.str1.17763087492223448992.1)
+                  000088e6    00000005     oled_ui.o (.rodata.str1.270145429241168923.1)
+                  000088eb    00000005     car_controller.o (.rodata.str1.4164979912472006574.1)
+                  000088f0    00000005     oled_ui.o (.rodata.str1.4402311448527872260.1)
+                  000088f5    00000005     oled_ui.o (.rodata.str1.4581472623415959594.1)
+                  000088fa    00000005     menu.o (.rodata.str1.4862307748908978627.1)
+                  000088ff    00000005     oled_ui.o (.rodata.str1.6806727740681590176.1)
+                  00008904    00000005     oled_ui.o (.rodata.str1.6954814719705590448.1)
+                  00008909    00000005     oled_ui.o (.rodata.str1.7774807581888385879.1)
+                  0000890e    00000005     oled_ui.o (.rodata.str1.8426569189266129334.1)
+                  00008913    00000005     oled_ui.o (.rodata.str1.8783421139296713095.1)
+                  00008918    00000005     car_controller.o (.rodata.str1.9234375891235759983.1)
+                  0000891d    00000005     car_controller.o (.rodata.str1.9981487771679760427.1)
+                  00008922    00000004     oled_ui.o (.rodata.str1.1019225241002246410.1)
+                  00008926    00000004     oled_ui.o (.rodata.str1.10416366799939242409.1)
+                  0000892a    00000004     oled_ui.o (.rodata.str1.10568433575767188072.1)
+                  0000892e    00000004     menu.o (.rodata.str1.12110183915172842339.1)
+                  00008932    00000004     car_controller.o (.rodata.str1.12442237994239546032.1)
+                  00008936    00000004     oled_ui.o (.rodata.str1.12493748764729730277.1)
+                  0000893a    00000004     oled_ui.o (.rodata.str1.12617122458660443890.1)
+                  0000893e    00000004     oled_ui.o (.rodata.str1.130772507669342127.1)
+                  00008942    00000004     menu.o (.rodata.str1.13124720451672825294.1)
+                  00008946    00000004     oled_ui.o (.rodata.str1.13244290092665904221.1)
+                  0000894a    00000004     oled_ui.o (.rodata.str1.13567883086814673087.1)
+                  0000894e    00000004     oled_ui.o (.rodata.str1.13790669171379415506.1)
+                  00008952    00000004     menu.o (.rodata.str1.14098755746347272832.1)
+                  00008956    00000004     oled_ui.o (.rodata.str1.15575624326185233262.1)
+                  0000895a    00000004     oled_ui.o (.rodata.str1.15577080202403550426.1)
+                  0000895e    00000004     oled_ui.o (.rodata.str1.15817398807211891688.1)
+                  00008962    00000004     oled_ui.o (.rodata.str1.15859922799842739878.1)
+                  00008966    00000004     oled_ui.o (.rodata.str1.16895433903389883335.1)
+                  0000896a    00000004     menu.o (.rodata.str1.17041139162815566052.1)
+                  0000896e    00000004     car_controller.o (.rodata.str1.17172356789460551389.1)
+                  00008972    00000004     oled_ui.o (.rodata.str1.17763996158807330232.1)
+                  00008976    00000004     car_controller.o (.rodata.str1.18191498530309206443.1)
+                  0000897a    00000004     oled_ui.o (.rodata.str1.2308938766145545715.1)
+                  0000897e    00000004     oled_ui.o (.rodata.str1.2522137003438374266.1)
+                  00008982    00000004     oled_ui.o (.rodata.str1.3025253791635144717.1)
+                  00008986    00000004     oled_ui.o (.rodata.str1.3407221357956504873.1)
+                  0000898a    00000004     oled_ui.o (.rodata.str1.3455423528827705371.1)
+                  0000898e    00000004     oled_ui.o (.rodata.str1.3467953211977455017.1)
+                  00008992    00000004     oled_ui.o (.rodata.str1.3702290527496711532.1)
+                  00008996    00000004     oled_ui.o (.rodata.str1.4581686099848791648.1)
+                  0000899a    00000004     oled_ui.o (.rodata.str1.4610220316623841660.1)
+                  0000899e    00000004     oled_ui.o (.rodata.str1.5853739094453432564.1)
+                  000089a2    00000004     car_controller.o (.rodata.str1.702403006289709404.1)
+                  000089a6    00000004     oled_ui.o (.rodata.str1.7185587941321649510.1)
+                  000089aa    00000004     oled_ui.o (.rodata.str1.7219546930854689545.1)
+                  000089ae    00000004     oled_ui.o (.rodata.str1.8236579331345056500.1)
+                  000089b2    00000004     oled_ui.o (.rodata.str1.8403269972884532600.1)
+                  000089b6    00000004     oled_ui.o (.rodata.str1.8460525935980491721.1)
+                  000089ba    00000004     oled_ui.o (.rodata.str1.9102528229756940648.1)
+                  000089be    00000004     oled_ui.o (.rodata.str1.9159586779647977165.1)
+                  000089c2    00000004     oled_ui.o (.rodata.str1.9295666102996717355.1)
+                  000089c6    00000004     menu.o (.rodata.str1.9546740394641817443.1)
+                  000089ca    00000004     oled_ui.o (.rodata.str1.9584387800903135389.1)
+                  000089ce    00000004     oled_ui.o (.rodata.str1.9611283282870761829.1)
+                  000089d2    00000004     oled_ui.o (.rodata.str1.967006512144173535.1)
+                  000089d6    00000004     oled_ui.o (.rodata.str1.9854382722193312766.1)
+                  000089da    00000003     oled_ui.o (.rodata.str1.14358698208395374265.1)
+                  000089dd    00000003     oled_ui.o (.rodata.str1.14556837007311414654.1)
+                  000089e0    00000003     menu.o (.rodata.str1.16312125044762562515.1)
+                  000089e3    00000003     oled_ui.o (.rodata.str1.16411631209783952401.1)
+                  000089e6    00000003     oled_ui.o (.rodata.str1.16849766574302683489.1)
+                  000089e9    00000003     oled_ui.o (.rodata.str1.16931641404301806744.1)
+                  000089ec    00000003     oled_ui.o (.rodata.str1.17812014771544466701.1)
+                  000089ef    00000003     oled_ui.o (.rodata.str1.18379317056176403938.1)
+                  000089f2    00000003     menu.o (.rodata.str1.4646809750356241979.1)
+                  000089f5    00000003     menu.o (.rodata.str1.6857549598058878762.1)
+                  000089f8    00000003     oled_ui.o (.rodata.str1.8693388333057100694.1)
+                  000089fb    00000005     --HOLE-- [fill = 0]
 
 .init_array 
 *          0    00000000    00000000     UNINITIALIZED
 
 .binit     0    00000000    00000000     
 
-.bss       0    20200000    000002f0     UNINITIALIZED
+.bss       0    20200000    000002f2     UNINITIALIZED
                   20200000    0000005c     (.common:g_appConfig)
                   2020005c    00000004     gimbal_tracker.o (.bss.g_filteredErrorX)
                   20200060    00000040     gimbal.o (.bss.g_feedback)
@@ -528,19 +529,21 @@ section   page    origin      length       input sections
                   202002e3    00000001     gimbal_tracker.o (.bss.g_trackingActive)
                   202002e4    00000001     ultrasonic.o (.bss.g_triggerRequest)
                   202002e5    00000001     ultrasonic.o (.bss.g_ultrasonicState)
-                  202002e6    00000001     gimbal.o (.bss.g_yawPositionValid)
-                  202002e7    00000001     gimbal.o (.bss.g_yawWorldLockEnabled)
-                  202002e8    00000001     (.common:g_carStateDebug)
-                  202002e9    00000001     (.common:g_keyEvent)
-                  202002ea    00000001     (.common:g_oledPageDebug)
-                  202002eb    00000001     (.common:g_paramItemDebug)
-                  202002ec    00000001     (.common:g_trackBlackCount)
-                  202002ed    00000001     (.common:g_trackModeDebug)
-                  202002ee    00000001     (.common:g_trackRaw)
-                  202002ef    00000001     (.common:g_trackTurnDebug)
+                  202002e6    00000001     gimbal.o (.bss.g_yawLimitClamped)
+                  202002e7    00000001     gimbal.o (.bss.g_yawLimitDirection)
+                  202002e8    00000001     gimbal.o (.bss.g_yawPositionValid)
+                  202002e9    00000001     gimbal.o (.bss.g_yawWorldLockEnabled)
+                  202002ea    00000001     (.common:g_carStateDebug)
+                  202002eb    00000001     (.common:g_keyEvent)
+                  202002ec    00000001     (.common:g_oledPageDebug)
+                  202002ed    00000001     (.common:g_paramItemDebug)
+                  202002ee    00000001     (.common:g_trackBlackCount)
+                  202002ef    00000001     (.common:g_trackModeDebug)
+                  202002f0    00000001     (.common:g_trackRaw)
+                  202002f1    00000001     (.common:g_trackTurnDebug)
 
-.data      0    202002f0    00000001     UNINITIALIZED
-                  202002f0    00000001     car_controller.o (.data.g_followTurnPolicy)
+.data      0    202002f2    00000001     UNINITIALIZED
+                  202002f2    00000001     car_controller.o (.data.g_followTurnPolicy)
 
 .stack     0    20207e00    00000200     UNINITIALIZED
                   20207e00    00000004     libc.a : boot_cortex_m.c.obj (.stack)
@@ -557,15 +560,15 @@ MODULE SUMMARY
        Module                         code    ro data   rw data
        ------                         ----    -------   -------
     .\
-       gimbal.o                       6464    0         239    
+       gimbal.o                       7532    0         241    
        car_controller.o               3208    64        72     
        imu.o                          3304    0         40     
-       oled_ui.o                      2312    482       1      
+       oled_ui.o                      2364    473       1      
+       gimbal_tracker.o               2576    0         74     
        oled.o                         2088    401       1      
-       gimbal_tracker.o               2368    0         74     
-       gimbal_stepper.o               1280    0         52     
+       gimbal_stepper.o               1412    0         52     
        mission_manager.o              1184    0         32     
-       menu.o                         984     75        4      
+       menu.o                         1020    75        4      
        motion_action.o                1016    0         20     
        app_config.o                   832     0         92     
        obstacle_avoidance.o           752     0         13     
@@ -585,7 +588,7 @@ MODULE SUMMARY
        encoder.o                      144     0         8      
        car_state.o                    36      0         1      
     +--+------------------------------+-------+---------+---------+
-       Total:                         30046   1748      753    
+       Total:                         31542   1739      755    
                                                                
     C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/lib/ticlang/m0p/mspm0g1x0x_g3x0x/driverlib.a
        dl_common.o                    10      0         0      
@@ -637,19 +640,19 @@ MODULE SUMMARY
        Stack:                         0       0         512    
        Linker Generated:              0       41        0      
     +--+------------------------------+-------+---------+---------+
-       Grand Total:                   32062   1789      1265   
+       Grand Total:                   33558   1780      1267   
 
 
 LINKER GENERATED COPY TABLES
 
-__TI_cinit_table @ 0000844c records: 2, size/record: 8, table size: 16
-	.bss: load addr=0000843c, load size=00000008 bytes, run addr=20200000, run size=000002f0 bytes, compression=zero_init
-	.data: load addr=00008444, load size=00000005 bytes, run addr=202002f0, run size=00000001 bytes, compression=lzss
+__TI_cinit_table @ 00008a1c records: 2, size/record: 8, table size: 16
+	.bss: load addr=00008a0c, load size=00000008 bytes, run addr=20200000, run size=000002f2 bytes, compression=zero_init
+	.data: load addr=00008a14, load size=00000005 bytes, run addr=202002f2, run size=00000001 bytes, compression=lzss
 
 
 LINKER GENERATED HANDLER TABLE
 
-__TI_handler_table @ 00008430 records: 3, size/record: 4, table size: 12
+__TI_handler_table @ 00008a00 records: 3, size/record: 4, table size: 12
 	index: 0, handler: __TI_decompress_lzss
 	index: 1, handler: __TI_decompress_none
 	index: 2, handler: __TI_zero_init
@@ -659,190 +662,192 @@ GLOBAL SYMBOLS: SORTED ALPHABETICALLY BY Name
 
 address   name                                  
 -------   ----                                  
-00006007  ADC0_IRQHandler                       
-00006007  ADC1_IRQHandler                       
-00006007  AES_IRQHandler                        
-00005b2d  AppConfig_InitDefault                 
-000025b1  AppConfig_LimitAll                    
-00006e4d  App_Init                              
-000058ed  App_Update_20ms                       
-00007e06  C$$EXIT                               
-00006007  CANFD0_IRQHandler                     
-00007da1  CarController_GetFeedback             
-00007cad  CarController_GetRunMode              
-00006805  CarController_Init                    
-00006881  CarController_ResetRuntime            
-00007ad1  CarController_RunModeToString         
-000071fd  CarController_SetSafetyHold           
-000063b9  CarController_StartDriveHeading       
-000068fd  CarController_StartFollowLine         
-00006289  CarController_StartSeekLine           
-00006b5d  CarController_StartTurnLeft90         
-00006ae9  CarController_StartTurnRight90        
-0000656d  CarController_StartTurnToYawRelative  
-0000797d  CarController_Stop                    
-000009bd  CarController_Update_20ms             
-00007cb9  CarState_Get                          
-00007cc5  CarState_Init                         
-00007cd1  CarState_Set                          
-00006007  DAC0_IRQHandler                       
-00007d79  DL_Common_delayCycles                 
-00006007  DMA_IRQHandler                        
-00006007  Default_Handler                       
-00006cad  Encoder_HandleGpioInterrupt           
-00007935  Encoder_Reset                         
-00006007  GROUP0_IRQHandler                     
-00007b91  GROUP1_IRQHandler                     
-00007da9  GimbalStepper_GetFeedback             
-00005d4d  GimbalStepper_Init                    
-00004391  GimbalStepper_MoveToEstimatedSteps    
-00006bcd  GimbalStepper_Release                 
-00007ba5  GimbalStepper_SetStepHalfPeriodTicks  
-00005be5  GimbalStepper_StopHold                
-0000407d  GimbalStepper_Tick100us               
-000074c5  GimbalTracker_ClearObservation        
-00006f75  GimbalTracker_Enable                  
-00006fd5  GimbalTracker_GetFeedback             
-00006785  GimbalTracker_Init                    
-0000667d  GimbalTracker_PushObservation         
-000010b1  GimbalTracker_Update                  
-000047e1  Gimbal_Init                           
-000054bd  Gimbal_PitchConfirmZero               
-00007779  Gimbal_PitchGetFeedback               
-00005dfd  Gimbal_PitchMoveRelativeDeg           
-00004e19  Gimbal_PitchRelease                   
-00002321  Gimbal_PitchSetTrackingSpeedDegS      
-00005105  Gimbal_PitchStopHold                  
-00004211  Gimbal_PitchTick100us                 
-000039b1  Gimbal_PitchUpdate5ms                 
-00007cdd  Gimbal_Tick100us                      
-00007ce9  Gimbal_Update5ms                      
-00006009  Gimbal_YawEnableWorldLock             
-00007c6d  Gimbal_YawGetFeedback                 
-00005c99  Gimbal_YawMoveRelativeDeg             
-000072ed  Gimbal_YawRelease                     
-00003b6d  Gimbal_YawSetWrappedTargetDeg         
-00006979  Gimbal_YawStopHold                    
-000065f5  Gimbal_YawToggleWorldLock             
-0000319d  Gimbal_YawUpdate5ms                   
-00007e07  HOSTexit                              
-00006007  HardFault_Handler                     
-00007bb9  HeadingControl_Enable                 
-00007db1  HeadingControl_GetRuntime             
-00007bcd  HeadingControl_Init                   
-00007ae9  HeadingControl_LockCurrentYaw         
-00007be1  HeadingControl_Reset                  
-00007b01  HeadingControl_SetTargetYaw           
-00004681  HeadingControl_Update                 
-00006007  I2C0_IRQHandler                       
-00006007  I2C1_IRQHandler                       
-000033c9  Imu_CalibrateGyroBias                 
-00007cf5  Imu_GetCorrectedGyroZDps              
-00007db9  Imu_GetRuntime                        
-00007d01  Imu_GetYaw                            
-00001da1  Imu_Init                              
-00007a7d  Imu_IsReady                           
-00007d0d  Imu_ResetYaw                          
-00004bb9  Imu_Update                            
-00007c7d  Key_GetEvent                          
-000077a9  Key_Init                              
-0000450d  Key_Update_20ms                       
-00007d19  Menu_GetPage                          
-00007d25  Menu_GetParamItem                     
-00006de9  Menu_GetParamValue                    
-0000145d  Menu_HandleKeyEvent                   
-00007bf5  Menu_Init                             
-00007b19  Menu_ParamItemToString                
-00007b31  MissionLibrary_FindById               
-00007c09  MissionLibrary_GetByIndex             
-00007e0b  MissionLibrary_GetCount               
-00005f5d  MissionLibrary_Validate               
-000077d9  MissionManager_Cancel                 
-00007dc1  MissionManager_GetMissionCount        
-00007dc9  MissionManager_GetRuntime             
-00007c1d  MissionManager_GetSelectedMissionId   
-00006d19  MissionManager_GetSelectedMissionIndex
-00007339  MissionManager_Init                   
-0000799d  MissionManager_Pause                  
-00007809  MissionManager_Reset                  
-000079bd  MissionManager_Resume                 
-000051f5  MissionManager_SelectNext             
-00005599  MissionManager_SelectPrevious         
-00007d31  MissionManager_SetExternalHold        
-000073c5  MissionManager_Start                  
-00004f15  MissionManager_Update_20ms            
-00007b49  MotionAction_Cancel                   
-000079dd  MotionAction_GetCurrentBypassDirection
-000079fd  MotionAction_GetCurrentObstaclePolicy 
-00007dd1  MotionAction_GetRuntime               
-00007b61  MotionAction_Init                     
-00007669  MotionAction_ReapplyControllerTarget  
-0000493d  MotionAction_Start                    
-000035dd  MotionAction_Update_20ms              
-000076a1  Motor_Init                            
-0000724d  Motor_PwmTick100us                    
-00005ead  Motor_SetSpeed                        
-00007839  Motor_Stop                            
-00006007  NMI_Handler                           
-00002d11  OLED_Clear                            
-00005749  OLED_Init                             
-00007095  OLED_PrintBinary7                     
-0000581d  OLED_PrintChar                        
-00004a7d  OLED_PrintInt16                       
-00007745  OLED_PrintString                      
-00007711  OLED_SetCursor                        
-00007dd9  ObstacleAvoidance_GetFeedback         
-00007a1d  ObstacleAvoidance_Init                
-00007d3d  ObstacleAvoidance_IsActive            
-00007d49  ObstacleAvoidance_IsFailed            
-00007c8d  ObstacleAvoidance_IsResumeGraceActive 
-00002839  ObstacleAvoidance_Update_20ms         
-00007de1  ObstacleMonitor_GetFeedback           
-00007a99  ObstacleMonitor_Init                  
-00006151  ObstacleMonitor_Update_20ms           
-00007ab5  ObstacleSafety_Init                   
-00007d55  ObstacleSafety_IsHolding              
-00005a71  ObstacleSafety_Update_20ms            
-00007d61  OledUi_Init                           
+0000656f  ADC0_IRQHandler                       
+0000656f  ADC1_IRQHandler                       
+0000656f  AES_IRQHandler                        
+00006149  AppConfig_InitDefault                 
+00002c51  AppConfig_LimitAll                    
+00007419  App_Init                              
+00005f09  App_Update_20ms                       
+000083de  C$$EXIT                               
+0000656f  CANFD0_IRQHandler                     
+00008379  CarController_GetFeedback             
+00008285  CarController_GetRunMode              
+00006de9  CarController_Init                    
+00006e65  CarController_ResetRuntime            
+000080a9  CarController_RunModeToString         
+00007821  CarController_SetSafetyHold           
+00006915  CarController_StartDriveHeading       
+00006ee1  CarController_StartFollowLine         
+0000674d  CarController_StartSeekLine           
+000070c5  CarController_StartTurnLeft90         
+00007051  CarController_StartTurnRight90        
+00006b55  CarController_StartTurnToYawRelative  
+00007f55  CarController_Stop                    
+000009f1  CarController_Update_20ms             
+00008291  CarState_Get                          
+0000829d  CarState_Init                         
+000082a9  CarState_Set                          
+0000656f  DAC0_IRQHandler                       
+00008351  DL_Common_delayCycles                 
+0000656f  DMA_IRQHandler                        
+0000656f  Default_Handler                       
+00007215  Encoder_HandleGpioInterrupt           
+00007f0d  Encoder_Reset                         
+0000656f  GROUP0_IRQHandler                     
+00008169  GROUP1_IRQHandler                     
+00006bdd  GimbalStepper_ConfirmZero             
+00008381  GimbalStepper_GetFeedback             
+000062b5  GimbalStepper_Init                    
+0000464d  GimbalStepper_MoveToEstimatedSteps    
+00007135  GimbalStepper_Release                 
+0000817d  GimbalStepper_SetStepHalfPeriodTicks  
+00006201  GimbalStepper_StopHold                
+00004339  GimbalStepper_Tick100us               
+00007a9d  GimbalTracker_ClearObservation        
+00007541  GimbalTracker_Enable                  
+000075a1  GimbalTracker_GetFeedback             
+00006d69  GimbalTracker_Init                    
+00006c61  GimbalTracker_PushObservation         
+000010e5  GimbalTracker_Update                  
+0000493d  Gimbal_Init                           
+00005a11  Gimbal_PitchConfirmZero               
+00007d51  Gimbal_PitchGetFeedback               
+00006365  Gimbal_PitchMoveRelativeDeg           
+0000536d  Gimbal_PitchRelease                   
+000029c1  Gimbal_PitchSetTrackingSpeedDegS      
+00005659  Gimbal_PitchStopHold                  
+000044cd  Gimbal_PitchTick100us                 
+00003e25  Gimbal_PitchUpdate5ms                 
+000082b5  Gimbal_Tick100us                      
+000082c1  Gimbal_Update5ms                      
+00005e41  Gimbal_YawConfirmZero                 
+00005245  Gimbal_YawEnableWorldLock             
+00008245  Gimbal_YawGetFeedback                 
+0000771d  Gimbal_YawMoveRelativeDeg             
+00007351  Gimbal_YawRelease                     
+00002495  Gimbal_YawSetWrappedTargetDeg         
+00006a3d  Gimbal_YawStopHold                    
+000067e5  Gimbal_YawToggleWorldLock             
+0000272d  Gimbal_YawUpdate5ms                   
+000083df  HOSTexit                              
+0000656f  HardFault_Handler                     
+00008191  HeadingControl_Enable                 
+00008389  HeadingControl_GetRuntime             
+000081a5  HeadingControl_Init                   
+000080c1  HeadingControl_LockCurrentYaw         
+000081b9  HeadingControl_Reset                  
+000080d9  HeadingControl_SetTargetYaw           
+00004aa9  HeadingControl_Update                 
+0000656f  I2C0_IRQHandler                       
+0000656f  I2C1_IRQHandler                       
+0000383d  Imu_CalibrateGyroBias                 
+000082cd  Imu_GetCorrectedGyroZDps              
+00008391  Imu_GetRuntime                        
+000082d9  Imu_GetYaw                            
+00001f15  Imu_Init                              
+00008055  Imu_IsReady                           
+000082e5  Imu_ResetYaw                          
+00004fe5  Imu_Update                            
+00008255  Key_GetEvent                          
+00007d81  Key_Init                              
+000047c9  Key_Update_20ms                       
+000082f1  Menu_GetPage                          
+000082fd  Menu_GetParamItem                     
+000073b5  Menu_GetParamValue                    
+000018d1  Menu_HandleKeyEvent                   
+000081cd  Menu_Init                             
+000080f1  Menu_ParamItemToString                
+00008109  MissionLibrary_FindById               
+000081e1  MissionLibrary_GetByIndex             
+000083e3  MissionLibrary_GetCount               
+000064c5  MissionLibrary_Validate               
+00007db1  MissionManager_Cancel                 
+00008399  MissionManager_GetMissionCount        
+000083a1  MissionManager_GetRuntime             
+000081f5  MissionManager_GetSelectedMissionId   
+00007281  MissionManager_GetSelectedMissionIndex
+00007911  MissionManager_Init                   
+00007f75  MissionManager_Pause                  
+00007de1  MissionManager_Reset                  
+00007f95  MissionManager_Resume                 
+00005749  MissionManager_SelectNext             
+00005aed  MissionManager_SelectPrevious         
+00008309  MissionManager_SetExternalHold        
+0000799d  MissionManager_Start                  
+00005469  MissionManager_Update_20ms            
+00008121  MotionAction_Cancel                   
+00007fb5  MotionAction_GetCurrentBypassDirection
+00007fd5  MotionAction_GetCurrentObstaclePolicy 
+000083a9  MotionAction_GetRuntime               
+00008139  MotionAction_Init                     
+00007c41  MotionAction_ReapplyControllerTarget  
+00004d69  MotionAction_Start                    
+00003a51  MotionAction_Update_20ms              
+00007c79  Motor_Init                            
+00007871  Motor_PwmTick100us                    
+00006415  Motor_SetSpeed                        
+00007e11  Motor_Stop                            
+0000656f  NMI_Handler                           
+000033b1  OLED_Clear                            
+00005c9d  OLED_Init                             
+00007661  OLED_PrintBinary7                     
+00005d71  OLED_PrintChar                        
+00004ea9  OLED_PrintInt16                       
+00007d1d  OLED_PrintString                      
+00007ce9  OLED_SetCursor                        
+000083b1  ObstacleAvoidance_GetFeedback         
+00007ff5  ObstacleAvoidance_Init                
+00008315  ObstacleAvoidance_IsActive            
+00008321  ObstacleAvoidance_IsFailed            
+00008265  ObstacleAvoidance_IsResumeGraceActive 
+00002ed9  ObstacleAvoidance_Update_20ms         
+000083b9  ObstacleMonitor_GetFeedback           
+00008071  ObstacleMonitor_Init                  
+00006615  ObstacleMonitor_Update_20ms           
+0000808d  ObstacleSafety_Init                   
+0000832d  ObstacleSafety_IsHolding              
+0000608d  ObstacleSafety_Update_20ms            
+00008339  OledUi_Init                           
 000000c1  OledUi_Update_20ms                    
-00006007  PendSV_Handler                        
-00006007  RTC_IRQHandler                        
-00007e0f  Reset_Handler                         
-00006007  SPI0_IRQHandler                       
-00006007  SPI1_IRQHandler                       
-00006007  SVC_Handler                           
-000059b1  SYSCFG_DL_GPIO_init                   
-00007405  SYSCFG_DL_SYSCTL_init                 
-00007c9d  SYSCFG_DL_init                        
-00007865  SYSCFG_DL_initPower                   
-00007de9  Servo_GetFeedback                     
-000078bd  Servo_Init                            
-00007501  Servo_SetAngleDeg                     
-00007381  Servo_Tick100us                       
-0000644d  SysTick_Handler                       
-00006007  TIMA0_IRQHandler                      
-00006007  TIMA1_IRQHandler                      
-00006007  TIMG0_IRQHandler                      
-00006007  TIMG12_IRQHandler                     
-00006007  TIMG6_IRQHandler                      
-00006007  TIMG7_IRQHandler                      
-00006007  TIMG8_IRQHandler                      
-00007891  TrackSensor_CountBlack                
-00006c3d  TrackSensor_DetectTurn                
-00006d81  TrackSensor_GetErrorFromRaw           
-0000614f  TrackSensor_Init                      
-00007d83  TrackSensor_IsCenterDetected          
-00007d8d  TrackSensor_IsLineDetected            
-00007d97  TrackSensor_IsLineLost                
-000071a9  TrackSensor_ReadRaw                   
-00006007  UART0_IRQHandler                      
-00006007  UART1_IRQHandler                      
-00006007  UART2_IRQHandler                      
-00006007  UART3_IRQHandler                      
-00007df1  Ultrasonic_GetFeedback                
-0000729d  Ultrasonic_Init                       
-00003edd  Ultrasonic_Tick100us                  
-000070f5  Ultrasonic_Update_20ms                
+0000656f  PendSV_Handler                        
+0000656f  RTC_IRQHandler                        
+000083e7  Reset_Handler                         
+0000656f  SPI0_IRQHandler                       
+0000656f  SPI1_IRQHandler                       
+0000656f  SVC_Handler                           
+00005fcd  SYSCFG_DL_GPIO_init                   
+000079dd  SYSCFG_DL_SYSCTL_init                 
+00008275  SYSCFG_DL_init                        
+00007e3d  SYSCFG_DL_initPower                   
+000083c1  Servo_GetFeedback                     
+00007e95  Servo_Init                            
+00007ad9  Servo_SetAngleDeg                     
+00007959  Servo_Tick100us                       
+000069a9  SysTick_Handler                       
+0000656f  TIMA0_IRQHandler                      
+0000656f  TIMA1_IRQHandler                      
+0000656f  TIMG0_IRQHandler                      
+0000656f  TIMG12_IRQHandler                     
+0000656f  TIMG6_IRQHandler                      
+0000656f  TIMG7_IRQHandler                      
+0000656f  TIMG8_IRQHandler                      
+00007e69  TrackSensor_CountBlack                
+000071a5  TrackSensor_DetectTurn                
+000072e9  TrackSensor_GetErrorFromRaw           
+00006613  TrackSensor_Init                      
+0000835b  TrackSensor_IsCenterDetected          
+00008365  TrackSensor_IsLineDetected            
+0000836f  TrackSensor_IsLineLost                
+000077cd  TrackSensor_ReadRaw                   
+0000656f  UART0_IRQHandler                      
+0000656f  UART1_IRQHandler                      
+0000656f  UART2_IRQHandler                      
+0000656f  UART3_IRQHandler                      
+000083c9  Ultrasonic_GetFeedback                
+000078c1  Ultrasonic_Init                       
+00004199  Ultrasonic_Tick100us                  
+000076c1  Ultrasonic_Update_20ms                
 20208000  __STACK_END                           
 00000200  __STACK_SIZE                          
 00000000  __TI_ATRegion0_region_sz              
@@ -854,95 +859,95 @@ address   name
 00000000  __TI_ATRegion2_region_sz              
 00000000  __TI_ATRegion2_src_addr               
 00000000  __TI_ATRegion2_trg_addr               
-0000844c  __TI_CINIT_Base                       
-0000845c  __TI_CINIT_Limit                      
-0000845c  __TI_CINIT_Warm                       
-00008430  __TI_Handler_Table_Base               
-0000843c  __TI_Handler_Table_Limit              
-000075b5  __TI_auto_init_nobinit_nopinit        
-000069f5  __TI_decompress_lzss                  
-00007c59  __TI_decompress_none                  
+00008a1c  __TI_CINIT_Base                       
+00008a2c  __TI_CINIT_Limit                      
+00008a2c  __TI_CINIT_Warm                       
+00008a00  __TI_Handler_Table_Base               
+00008a0c  __TI_Handler_Table_Limit              
+00007b8d  __TI_auto_init_nobinit_nopinit        
+00006f5d  __TI_decompress_lzss                  
+00008231  __TI_decompress_none                  
 ffffffff  __TI_pprof_out_hndl                   
 ffffffff  __TI_prof_data_size                   
 ffffffff  __TI_prof_data_start                  
 00000000  __TI_static_base__                    
-00007b79  __TI_zero_init_nomemset               
-0000567b  __addsf3                              
-000076d9  __aeabi_f2iz                          
-00007035  __aeabi_f2lz                          
-0000567b  __aeabi_fadd                          
-00006eb1  __aeabi_fcmpeq                        
-00006eed  __aeabi_fcmpge                        
-00006f01  __aeabi_fcmpgt                        
-00006ed9  __aeabi_fcmple                        
-00006ec5  __aeabi_fcmplt                        
-00006701  __aeabi_fdiv                          
-000064e1  __aeabi_fmul                          
-00005671  __aeabi_fsub                          
-0000753d  __aeabi_i2f                           
-00007151  __aeabi_idiv                          
-00006287  __aeabi_idiv0                         
-00007151  __aeabi_idivmod                       
-00006783  __aeabi_ldiv0                         
-00007c31  __aeabi_ldivmod                       
-00007a5d  __aeabi_llsl                          
-00007959  __aeabi_lmul                          
-00007d6d  __aeabi_memclr                        
-00007d6d  __aeabi_memclr4                       
-00007d6d  __aeabi_memclr8                       
-00007df9  __aeabi_memcpy                        
-00007df9  __aeabi_memcpy4                       
-00007df9  __aeabi_memcpy8                       
-00007445  __aeabi_uidiv                         
-00007445  __aeabi_uidivmod                      
-00007c45  __aeabi_uldivmod                      
-00007a5d  __ashldi3                             
+00008151  __TI_zero_init_nomemset               
+00005bcf  __addsf3                              
+00007cb1  __aeabi_f2iz                          
+00007601  __aeabi_f2lz                          
+00005bcf  __aeabi_fadd                          
+0000747d  __aeabi_fcmpeq                        
+000074b9  __aeabi_fcmpge                        
+000074cd  __aeabi_fcmpgt                        
+000074a5  __aeabi_fcmple                        
+00007491  __aeabi_fcmplt                        
+00006ce5  __aeabi_fdiv                          
+00006ac9  __aeabi_fmul                          
+00005bc5  __aeabi_fsub                          
+00007b15  __aeabi_i2f                           
+00007775  __aeabi_idiv                          
+0000674b  __aeabi_idiv0                         
+00007775  __aeabi_idivmod                       
+00006d67  __aeabi_ldiv0                         
+00008209  __aeabi_ldivmod                       
+00008035  __aeabi_llsl                          
+00007f31  __aeabi_lmul                          
+00008345  __aeabi_memclr                        
+00008345  __aeabi_memclr4                       
+00008345  __aeabi_memclr8                       
+000083d1  __aeabi_memcpy                        
+000083d1  __aeabi_memcpy4                       
+000083d1  __aeabi_memcpy8                       
+00007a1d  __aeabi_uidiv                         
+00007a1d  __aeabi_uidivmod                      
+0000821d  __aeabi_uldivmod                      
+00008035  __ashldi3                             
 ffffffff  __binit__                             
-000075f1  __cmpsf2                              
-00007485  __divmoddi4                           
-00006701  __divsf3                              
-000075f1  __eqsf2                               
-00007035  __fixsfdi                             
-000076d9  __fixsfsi                             
-0000753d  __floatsisf                           
-00007579  __gesf2                               
-00007579  __gtsf2                               
-000075f1  __lesf2                               
-000075f1  __ltsf2                               
+00007bc9  __cmpsf2                              
+00007a5d  __divmoddi4                           
+00006ce5  __divsf3                              
+00007bc9  __eqsf2                               
+00007601  __fixsfdi                             
+00007cb1  __fixsfsi                             
+00007b15  __floatsisf                           
+00007b51  __gesf2                               
+00007b51  __gtsf2                               
+00007bc9  __lesf2                               
+00007bc9  __ltsf2                               
 UNDEFED   __mpu_init                            
-00007959  __muldi3                              
-0000762d  __muldsi3                             
-000064e1  __mulsf3                              
-000075f1  __nesf2                               
+00007f31  __muldi3                              
+00007c05  __muldsi3                             
+00006ac9  __mulsf3                              
+00007bc9  __nesf2                               
 20207e00  __stack                               
 20200000  __start___llvm_prf_bits               
 20200000  __start___llvm_prf_cnts               
 20200000  __stop___llvm_prf_bits                
 20200000  __stop___llvm_prf_cnts                
-00005671  __subsf3                              
-000060ad  __udivmoddi4                          
-0000790d  _c_int00_noargs                       
+00005bc5  __subsf3                              
+00006571  __udivmoddi4                          
+00007ee5  _c_int00_noargs                       
 UNDEFED   _system_post_cinit                    
-00007e13  _system_pre_init                      
-00007e01  abort                                 
+000083eb  _system_pre_init                      
+000083d9  abort                                 
 ffffffff  binit                                 
 20200000  g_appConfig                           
 202000e0  g_appRuntime                          
-202002e8  g_carStateDebug                       
+202002ea  g_carStateDebug                       
 202001b4  g_headingRuntime                      
 20200140  g_imuRuntime                          
-202002e9  g_keyEvent                            
-202002ea  g_oledPageDebug                       
-202002eb  g_paramItemDebug                      
-202002ec  g_trackBlackCount                     
+202002eb  g_keyEvent                            
+202002ec  g_oledPageDebug                       
+202002ed  g_paramItemDebug                      
+202002ee  g_trackBlackCount                     
 202002b8  g_trackError                          
-202002ed  g_trackModeDebug                      
-202002ee  g_trackRaw                            
-202002ef  g_trackTurnDebug                      
+202002ef  g_trackModeDebug                      
+202002f0  g_trackRaw                            
+202002f1  g_trackTurnDebug                      
 00000000  interruptVectors                      
-0000500d  main                                  
-000061ed  memcpy                                
-00006f13  memset                                
+00005561  main                                  
+000066b1  memcpy                                
+000074df  memset                                
 
 
 GLOBAL SYMBOLS: SORTED BY Symbol Address 
@@ -962,251 +967,253 @@ address   name
 00000000  interruptVectors                      
 000000c1  OledUi_Update_20ms                    
 00000200  __STACK_SIZE                          
-000009bd  CarController_Update_20ms             
-000010b1  GimbalTracker_Update                  
-0000145d  Menu_HandleKeyEvent                   
-00001da1  Imu_Init                              
-00002321  Gimbal_PitchSetTrackingSpeedDegS      
-000025b1  AppConfig_LimitAll                    
-00002839  ObstacleAvoidance_Update_20ms         
-00002d11  OLED_Clear                            
-0000319d  Gimbal_YawUpdate5ms                   
-000033c9  Imu_CalibrateGyroBias                 
-000035dd  MotionAction_Update_20ms              
-000039b1  Gimbal_PitchUpdate5ms                 
-00003b6d  Gimbal_YawSetWrappedTargetDeg         
-00003edd  Ultrasonic_Tick100us                  
-0000407d  GimbalStepper_Tick100us               
-00004211  Gimbal_PitchTick100us                 
-00004391  GimbalStepper_MoveToEstimatedSteps    
-0000450d  Key_Update_20ms                       
-00004681  HeadingControl_Update                 
-000047e1  Gimbal_Init                           
-0000493d  MotionAction_Start                    
-00004a7d  OLED_PrintInt16                       
-00004bb9  Imu_Update                            
-00004e19  Gimbal_PitchRelease                   
-00004f15  MissionManager_Update_20ms            
-0000500d  main                                  
-00005105  Gimbal_PitchStopHold                  
-000051f5  MissionManager_SelectNext             
-000054bd  Gimbal_PitchConfirmZero               
-00005599  MissionManager_SelectPrevious         
-00005671  __aeabi_fsub                          
-00005671  __subsf3                              
-0000567b  __addsf3                              
-0000567b  __aeabi_fadd                          
-00005749  OLED_Init                             
-0000581d  OLED_PrintChar                        
-000058ed  App_Update_20ms                       
-000059b1  SYSCFG_DL_GPIO_init                   
-00005a71  ObstacleSafety_Update_20ms            
-00005b2d  AppConfig_InitDefault                 
-00005be5  GimbalStepper_StopHold                
-00005c99  Gimbal_YawMoveRelativeDeg             
-00005d4d  GimbalStepper_Init                    
-00005dfd  Gimbal_PitchMoveRelativeDeg           
-00005ead  Motor_SetSpeed                        
-00005f5d  MissionLibrary_Validate               
-00006007  ADC0_IRQHandler                       
-00006007  ADC1_IRQHandler                       
-00006007  AES_IRQHandler                        
-00006007  CANFD0_IRQHandler                     
-00006007  DAC0_IRQHandler                       
-00006007  DMA_IRQHandler                        
-00006007  Default_Handler                       
-00006007  GROUP0_IRQHandler                     
-00006007  HardFault_Handler                     
-00006007  I2C0_IRQHandler                       
-00006007  I2C1_IRQHandler                       
-00006007  NMI_Handler                           
-00006007  PendSV_Handler                        
-00006007  RTC_IRQHandler                        
-00006007  SPI0_IRQHandler                       
-00006007  SPI1_IRQHandler                       
-00006007  SVC_Handler                           
-00006007  TIMA0_IRQHandler                      
-00006007  TIMA1_IRQHandler                      
-00006007  TIMG0_IRQHandler                      
-00006007  TIMG12_IRQHandler                     
-00006007  TIMG6_IRQHandler                      
-00006007  TIMG7_IRQHandler                      
-00006007  TIMG8_IRQHandler                      
-00006007  UART0_IRQHandler                      
-00006007  UART1_IRQHandler                      
-00006007  UART2_IRQHandler                      
-00006007  UART3_IRQHandler                      
-00006009  Gimbal_YawEnableWorldLock             
-000060ad  __udivmoddi4                          
-0000614f  TrackSensor_Init                      
-00006151  ObstacleMonitor_Update_20ms           
-000061ed  memcpy                                
-00006287  __aeabi_idiv0                         
-00006289  CarController_StartSeekLine           
-000063b9  CarController_StartDriveHeading       
-0000644d  SysTick_Handler                       
-000064e1  __aeabi_fmul                          
-000064e1  __mulsf3                              
-0000656d  CarController_StartTurnToYawRelative  
-000065f5  Gimbal_YawToggleWorldLock             
-0000667d  GimbalTracker_PushObservation         
-00006701  __aeabi_fdiv                          
-00006701  __divsf3                              
-00006783  __aeabi_ldiv0                         
-00006785  GimbalTracker_Init                    
-00006805  CarController_Init                    
-00006881  CarController_ResetRuntime            
-000068fd  CarController_StartFollowLine         
-00006979  Gimbal_YawStopHold                    
-000069f5  __TI_decompress_lzss                  
-00006ae9  CarController_StartTurnRight90        
-00006b5d  CarController_StartTurnLeft90         
-00006bcd  GimbalStepper_Release                 
-00006c3d  TrackSensor_DetectTurn                
-00006cad  Encoder_HandleGpioInterrupt           
-00006d19  MissionManager_GetSelectedMissionIndex
-00006d81  TrackSensor_GetErrorFromRaw           
-00006de9  Menu_GetParamValue                    
-00006e4d  App_Init                              
-00006eb1  __aeabi_fcmpeq                        
-00006ec5  __aeabi_fcmplt                        
-00006ed9  __aeabi_fcmple                        
-00006eed  __aeabi_fcmpge                        
-00006f01  __aeabi_fcmpgt                        
-00006f13  memset                                
-00006f75  GimbalTracker_Enable                  
-00006fd5  GimbalTracker_GetFeedback             
-00007035  __aeabi_f2lz                          
-00007035  __fixsfdi                             
-00007095  OLED_PrintBinary7                     
-000070f5  Ultrasonic_Update_20ms                
-00007151  __aeabi_idiv                          
-00007151  __aeabi_idivmod                       
-000071a9  TrackSensor_ReadRaw                   
-000071fd  CarController_SetSafetyHold           
-0000724d  Motor_PwmTick100us                    
-0000729d  Ultrasonic_Init                       
-000072ed  Gimbal_YawRelease                     
-00007339  MissionManager_Init                   
-00007381  Servo_Tick100us                       
-000073c5  MissionManager_Start                  
-00007405  SYSCFG_DL_SYSCTL_init                 
-00007445  __aeabi_uidiv                         
-00007445  __aeabi_uidivmod                      
-00007485  __divmoddi4                           
-000074c5  GimbalTracker_ClearObservation        
-00007501  Servo_SetAngleDeg                     
-0000753d  __aeabi_i2f                           
-0000753d  __floatsisf                           
-00007579  __gesf2                               
-00007579  __gtsf2                               
-000075b5  __TI_auto_init_nobinit_nopinit        
-000075f1  __cmpsf2                              
-000075f1  __eqsf2                               
-000075f1  __lesf2                               
-000075f1  __ltsf2                               
-000075f1  __nesf2                               
-0000762d  __muldsi3                             
-00007669  MotionAction_ReapplyControllerTarget  
-000076a1  Motor_Init                            
-000076d9  __aeabi_f2iz                          
-000076d9  __fixsfsi                             
-00007711  OLED_SetCursor                        
-00007745  OLED_PrintString                      
-00007779  Gimbal_PitchGetFeedback               
-000077a9  Key_Init                              
-000077d9  MissionManager_Cancel                 
-00007809  MissionManager_Reset                  
-00007839  Motor_Stop                            
-00007865  SYSCFG_DL_initPower                   
-00007891  TrackSensor_CountBlack                
-000078bd  Servo_Init                            
-0000790d  _c_int00_noargs                       
-00007935  Encoder_Reset                         
-00007959  __aeabi_lmul                          
-00007959  __muldi3                              
-0000797d  CarController_Stop                    
-0000799d  MissionManager_Pause                  
-000079bd  MissionManager_Resume                 
-000079dd  MotionAction_GetCurrentBypassDirection
-000079fd  MotionAction_GetCurrentObstaclePolicy 
-00007a1d  ObstacleAvoidance_Init                
-00007a5d  __aeabi_llsl                          
-00007a5d  __ashldi3                             
-00007a7d  Imu_IsReady                           
-00007a99  ObstacleMonitor_Init                  
-00007ab5  ObstacleSafety_Init                   
-00007ad1  CarController_RunModeToString         
-00007ae9  HeadingControl_LockCurrentYaw         
-00007b01  HeadingControl_SetTargetYaw           
-00007b19  Menu_ParamItemToString                
-00007b31  MissionLibrary_FindById               
-00007b49  MotionAction_Cancel                   
-00007b61  MotionAction_Init                     
-00007b79  __TI_zero_init_nomemset               
-00007b91  GROUP1_IRQHandler                     
-00007ba5  GimbalStepper_SetStepHalfPeriodTicks  
-00007bb9  HeadingControl_Enable                 
-00007bcd  HeadingControl_Init                   
-00007be1  HeadingControl_Reset                  
-00007bf5  Menu_Init                             
-00007c09  MissionLibrary_GetByIndex             
-00007c1d  MissionManager_GetSelectedMissionId   
-00007c31  __aeabi_ldivmod                       
-00007c45  __aeabi_uldivmod                      
-00007c59  __TI_decompress_none                  
-00007c6d  Gimbal_YawGetFeedback                 
-00007c7d  Key_GetEvent                          
-00007c8d  ObstacleAvoidance_IsResumeGraceActive 
-00007c9d  SYSCFG_DL_init                        
-00007cad  CarController_GetRunMode              
-00007cb9  CarState_Get                          
-00007cc5  CarState_Init                         
-00007cd1  CarState_Set                          
-00007cdd  Gimbal_Tick100us                      
-00007ce9  Gimbal_Update5ms                      
-00007cf5  Imu_GetCorrectedGyroZDps              
-00007d01  Imu_GetYaw                            
-00007d0d  Imu_ResetYaw                          
-00007d19  Menu_GetPage                          
-00007d25  Menu_GetParamItem                     
-00007d31  MissionManager_SetExternalHold        
-00007d3d  ObstacleAvoidance_IsActive            
-00007d49  ObstacleAvoidance_IsFailed            
-00007d55  ObstacleSafety_IsHolding              
-00007d61  OledUi_Init                           
-00007d6d  __aeabi_memclr                        
-00007d6d  __aeabi_memclr4                       
-00007d6d  __aeabi_memclr8                       
-00007d79  DL_Common_delayCycles                 
-00007d83  TrackSensor_IsCenterDetected          
-00007d8d  TrackSensor_IsLineDetected            
-00007d97  TrackSensor_IsLineLost                
-00007da1  CarController_GetFeedback             
-00007da9  GimbalStepper_GetFeedback             
-00007db1  HeadingControl_GetRuntime             
-00007db9  Imu_GetRuntime                        
-00007dc1  MissionManager_GetMissionCount        
-00007dc9  MissionManager_GetRuntime             
-00007dd1  MotionAction_GetRuntime               
-00007dd9  ObstacleAvoidance_GetFeedback         
-00007de1  ObstacleMonitor_GetFeedback           
-00007de9  Servo_GetFeedback                     
-00007df1  Ultrasonic_GetFeedback                
-00007df9  __aeabi_memcpy                        
-00007df9  __aeabi_memcpy4                       
-00007df9  __aeabi_memcpy8                       
-00007e01  abort                                 
-00007e06  C$$EXIT                               
-00007e07  HOSTexit                              
-00007e0b  MissionLibrary_GetCount               
-00007e0f  Reset_Handler                         
-00007e13  _system_pre_init                      
-00008430  __TI_Handler_Table_Base               
-0000843c  __TI_Handler_Table_Limit              
-0000844c  __TI_CINIT_Base                       
-0000845c  __TI_CINIT_Limit                      
-0000845c  __TI_CINIT_Warm                       
+000009f1  CarController_Update_20ms             
+000010e5  GimbalTracker_Update                  
+000018d1  Menu_HandleKeyEvent                   
+00001f15  Imu_Init                              
+00002495  Gimbal_YawSetWrappedTargetDeg         
+0000272d  Gimbal_YawUpdate5ms                   
+000029c1  Gimbal_PitchSetTrackingSpeedDegS      
+00002c51  AppConfig_LimitAll                    
+00002ed9  ObstacleAvoidance_Update_20ms         
+000033b1  OLED_Clear                            
+0000383d  Imu_CalibrateGyroBias                 
+00003a51  MotionAction_Update_20ms              
+00003e25  Gimbal_PitchUpdate5ms                 
+00004199  Ultrasonic_Tick100us                  
+00004339  GimbalStepper_Tick100us               
+000044cd  Gimbal_PitchTick100us                 
+0000464d  GimbalStepper_MoveToEstimatedSteps    
+000047c9  Key_Update_20ms                       
+0000493d  Gimbal_Init                           
+00004aa9  HeadingControl_Update                 
+00004d69  MotionAction_Start                    
+00004ea9  OLED_PrintInt16                       
+00004fe5  Imu_Update                            
+00005245  Gimbal_YawEnableWorldLock             
+0000536d  Gimbal_PitchRelease                   
+00005469  MissionManager_Update_20ms            
+00005561  main                                  
+00005659  Gimbal_PitchStopHold                  
+00005749  MissionManager_SelectNext             
+00005a11  Gimbal_PitchConfirmZero               
+00005aed  MissionManager_SelectPrevious         
+00005bc5  __aeabi_fsub                          
+00005bc5  __subsf3                              
+00005bcf  __addsf3                              
+00005bcf  __aeabi_fadd                          
+00005c9d  OLED_Init                             
+00005d71  OLED_PrintChar                        
+00005e41  Gimbal_YawConfirmZero                 
+00005f09  App_Update_20ms                       
+00005fcd  SYSCFG_DL_GPIO_init                   
+0000608d  ObstacleSafety_Update_20ms            
+00006149  AppConfig_InitDefault                 
+00006201  GimbalStepper_StopHold                
+000062b5  GimbalStepper_Init                    
+00006365  Gimbal_PitchMoveRelativeDeg           
+00006415  Motor_SetSpeed                        
+000064c5  MissionLibrary_Validate               
+0000656f  ADC0_IRQHandler                       
+0000656f  ADC1_IRQHandler                       
+0000656f  AES_IRQHandler                        
+0000656f  CANFD0_IRQHandler                     
+0000656f  DAC0_IRQHandler                       
+0000656f  DMA_IRQHandler                        
+0000656f  Default_Handler                       
+0000656f  GROUP0_IRQHandler                     
+0000656f  HardFault_Handler                     
+0000656f  I2C0_IRQHandler                       
+0000656f  I2C1_IRQHandler                       
+0000656f  NMI_Handler                           
+0000656f  PendSV_Handler                        
+0000656f  RTC_IRQHandler                        
+0000656f  SPI0_IRQHandler                       
+0000656f  SPI1_IRQHandler                       
+0000656f  SVC_Handler                           
+0000656f  TIMA0_IRQHandler                      
+0000656f  TIMA1_IRQHandler                      
+0000656f  TIMG0_IRQHandler                      
+0000656f  TIMG12_IRQHandler                     
+0000656f  TIMG6_IRQHandler                      
+0000656f  TIMG7_IRQHandler                      
+0000656f  TIMG8_IRQHandler                      
+0000656f  UART0_IRQHandler                      
+0000656f  UART1_IRQHandler                      
+0000656f  UART2_IRQHandler                      
+0000656f  UART3_IRQHandler                      
+00006571  __udivmoddi4                          
+00006613  TrackSensor_Init                      
+00006615  ObstacleMonitor_Update_20ms           
+000066b1  memcpy                                
+0000674b  __aeabi_idiv0                         
+0000674d  CarController_StartSeekLine           
+000067e5  Gimbal_YawToggleWorldLock             
+00006915  CarController_StartDriveHeading       
+000069a9  SysTick_Handler                       
+00006a3d  Gimbal_YawStopHold                    
+00006ac9  __aeabi_fmul                          
+00006ac9  __mulsf3                              
+00006b55  CarController_StartTurnToYawRelative  
+00006bdd  GimbalStepper_ConfirmZero             
+00006c61  GimbalTracker_PushObservation         
+00006ce5  __aeabi_fdiv                          
+00006ce5  __divsf3                              
+00006d67  __aeabi_ldiv0                         
+00006d69  GimbalTracker_Init                    
+00006de9  CarController_Init                    
+00006e65  CarController_ResetRuntime            
+00006ee1  CarController_StartFollowLine         
+00006f5d  __TI_decompress_lzss                  
+00007051  CarController_StartTurnRight90        
+000070c5  CarController_StartTurnLeft90         
+00007135  GimbalStepper_Release                 
+000071a5  TrackSensor_DetectTurn                
+00007215  Encoder_HandleGpioInterrupt           
+00007281  MissionManager_GetSelectedMissionIndex
+000072e9  TrackSensor_GetErrorFromRaw           
+00007351  Gimbal_YawRelease                     
+000073b5  Menu_GetParamValue                    
+00007419  App_Init                              
+0000747d  __aeabi_fcmpeq                        
+00007491  __aeabi_fcmplt                        
+000074a5  __aeabi_fcmple                        
+000074b9  __aeabi_fcmpge                        
+000074cd  __aeabi_fcmpgt                        
+000074df  memset                                
+00007541  GimbalTracker_Enable                  
+000075a1  GimbalTracker_GetFeedback             
+00007601  __aeabi_f2lz                          
+00007601  __fixsfdi                             
+00007661  OLED_PrintBinary7                     
+000076c1  Ultrasonic_Update_20ms                
+0000771d  Gimbal_YawMoveRelativeDeg             
+00007775  __aeabi_idiv                          
+00007775  __aeabi_idivmod                       
+000077cd  TrackSensor_ReadRaw                   
+00007821  CarController_SetSafetyHold           
+00007871  Motor_PwmTick100us                    
+000078c1  Ultrasonic_Init                       
+00007911  MissionManager_Init                   
+00007959  Servo_Tick100us                       
+0000799d  MissionManager_Start                  
+000079dd  SYSCFG_DL_SYSCTL_init                 
+00007a1d  __aeabi_uidiv                         
+00007a1d  __aeabi_uidivmod                      
+00007a5d  __divmoddi4                           
+00007a9d  GimbalTracker_ClearObservation        
+00007ad9  Servo_SetAngleDeg                     
+00007b15  __aeabi_i2f                           
+00007b15  __floatsisf                           
+00007b51  __gesf2                               
+00007b51  __gtsf2                               
+00007b8d  __TI_auto_init_nobinit_nopinit        
+00007bc9  __cmpsf2                              
+00007bc9  __eqsf2                               
+00007bc9  __lesf2                               
+00007bc9  __ltsf2                               
+00007bc9  __nesf2                               
+00007c05  __muldsi3                             
+00007c41  MotionAction_ReapplyControllerTarget  
+00007c79  Motor_Init                            
+00007cb1  __aeabi_f2iz                          
+00007cb1  __fixsfsi                             
+00007ce9  OLED_SetCursor                        
+00007d1d  OLED_PrintString                      
+00007d51  Gimbal_PitchGetFeedback               
+00007d81  Key_Init                              
+00007db1  MissionManager_Cancel                 
+00007de1  MissionManager_Reset                  
+00007e11  Motor_Stop                            
+00007e3d  SYSCFG_DL_initPower                   
+00007e69  TrackSensor_CountBlack                
+00007e95  Servo_Init                            
+00007ee5  _c_int00_noargs                       
+00007f0d  Encoder_Reset                         
+00007f31  __aeabi_lmul                          
+00007f31  __muldi3                              
+00007f55  CarController_Stop                    
+00007f75  MissionManager_Pause                  
+00007f95  MissionManager_Resume                 
+00007fb5  MotionAction_GetCurrentBypassDirection
+00007fd5  MotionAction_GetCurrentObstaclePolicy 
+00007ff5  ObstacleAvoidance_Init                
+00008035  __aeabi_llsl                          
+00008035  __ashldi3                             
+00008055  Imu_IsReady                           
+00008071  ObstacleMonitor_Init                  
+0000808d  ObstacleSafety_Init                   
+000080a9  CarController_RunModeToString         
+000080c1  HeadingControl_LockCurrentYaw         
+000080d9  HeadingControl_SetTargetYaw           
+000080f1  Menu_ParamItemToString                
+00008109  MissionLibrary_FindById               
+00008121  MotionAction_Cancel                   
+00008139  MotionAction_Init                     
+00008151  __TI_zero_init_nomemset               
+00008169  GROUP1_IRQHandler                     
+0000817d  GimbalStepper_SetStepHalfPeriodTicks  
+00008191  HeadingControl_Enable                 
+000081a5  HeadingControl_Init                   
+000081b9  HeadingControl_Reset                  
+000081cd  Menu_Init                             
+000081e1  MissionLibrary_GetByIndex             
+000081f5  MissionManager_GetSelectedMissionId   
+00008209  __aeabi_ldivmod                       
+0000821d  __aeabi_uldivmod                      
+00008231  __TI_decompress_none                  
+00008245  Gimbal_YawGetFeedback                 
+00008255  Key_GetEvent                          
+00008265  ObstacleAvoidance_IsResumeGraceActive 
+00008275  SYSCFG_DL_init                        
+00008285  CarController_GetRunMode              
+00008291  CarState_Get                          
+0000829d  CarState_Init                         
+000082a9  CarState_Set                          
+000082b5  Gimbal_Tick100us                      
+000082c1  Gimbal_Update5ms                      
+000082cd  Imu_GetCorrectedGyroZDps              
+000082d9  Imu_GetYaw                            
+000082e5  Imu_ResetYaw                          
+000082f1  Menu_GetPage                          
+000082fd  Menu_GetParamItem                     
+00008309  MissionManager_SetExternalHold        
+00008315  ObstacleAvoidance_IsActive            
+00008321  ObstacleAvoidance_IsFailed            
+0000832d  ObstacleSafety_IsHolding              
+00008339  OledUi_Init                           
+00008345  __aeabi_memclr                        
+00008345  __aeabi_memclr4                       
+00008345  __aeabi_memclr8                       
+00008351  DL_Common_delayCycles                 
+0000835b  TrackSensor_IsCenterDetected          
+00008365  TrackSensor_IsLineDetected            
+0000836f  TrackSensor_IsLineLost                
+00008379  CarController_GetFeedback             
+00008381  GimbalStepper_GetFeedback             
+00008389  HeadingControl_GetRuntime             
+00008391  Imu_GetRuntime                        
+00008399  MissionManager_GetMissionCount        
+000083a1  MissionManager_GetRuntime             
+000083a9  MotionAction_GetRuntime               
+000083b1  ObstacleAvoidance_GetFeedback         
+000083b9  ObstacleMonitor_GetFeedback           
+000083c1  Servo_GetFeedback                     
+000083c9  Ultrasonic_GetFeedback                
+000083d1  __aeabi_memcpy                        
+000083d1  __aeabi_memcpy4                       
+000083d1  __aeabi_memcpy8                       
+000083d9  abort                                 
+000083de  C$$EXIT                               
+000083df  HOSTexit                              
+000083e3  MissionLibrary_GetCount               
+000083e7  Reset_Handler                         
+000083eb  _system_pre_init                      
+00008a00  __TI_Handler_Table_Base               
+00008a0c  __TI_Handler_Table_Limit              
+00008a1c  __TI_CINIT_Base                       
+00008a2c  __TI_CINIT_Limit                      
+00008a2c  __TI_CINIT_Warm                       
 20200000  __start___llvm_prf_bits               
 20200000  __start___llvm_prf_cnts               
 20200000  __stop___llvm_prf_bits                
@@ -1216,14 +1223,14 @@ address   name
 20200140  g_imuRuntime                          
 202001b4  g_headingRuntime                      
 202002b8  g_trackError                          
-202002e8  g_carStateDebug                       
-202002e9  g_keyEvent                            
-202002ea  g_oledPageDebug                       
-202002eb  g_paramItemDebug                      
-202002ec  g_trackBlackCount                     
-202002ed  g_trackModeDebug                      
-202002ee  g_trackRaw                            
-202002ef  g_trackTurnDebug                      
+202002ea  g_carStateDebug                       
+202002eb  g_keyEvent                            
+202002ec  g_oledPageDebug                       
+202002ed  g_paramItemDebug                      
+202002ee  g_trackBlackCount                     
+202002ef  g_trackModeDebug                      
+202002f0  g_trackRaw                            
+202002f1  g_trackTurnDebug                      
 20207e00  __stack                               
 20208000  __STACK_END                           
 ffffffff  __TI_pprof_out_hndl                   
@@ -1234,4 +1241,4 @@ ffffffff  binit
 UNDEFED   __mpu_init                            
 UNDEFED   _system_post_cinit                    
 
-[284 symbols]
+[286 symbols]

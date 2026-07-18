@@ -412,7 +412,9 @@ static void print_gimbal_page(void)
     const GimbalFeedback *gimbal = Gimbal_YawGetFeedback();
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("GYAW P14B L:");
+    OLED_PrintString("GYAW P14B Z:");
+    OLED_PrintInt16((int16_t)gimbal->position_valid);
+    OLED_PrintString(" W:");
     OLED_PrintInt16((int16_t)gimbal->world_lock_enabled);
 
     OLED_SetCursor(2, 0);
@@ -422,10 +424,12 @@ static void print_gimbal_page(void)
     OLED_PrintInt16(gimbal->locked_world_yaw_deg_x10);
 
     OLED_SetCursor(4, 0);
-    OLED_PrintString("GY:");
-    OLED_PrintInt16(gimbal->world_target_deg_x10);
+    OLED_PrintString("T:");
+    OLED_PrintInt16(gimbal->target_deg_x10);
     OLED_PrintString(" W:");
     OLED_PrintInt16(gimbal->wrapped_deg_x10);
+    OLED_PrintString(" L:");
+    OLED_PrintInt16((int16_t)gimbal->limit_direction);
 
     OLED_SetCursor(6, 0);
     OLED_PrintString("M:");
@@ -471,12 +475,15 @@ static void print_gimbal_tracker_page(void)
 {
     const GimbalTrackerFeedback *tracker =
         GimbalTracker_GetFeedback();
+    const GimbalFeedback *yaw = Gimbal_YawGetFeedback();
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("GTRK P23X E:");
+    OLED_PrintString("P23X E:");
     OLED_PrintInt16((int16_t)tracker->enabled);
     OLED_PrintString(" V:");
     OLED_PrintInt16((int16_t)tracker->target_valid);
+    OLED_PrintString(" Z:");
+    OLED_PrintInt16((int16_t)yaw->position_valid);
 
     OLED_SetCursor(2, 0);
     OLED_PrintString("EX:");
@@ -495,6 +502,8 @@ static void print_gimbal_tracker_page(void)
     OLED_PrintInt16(tracker->yaw_target_deg_x10);
     OLED_PrintString(" DB:");
     OLED_PrintInt16((int16_t)tracker->yaw_deadbanded);
+    OLED_PrintString(" L:");
+    OLED_PrintInt16((int16_t)yaw->limit_direction);
 }
 
 static void print_gimbal_tracker_pitch_page(void)
