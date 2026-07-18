@@ -93,7 +93,7 @@ static void menu_handle_status_key(KeyEvent event)
                 break;
             case KEY2_SHORT:
                 if (g_oledPage == OLED_PAGE_GIMBAL_PITCH) {
-                    Gimbal_PitchMoveRelativeDeg(5.0f);
+                    Gimbal_PitchMoveRelativeDeg(10.0f);
                 } else {
                     Gimbal_YawMoveRelativeDeg(30.0f);
                 }
@@ -107,7 +107,7 @@ static void menu_handle_status_key(KeyEvent event)
                 break;
             case KEY3_SHORT:
                 if (g_oledPage == OLED_PAGE_GIMBAL_PITCH) {
-                    Gimbal_PitchMoveRelativeDeg(-5.0f);
+                    Gimbal_PitchMoveRelativeDeg(-10.0f);
                 } else {
                     Gimbal_YawRelease();
                 }
