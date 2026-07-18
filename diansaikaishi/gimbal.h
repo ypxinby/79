@@ -70,8 +70,10 @@ void Gimbal_PitchSetTargetSteps(int64_t target_steps);
 void Gimbal_PitchMoveRelativeSteps(int32_t delta_steps);
 void Gimbal_PitchSetTrackingSpeedDegS(float speed_deg_s);
 void Gimbal_PitchStopTrackingHold(void);
+/* Confirms the stopped mechanical center and makes position_valid true. */
 uint8_t Gimbal_PitchConfirmZero(void);
 void Gimbal_PitchStopHold(void);
+/* Release allows manual movement and therefore clears position_valid. */
 void Gimbal_PitchRelease(void);
 const GimbalFeedback *Gimbal_PitchGetFeedback(void);
 

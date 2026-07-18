@@ -21,11 +21,13 @@
 #define GIMBAL_DEG_S_PER_RPM           \
     (GIMBAL_DEG_PER_REV / GIMBAL_SEC_PER_MIN)
 /*
- * PITCH uses a power-on relative zero:
- * - Before power-on, manually place the pitch axis at mechanical center.
- * - Gimbal_PitchInit() treats that position as 0 deg and 0 accumulated steps.
- * - If the power-on position is not centered, this +/-50 deg software limit
- *   shifts with that initial physical position.
+ * PITCH uses an explicitly confirmed relative zero:
+ * - Gimbal_PitchInit() starts with position_valid cleared.
+ * - Release the axis and place it at mechanical center before confirming zero.
+ * - Gimbal_PitchConfirmZero() defines that position as 0 deg and enables
+ *   position/vision commands.
+ * - Releasing the axis invalidates the software position because it may be
+ *   moved by hand while STEP counting is unavailable.
  *
  * Current stage deliberately does not add limit switches, encoders, IMU
  * homing, mechanical-boundary homing, or power-off position restore.
@@ -83,6 +85,7 @@ static int64_t g_yawCarYawDegX10;
 static int64_t g_yawLockedWorldYawDegX10;
 static int64_t g_yawWorldTargetDegX10;
 static uint8_t g_pitchInitialized;
+static uint8_t g_pitchPositionValid;
 static int64_t g_pitchContinuousDegX10;
 static int64_t g_pitchTargetDegX10;
 static int64_t g_pitchEstimatedSteps;
@@ -501,7 +504,7 @@ static void gimbal_pitch_update_feedback(void)
     g_pitchFeedback.negative_limit =
         (g_pitchEstimatedSteps <= gimbal_pitch_min_limit_steps()) ?
             1U : 0U;
-    g_pitchFeedback.position_valid = 1U;
+    g_pitchFeedback.position_valid = g_pitchPositionValid;
     if (g_pitchRunning != 0U) {
         g_pitchFeedback.mode = GIMBAL_MODE_MOVING;
     } else if (g_pitchFeedback.enabled != 0U) {
@@ -563,6 +566,10 @@ static void gimbal_pitch_set_target_steps(int64_t requested_steps,
     int8_t limit_direction;
 
     gimbal_pitch_ensure_initialized();
+    if (g_pitchPositionValid == 0U) {
+        Gimbal_PitchStopHold();
+        return;
+    }
     g_pitchControlMode = GIMBAL_PITCH_CONTROL_POSITION;
     g_pitchTrackingTargetRpm = 0.0f;
     g_pitchTargetEstimatedSteps =
@@ -848,9 +855,9 @@ const GimbalFeedback *Gimbal_YawGetFeedback(void)
 void Gimbal_PitchInit(void)
 {
     /*
-     * Scheme A: power-on relative zero. The physical pitch axis must be
-     * manually centered before power-on. From this point, software position
-     * starts at 0 deg and 0 accumulated steps.
+     * Keep the internal counters at zero for deterministic startup, but do
+     * not grant automatic motion permission until the operator confirms the
+     * mechanical center with Gimbal_PitchConfirmZero().
      */
     g_pitchContinuousDegX10 = 0;
     g_pitchTargetDegX10 = 0;
@@ -869,6 +876,7 @@ void Gimbal_PitchInit(void)
     g_pitchCommandedRpm = 0.0f;
     g_pitchTrackingTargetRpm = 0.0f;
     g_pitchControlMode = GIMBAL_PITCH_CONTROL_POSITION;
+    g_pitchPositionValid = 0U;
     gimbal_pitch_reset_feedback();
 
     DL_GPIO_initDigitalOutput(GPIO_GIMBAL_PITCH_STEP_IOMUX);
@@ -1034,6 +1042,11 @@ void Gimbal_PitchSetTrackingSpeedDegS(float speed_deg_s)
 
     gimbal_pitch_ensure_initialized();
 
+    if (g_pitchPositionValid == 0U) {
+        Gimbal_PitchStopHold();
+        return;
+    }
+
     if (requested_rpm > GIMBAL_PITCH_MAX_POSITION_RPM) {
         requested_rpm = GIMBAL_PITCH_MAX_POSITION_RPM;
     } else if (requested_rpm < -GIMBAL_PITCH_MAX_POSITION_RPM) {
@@ -1151,6 +1164,7 @@ uint8_t Gimbal_PitchConfirmZero(void)
     g_pitchControlMode = GIMBAL_PITCH_CONTROL_POSITION;
     g_pitchLimitClamped = 0U;
     g_pitchLimitDirection = 0;
+    g_pitchPositionValid = 1U;
     gimbal_pitch_update_feedback();
     return 1U;
 }
@@ -1169,6 +1183,7 @@ void Gimbal_PitchRelease(void)
     g_pitchCompletedSteps = 0;
     g_pitchLimitClamped = 0U;
     g_pitchLimitDirection = 0;
+    g_pitchPositionValid = 0U;
     gimbal_pitch_stop_hold_and_reset_ramp();
     gimbal_pitch_set_enable(0U);
     gimbal_pitch_update_feedback();
