@@ -14,6 +14,8 @@
 #include "servo.h"
 #include "ti_msp_dl_config.h"
 #include "ultrasonic.h"
+#include "vision_receiver.h"
+#include "vision_uart.h"
 
 #define APP_TICK_HZ             (10000U)
 #define APP_TICKS_PER_MS        (APP_TICK_HZ / 1000U)
@@ -22,16 +24,20 @@
 #define TRACKER_UPDATE_PERIOD_MS (10U)
 #define TRACKER_UPDATE_PENDING_MAX (2U)
 #define APP_UPDATE_PERIOD_MS    (20U)
+#define VISION_RX_PROCESS_BUDGET (64U)
 
 static volatile bool g_appUpdateDue;
 static volatile uint8_t g_gimbalUpdatePending;
 static volatile uint8_t g_trackerUpdatePending;
+static volatile uint32_t g_localTimeMs;
 
 int main(void)
 {
     SYSCFG_DL_init();
 
     App_Init();
+    VisionReceiver_Init();
+    VisionUart_Init();
 
     SysTick_Config(CPUCLK_FREQ / APP_TICK_HZ);
     NVIC_EnableIRQ(GPIO_ENCODERS_INT_IRQN);
@@ -40,6 +46,9 @@ int main(void)
     while (1) {
         bool gimbalUpdateDue;
         bool trackerUpdateDue;
+
+        (void)VisionReceiver_Process(g_localTimeMs,
+            VISION_RX_PROCESS_BUDGET);
 
         do {
             __disable_irq();
@@ -93,6 +102,8 @@ void SysTick_Handler(void)
     tick100usCount++;
     if (tick100usCount >= APP_TICKS_PER_MS) {
         tick100usCount = 0;
+
+        g_localTimeMs++;
 
         controlMsCount++;
         gimbalMsCount++;

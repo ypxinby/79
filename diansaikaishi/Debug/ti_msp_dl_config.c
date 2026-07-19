@@ -40,6 +40,8 @@
 
 #include "ti_msp_dl_config.h"
 
+DL_UART_Main_backupConfig gUART_VISIONBackup;
+
 /*
  *  ======== SYSCFG_DL_init ========
  *  Perform any initialization needed before using any board APIs
@@ -50,20 +52,53 @@ SYSCONFIG_WEAK void SYSCFG_DL_init(void)
     SYSCFG_DL_GPIO_init();
     /* Module-Specific Initializations*/
     SYSCFG_DL_SYSCTL_init();
+    SYSCFG_DL_UART_VISION_init();
+    /* Ensure backup structures have no valid state */
+	gUART_VISIONBackup.backupRdy 	= false;
+
+}
+/*
+ * User should take care to save and restore register configuration in application.
+ * See Retention Configuration section for more details.
+ */
+SYSCONFIG_WEAK bool SYSCFG_DL_saveConfiguration(void)
+{
+    bool retStatus = true;
+
+	retStatus &= DL_UART_Main_saveConfiguration(UART_VISION_INST, &gUART_VISIONBackup);
+
+    return retStatus;
+}
+
+
+SYSCONFIG_WEAK bool SYSCFG_DL_restoreConfiguration(void)
+{
+    bool retStatus = true;
+
+	retStatus &= DL_UART_Main_restoreConfiguration(UART_VISION_INST, &gUART_VISIONBackup);
+
+    return retStatus;
 }
 
 SYSCONFIG_WEAK void SYSCFG_DL_initPower(void)
 {
     DL_GPIO_reset(GPIOA);
     DL_GPIO_reset(GPIOB);
+    DL_UART_Main_reset(UART_VISION_INST);
 
     DL_GPIO_enablePower(GPIOA);
     DL_GPIO_enablePower(GPIOB);
+    DL_UART_Main_enablePower(UART_VISION_INST);
     delay_cycles(POWER_STARTUP_DELAY);
 }
 
 SYSCONFIG_WEAK void SYSCFG_DL_GPIO_init(void)
 {
+
+    DL_GPIO_initPeripheralOutputFunction(
+        GPIO_UART_VISION_IOMUX_TX, GPIO_UART_VISION_IOMUX_TX_FUNC);
+    DL_GPIO_initPeripheralInputFunction(
+        GPIO_UART_VISION_IOMUX_RX, GPIO_UART_VISION_IOMUX_RX_FUNC);
 
     DL_GPIO_initDigitalOutput(GPIO_TB6612_A_AIN2_IOMUX);
 
@@ -226,4 +261,40 @@ SYSCONFIG_WEAK void SYSCFG_DL_SYSCTL_init(void)
 
 }
 
+
+static const DL_UART_Main_ClockConfig gUART_VISIONClockConfig = {
+    .clockSel    = DL_UART_MAIN_CLOCK_BUSCLK,
+    .divideRatio = DL_UART_MAIN_CLOCK_DIVIDE_RATIO_1
+};
+
+static const DL_UART_Main_Config gUART_VISIONConfig = {
+    .mode        = DL_UART_MAIN_MODE_NORMAL,
+    .direction   = DL_UART_MAIN_DIRECTION_TX_RX,
+    .flowControl = DL_UART_MAIN_FLOW_CONTROL_NONE,
+    .parity      = DL_UART_MAIN_PARITY_NONE,
+    .wordLength  = DL_UART_MAIN_WORD_LENGTH_8_BITS,
+    .stopBits    = DL_UART_MAIN_STOP_BITS_ONE
+};
+
+SYSCONFIG_WEAK void SYSCFG_DL_UART_VISION_init(void)
+{
+    DL_UART_Main_setClockConfig(UART_VISION_INST, (DL_UART_Main_ClockConfig *) &gUART_VISIONClockConfig);
+
+    DL_UART_Main_init(UART_VISION_INST, (DL_UART_Main_Config *) &gUART_VISIONConfig);
+    /*
+     * Configure baud rate by setting oversampling and baud rate divisors.
+     *  Target baud rate: 115200
+     *  Actual baud rate: 115211.52
+     */
+    DL_UART_Main_setOversampling(UART_VISION_INST, DL_UART_OVERSAMPLING_RATE_16X);
+    DL_UART_Main_setBaudRateDivisor(UART_VISION_INST, UART_VISION_IBRD_32_MHZ_115200_BAUD, UART_VISION_FBRD_32_MHZ_115200_BAUD);
+
+
+    /* Configure Interrupts */
+    DL_UART_Main_enableInterrupt(UART_VISION_INST,
+                                 DL_UART_MAIN_INTERRUPT_RX);
+
+
+    DL_UART_Main_enable(UART_VISION_INST);
+}
 

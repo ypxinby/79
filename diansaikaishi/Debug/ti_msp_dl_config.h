@@ -77,6 +77,26 @@ extern "C" {
 
 
 
+/* Defines for UART_VISION */
+#define UART_VISION_INST                                                   UART3
+#define UART_VISION_INST_FREQUENCY                                      32000000
+#define UART_VISION_INST_IRQHandler                             UART3_IRQHandler
+#define UART_VISION_INST_INT_IRQN                                 UART3_INT_IRQn
+#define GPIO_UART_VISION_RX_PORT                                           GPIOB
+#define GPIO_UART_VISION_TX_PORT                                           GPIOB
+#define GPIO_UART_VISION_RX_PIN                                    DL_GPIO_PIN_3
+#define GPIO_UART_VISION_TX_PIN                                    DL_GPIO_PIN_2
+#define GPIO_UART_VISION_IOMUX_RX                                (IOMUX_PINCM16)
+#define GPIO_UART_VISION_IOMUX_TX                                (IOMUX_PINCM15)
+#define GPIO_UART_VISION_IOMUX_RX_FUNC                 IOMUX_PINCM16_PF_UART3_RX
+#define GPIO_UART_VISION_IOMUX_TX_FUNC                 IOMUX_PINCM15_PF_UART3_TX
+#define UART_VISION_BAUD_RATE                                           (115200)
+#define UART_VISION_IBRD_32_MHZ_115200_BAUD                                 (17)
+#define UART_VISION_FBRD_32_MHZ_115200_BAUD                                 (23)
+
+
+
+
 
 /* Port definition for Pin Group GPIO_TB6612_A */
 #define GPIO_TB6612_A_PORT                                               (GPIOA)
@@ -231,8 +251,11 @@ void SYSCFG_DL_init(void);
 void SYSCFG_DL_initPower(void);
 void SYSCFG_DL_GPIO_init(void);
 void SYSCFG_DL_SYSCTL_init(void);
+void SYSCFG_DL_UART_VISION_init(void);
 
 
+bool SYSCFG_DL_saveConfiguration(void);
+bool SYSCFG_DL_restoreConfiguration(void);
 
 #ifdef __cplusplus
 }

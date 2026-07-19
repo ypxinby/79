@@ -18,6 +18,7 @@
 #include "oled.h"
 #include "track_sensor.h"
 #include "ultrasonic.h"
+#include "vision_receiver.h"
 
 static int16_t clamp_display_i16(int32_t value)
 {
@@ -544,6 +545,82 @@ static void print_gimbal_tracker_pitch_page(void)
     OLED_PrintString(" D:");
     OLED_PrintInt16((int16_t)pitch->direction);
 }
+
+static const char *vision_event_to_string(VisionReceiverEvent event)
+{
+    switch (event) {
+        case VISION_RECEIVER_EVENT_TARGET:
+            return "TGT";
+        case VISION_RECEIVER_EVENT_NO_TARGET:
+            return "NONE";
+        case VISION_RECEIVER_EVENT_NEW_SESSION:
+            return "NEW";
+        case VISION_RECEIVER_EVENT_DUPLICATE:
+            return "DUP";
+        case VISION_RECEIVER_EVENT_OLD_SEQUENCE:
+            return "OLD";
+        case VISION_RECEIVER_EVENT_LENGTH_ERROR:
+            return "LEN";
+        case VISION_RECEIVER_EVENT_CRC_ERROR:
+            return "CRC";
+        case VISION_RECEIVER_EVENT_VERSION_ERROR:
+            return "VER";
+        case VISION_RECEIVER_EVENT_TYPE_ERROR:
+            return "TYP";
+        case VISION_RECEIVER_EVENT_RESERVED_ERROR:
+            return "RES";
+        case VISION_RECEIVER_EVENT_FLAGS_ERROR:
+            return "FLG";
+        case VISION_RECEIVER_EVENT_FIELD_ERROR:
+            return "FLD";
+        case VISION_RECEIVER_EVENT_WAITING:
+        default:
+            return "WAIT";
+    }
+}
+
+static uint16_t display_count_3digit(uint32_t value)
+{
+    return (value > 999U) ? 999U : (uint16_t)value;
+}
+
+static void print_vision_receiver_page(void)
+{
+    const VisionReceiverStatus *status = VisionReceiver_GetStatus();
+    const VisionReceiverObservation *observation =
+        VisionReceiver_GetObservation();
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("VRX:");
+    OLED_PrintString(vision_event_to_string(status->last_event));
+    OLED_PrintString(" R:");
+    OLED_PrintUInt16(display_count_3digit(status->ring_overflow_count));
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("S:");
+    OLED_PrintUInt16((uint16_t)status->session_id);
+    OLED_PrintString(" Q:");
+    OLED_PrintUInt16(status->last_sequence);
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("V:");
+    OLED_PrintUInt16(observation->target_valid);
+    OLED_PrintString(" X:");
+    OLED_PrintUInt16(observation->packet.target_center_x);
+    OLED_PrintString(" Y:");
+    OLED_PrintUInt16(observation->packet.target_center_y);
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("A");
+    OLED_PrintUInt16(display_count_3digit(status->accepted_frame_count));
+    OLED_PrintString(" E");
+    OLED_PrintUInt16(display_count_3digit(
+        VisionReceiver_GetProtocolErrorCount()));
+    OLED_PrintString(" D");
+    OLED_PrintUInt16(display_count_3digit(status->duplicate_count));
+    OLED_PrintString(" O");
+    OLED_PrintUInt16(display_count_3digit(status->old_sequence_count));
+}
 #endif
 
 void OledUi_Init(void)
@@ -605,6 +682,13 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
         case OLED_PAGE_GIMBAL_TRACKER_PITCH:
 #if FEATURE_GIMBAL_OLED_TEST
             print_gimbal_tracker_pitch_page();
+#else
+            print_status_page(raw, error, keyEvent);
+#endif
+            break;
+        case OLED_PAGE_VISION_RECEIVER:
+#if FEATURE_GIMBAL_OLED_TEST
+            print_vision_receiver_page();
 #else
             print_status_page(raw, error, keyEvent);
 #endif

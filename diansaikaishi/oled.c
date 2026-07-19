@@ -304,6 +304,21 @@ void OLED_PrintInt16(int16_t value)
     OLED_PrintString(buffer);
 }
 
+void OLED_PrintUInt16(uint16_t value)
+{
+    char buffer[6];
+    uint8_t index = 5U;
+
+    buffer[index] = '\0';
+    do {
+        index--;
+        buffer[index] = (char)('0' + (value % 10U));
+        value /= 10U;
+    } while ((value != 0U) && (index != 0U));
+
+    OLED_PrintString(&buffer[index]);
+}
+
 void OLED_PrintBinary8(uint8_t value)
 {
     for (int8_t bit = 7; bit >= 0; bit--) {

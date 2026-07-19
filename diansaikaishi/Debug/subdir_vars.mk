@@ -37,7 +37,10 @@ C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/m0p/startup_system_files/ticlan
 ../pid.c \
 ../servo.c \
 ../track_sensor.c \
-../ultrasonic.c 
+../ultrasonic.c \
+../vision_protocol.c \
+../vision_receiver.c \
+../vision_uart.c 
 
 GEN_CMDS += \
 ./device_linker.cmd 
@@ -76,7 +79,10 @@ C_DEPS += \
 ./pid.d \
 ./servo.d \
 ./track_sensor.d \
-./ultrasonic.d 
+./ultrasonic.d \
+./vision_protocol.d \
+./vision_receiver.d \
+./vision_uart.d 
 
 GEN_OPTS += \
 ./device.opt 
@@ -110,7 +116,10 @@ OBJS += \
 ./pid.o \
 ./servo.o \
 ./track_sensor.o \
-./ultrasonic.o 
+./ultrasonic.o \
+./vision_protocol.o \
+./vision_receiver.o \
+./vision_uart.o 
 
 GEN_MISC_FILES += \
 ./device.cmd.genlibs \
@@ -146,7 +155,10 @@ OBJS__QUOTED += \
 "pid.o" \
 "servo.o" \
 "track_sensor.o" \
-"ultrasonic.o" 
+"ultrasonic.o" \
+"vision_protocol.o" \
+"vision_receiver.o" \
+"vision_uart.o" 
 
 GEN_MISC_FILES__QUOTED += \
 "device.cmd.genlibs" \
@@ -182,7 +194,10 @@ C_DEPS__QUOTED += \
 "pid.d" \
 "servo.d" \
 "track_sensor.d" \
-"ultrasonic.d" 
+"ultrasonic.d" \
+"vision_protocol.d" \
+"vision_receiver.d" \
+"vision_uart.d" 
 
 GEN_FILES__QUOTED += \
 "device_linker.cmd" \
@@ -218,7 +233,10 @@ C_SRCS__QUOTED += \
 "../pid.c" \
 "../servo.c" \
 "../track_sensor.c" \
-"../ultrasonic.c" 
+"../ultrasonic.c" \
+"../vision_protocol.c" \
+"../vision_receiver.c" \
+"../vision_uart.c" 
 
 SYSCFG_SRCS__QUOTED += \
 "../empty.syscfg" 

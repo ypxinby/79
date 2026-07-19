@@ -10,6 +10,8 @@
  * Import the modules used in this configuration.
  */
 const SYSCTL = scripting.addModule("/ti/driverlib/SYSCTL");
+const UART   = scripting.addModule("/ti/driverlib/UART", {}, false);
+const UART1  = UART.addInstance();
 const GPIO   = scripting.addModule("/ti/driverlib/GPIO", {}, false);
 const GPIO1  = GPIO.addInstance();
 const GPIO2  = GPIO.addInstance();
@@ -32,6 +34,16 @@ const GPIO13 = GPIO.addInstance();
 const Board = scripting.addModule("/ti/driverlib/Board", {}, false);
 
 SYSCTL.forceDefaultClkConfig = true;
+
+UART1.$name = "UART_VISION";
+UART1.profile = "CONFIG_PROFILE_1";
+UART1.peripheral.$assign = "UART3";
+UART1.targetBaudRate = 115200;
+UART1.enableInternalLoopback = false;
+UART1.enabledInterrupts = ["RX"];
+UART1.enableFIFO = false;
+UART1.peripheral.txPin.$assign = "PB2";
+UART1.peripheral.rxPin.$assign = "PB3";
 
 GPIO1.$name                             = "GPIO_TB6612_A";
 GPIO1.port                              = "PORTA";

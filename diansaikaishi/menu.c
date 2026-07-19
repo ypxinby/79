@@ -36,6 +36,8 @@ static void menu_toggle_status_sensor_page(void)
         g_oledPage = OLED_PAGE_GIMBAL_TRACKER;
     } else if (g_oledPage == OLED_PAGE_GIMBAL_TRACKER) {
         g_oledPage = OLED_PAGE_GIMBAL_TRACKER_PITCH;
+    } else if (g_oledPage == OLED_PAGE_GIMBAL_TRACKER_PITCH) {
+        g_oledPage = OLED_PAGE_VISION_RECEIVER;
 #endif
     } else {
         g_oledPage = OLED_PAGE_STATUS;
@@ -104,6 +106,15 @@ static void menu_handle_status_key(KeyEvent event)
     CarState state = CarState_Get();
 
 #if FEATURE_GIMBAL_OLED_TEST
+    if (g_oledPage == OLED_PAGE_VISION_RECEIVER) {
+        if (event == KEY1_SHORT) {
+            menu_toggle_status_sensor_page();
+        } else if (event == KEY1_LONG) {
+            menu_enter_param_page(g_paramItem, 0U);
+        }
+        return;
+    }
+
     if ((g_oledPage == OLED_PAGE_GIMBAL_TRACKER) ||
         (g_oledPage == OLED_PAGE_GIMBAL_TRACKER_PITCH)) {
         static uint16_t trackerSequence;
