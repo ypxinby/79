@@ -5,6 +5,7 @@
 #include "car_state.h"
 #include "gimbal.h"
 #include "gimbal_tracker.h"
+#include "gimbal_vision_pitch_tracker.h"
 #include "mission_manager.h"
 
 static OledPage g_oledPage;
@@ -40,6 +41,8 @@ static void menu_toggle_status_sensor_page(void)
         g_oledPage = OLED_PAGE_VISION_RECEIVER;
     } else if (g_oledPage == OLED_PAGE_VISION_RECEIVER) {
         g_oledPage = OLED_PAGE_GIMBAL_VISION_ADAPTER;
+    } else if (g_oledPage == OLED_PAGE_GIMBAL_VISION_ADAPTER) {
+        g_oledPage = OLED_PAGE_GIMBAL_VISION_PITCH;
 #endif
     } else {
         g_oledPage = OLED_PAGE_STATUS;
@@ -108,6 +111,26 @@ static void menu_handle_status_key(KeyEvent event)
     CarState state = CarState_Get();
 
 #if FEATURE_GIMBAL_OLED_TEST
+    if (g_oledPage == OLED_PAGE_GIMBAL_VISION_PITCH) {
+        switch (event) {
+            case KEY1_SHORT:
+                menu_toggle_status_sensor_page();
+                break;
+            case KEY1_LONG:
+                menu_enter_param_page(g_paramItem, 0U);
+                break;
+            case KEY2_SHORT:
+                (void)GimbalVisionPitchTracker_Enable(1U);
+                break;
+            case KEY3_SHORT:
+                (void)GimbalVisionPitchTracker_Enable(0U);
+                break;
+            default:
+                break;
+        }
+        return;
+    }
+
     if ((g_oledPage == OLED_PAGE_VISION_RECEIVER) ||
         (g_oledPage == OLED_PAGE_GIMBAL_VISION_ADAPTER)) {
         if (event == KEY1_SHORT) {

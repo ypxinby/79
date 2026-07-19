@@ -11,6 +11,7 @@
 #include "gimbal.h"
 #include "gimbal_tracker.h"
 #include "gimbal_vision_adapter.h"
+#include "gimbal_vision_pitch_tracker.h"
 #include "motor.h"
 #include "servo.h"
 #include "ti_msp_dl_config.h"
@@ -39,6 +40,7 @@ int main(void)
     App_Init();
     VisionReceiver_Init();
     GimbalVisionAdapter_Init();
+    GimbalVisionPitchTracker_Init();
     VisionUart_Init();
 
     SysTick_Config(CPUCLK_FREQ / APP_TICK_HZ);
@@ -64,6 +66,7 @@ int main(void)
             __enable_irq();
 
             if (trackerUpdateDue) {
+                GimbalVisionPitchTracker_Update10ms(g_localTimeMs);
                 GimbalTracker_Update(0.010f);
             }
         } while (trackerUpdateDue);
