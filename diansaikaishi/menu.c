@@ -8,7 +8,18 @@
 #include "mission_manager.h"
 
 static OledPage g_oledPage;
+static OledPage g_paramReturnPage;
 static ParamItem g_paramItem;
+
+static void menu_enter_param_page(ParamItem item, uint8_t select_item)
+{
+    g_paramReturnPage = g_oledPage;
+    if (select_item != 0U) {
+        g_paramItem = item;
+    }
+    g_oledPage = OLED_PAGE_PARAM;
+    CarState_Set(CAR_STATE_MENU);
+}
 
 static void menu_toggle_status_sensor_page(void)
 {
@@ -74,6 +85,13 @@ static void menu_adjust_param(int8_t direction, uint8_t fast)
                 g_appConfig.servo_angle_deg += (int16_t)(direction * 5);
             }
             break;
+        case PARAM_GIMBAL_WORLD_LOCK:
+            if (direction > 0) {
+                Gimbal_YawEnableWorldLock();
+            } else {
+                Gimbal_YawDisableWorldLock();
+            }
+            break;
         default:
             break;
     }
@@ -95,8 +113,7 @@ static void menu_handle_status_key(KeyEvent event)
                 menu_toggle_status_sensor_page();
                 break;
             case KEY1_LONG:
-                g_oledPage = OLED_PAGE_PARAM;
-                CarState_Set(CAR_STATE_MENU);
+                menu_enter_param_page(g_paramItem, 0U);
                 break;
             case KEY2_SHORT:
             {
@@ -157,8 +174,11 @@ static void menu_handle_status_key(KeyEvent event)
                 menu_toggle_status_sensor_page();
                 break;
             case KEY1_LONG:
-                g_oledPage = OLED_PAGE_PARAM;
-                CarState_Set(CAR_STATE_MENU);
+                if (g_oledPage == OLED_PAGE_GIMBAL) {
+                    menu_enter_param_page(PARAM_GIMBAL_WORLD_LOCK, 1U);
+                } else {
+                    menu_enter_param_page(g_paramItem, 0U);
+                }
                 break;
             case KEY2_SHORT:
                 if (g_oledPage == OLED_PAGE_GIMBAL_PITCH) {
@@ -173,8 +193,10 @@ static void menu_handle_status_key(KeyEvent event)
 
                     if (pitch->running != 0U) {
                         Gimbal_PitchStopHold();
-                    } else {
+                    } else if (pitch->position_valid == 0U) {
                         (void)Gimbal_PitchConfirmZero();
+                        Gimbal_PitchStopHold();
+                    } else {
                         Gimbal_PitchStopHold();
                     }
                 } else {
@@ -194,14 +216,14 @@ static void menu_handle_status_key(KeyEvent event)
                 if (g_oledPage == OLED_PAGE_GIMBAL_PITCH) {
                     Gimbal_PitchMoveRelativeDeg(-10.0f);
                 } else {
-                    Gimbal_YawRelease();
+                    Gimbal_YawMoveRelativeDeg(-30.0f);
                 }
                 break;
             case KEY3_LONG:
                 if (g_oledPage == OLED_PAGE_GIMBAL_PITCH) {
                     Gimbal_PitchRelease();
                 } else {
-                    Gimbal_YawToggleWorldLock();
+                    Gimbal_YawRelease();
                 }
                 break;
             default:
@@ -216,8 +238,7 @@ static void menu_handle_status_key(KeyEvent event)
             menu_toggle_status_sensor_page();
             break;
         case KEY1_LONG:
-            g_oledPage = OLED_PAGE_PARAM;
-            CarState_Set(CAR_STATE_MENU);
+            menu_enter_param_page(g_paramItem, 0U);
             break;
         case KEY2_SHORT:
             switch (state) {
@@ -259,7 +280,10 @@ static void menu_handle_param_key(KeyEvent event)
             menu_next_param();
             break;
         case KEY1_LONG:
-            g_oledPage = OLED_PAGE_STATUS;
+            g_oledPage = g_paramReturnPage;
+            if (g_oledPage == OLED_PAGE_PARAM) {
+                g_oledPage = OLED_PAGE_STATUS;
+            }
             CarState_Set(CAR_STATE_READY);
             break;
         case KEY2_SHORT:
@@ -282,6 +306,7 @@ static void menu_handle_param_key(KeyEvent event)
 void Menu_Init(void)
 {
     g_oledPage = OLED_PAGE_STATUS;
+    g_paramReturnPage = OLED_PAGE_STATUS;
     g_paramItem = PARAM_TASK;
 }
 
@@ -327,6 +352,8 @@ const char *Menu_ParamItemToString(ParamItem item)
             return "MAX";
         case PARAM_SERVO_ANGLE:
             return "SV";
+        case PARAM_GIMBAL_WORLD_LOCK:
+            return "WLK";
         default:
             return "ERR";
     }
@@ -351,6 +378,8 @@ int16_t Menu_GetParamValue(ParamItem item)
             return g_appConfig.max_correction;
         case PARAM_SERVO_ANGLE:
             return g_appConfig.servo_angle_deg;
+        case PARAM_GIMBAL_WORLD_LOCK:
+            return (int16_t)Gimbal_YawGetFeedback()->world_lock_enabled;
         default:
             return 0;
     }

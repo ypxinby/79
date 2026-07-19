@@ -286,6 +286,12 @@ static void print_param_page(uint8_t keyEvent)
         OLED_PrintInt16((int16_t)missionCount);
         OLED_PrintString(" NX:");
         OLED_PrintInt16((int16_t)(nextMissionIndex + 1U));
+    } else if (item == PARAM_GIMBAL_WORLD_LOCK) {
+        const GimbalFeedback *yaw = Gimbal_YawGetFeedback();
+
+        OLED_PrintString("Z:");
+        OLED_PrintInt16((int16_t)yaw->position_valid);
+        OLED_PrintString(" K2:ON K3:OFF");
     } else {
         OLED_PrintString("C:");
         OLED_PrintInt16(g_appRuntime.correction);
