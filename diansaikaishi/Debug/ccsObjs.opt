@@ -9,6 +9,7 @@
 "./gimbal.o"
 "./gimbal_stepper.o"
 "./gimbal_tracker.o"
+"./gimbal_vision_adapter.o"
 "./heading_control.o"
 "./imu.o"
 "./key.o"

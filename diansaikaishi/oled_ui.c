@@ -9,6 +9,7 @@
 #include "heading_control.h"
 #include "imu.h"
 #include "menu.h"
+#include "gimbal_vision_adapter.h"
 #include "mission_manager.h"
 #include "motion_action.h"
 #include "obstacle_avoidance.h"
@@ -621,6 +622,56 @@ static void print_vision_receiver_page(void)
     OLED_PrintString(" O");
     OLED_PrintUInt16(display_count_3digit(status->old_sequence_count));
 }
+
+static const char *vision_adapter_state_to_string(
+    GimbalVisionAdapterState state)
+{
+    switch (state) {
+        case GIMBAL_VISION_ADAPTER_TARGET:
+            return "OK";
+        case GIMBAL_VISION_ADAPTER_NO_TARGET:
+            return "NONE";
+        case GIMBAL_VISION_ADAPTER_SOURCE_ERROR:
+            return "ERR";
+        case GIMBAL_VISION_ADAPTER_WAITING:
+        default:
+            return "WAIT";
+    }
+}
+
+static void print_gimbal_vision_adapter_page(void)
+{
+    const GimbalVisionAdapterFeedback *adapter =
+        GimbalVisionAdapter_GetFeedback();
+    const GimbalTargetObservation *observation =
+        GimbalVisionAdapter_GetObservation();
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("VAD:");
+    OLED_PrintString(vision_adapter_state_to_string(adapter->state));
+    OLED_PrintString(" V:");
+    OLED_PrintUInt16(observation->valid);
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("S:");
+    OLED_PrintUInt16((uint16_t)adapter->session_id);
+    OLED_PrintString(" Q:");
+    OLED_PrintUInt16(observation->sequence);
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("X");
+    OLED_PrintUInt16(adapter->source_packet.target_center_x);
+    OLED_PrintString(" Y");
+    OLED_PrintUInt16(adapter->source_packet.target_center_y);
+    OLED_PrintString(" C");
+    OLED_PrintUInt16(adapter->source_packet.confidence);
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("EX:");
+    OLED_PrintInt16(observation->error_x_px);
+    OLED_PrintString(" EY:");
+    OLED_PrintInt16(observation->error_y_px);
+}
 #endif
 
 void OledUi_Init(void)
@@ -689,6 +740,13 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
         case OLED_PAGE_VISION_RECEIVER:
 #if FEATURE_GIMBAL_OLED_TEST
             print_vision_receiver_page();
+#else
+            print_status_page(raw, error, keyEvent);
+#endif
+            break;
+        case OLED_PAGE_GIMBAL_VISION_ADAPTER:
+#if FEATURE_GIMBAL_OLED_TEST
+            print_gimbal_vision_adapter_page();
 #else
             print_status_page(raw, error, keyEvent);
 #endif

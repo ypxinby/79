@@ -20,6 +20,7 @@ C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/m0p/startup_system_files/ticlan
 ../gimbal.c \
 ../gimbal_stepper.c \
 ../gimbal_tracker.c \
+../gimbal_vision_adapter.c \
 ../heading_control.c \
 ../imu.c \
 ../key.c \
@@ -62,6 +63,7 @@ C_DEPS += \
 ./gimbal.d \
 ./gimbal_stepper.d \
 ./gimbal_tracker.d \
+./gimbal_vision_adapter.d \
 ./heading_control.d \
 ./imu.d \
 ./key.d \
@@ -99,6 +101,7 @@ OBJS += \
 ./gimbal.o \
 ./gimbal_stepper.o \
 ./gimbal_tracker.o \
+./gimbal_vision_adapter.o \
 ./heading_control.o \
 ./imu.o \
 ./key.o \
@@ -138,6 +141,7 @@ OBJS__QUOTED += \
 "gimbal.o" \
 "gimbal_stepper.o" \
 "gimbal_tracker.o" \
+"gimbal_vision_adapter.o" \
 "heading_control.o" \
 "imu.o" \
 "key.o" \
@@ -177,6 +181,7 @@ C_DEPS__QUOTED += \
 "gimbal.d" \
 "gimbal_stepper.d" \
 "gimbal_tracker.d" \
+"gimbal_vision_adapter.d" \
 "heading_control.d" \
 "imu.d" \
 "key.d" \
@@ -216,6 +221,7 @@ C_SRCS__QUOTED += \
 "../gimbal.c" \
 "../gimbal_stepper.c" \
 "../gimbal_tracker.c" \
+"../gimbal_vision_adapter.c" \
 "../heading_control.c" \
 "../imu.c" \
 "../key.c" \
