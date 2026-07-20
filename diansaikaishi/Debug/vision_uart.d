@@ -1,6 +1,7 @@
 # FIXED
 
-vision_uart.o: ../vision_uart.c ../vision_uart.h \
+vision_uart.o: ../vision_uart.c ../vision_uart.h ../app_features.h \
+ ../debug_telemetry.h \
  ti_msp_dl_config.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/msp.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/DeviceFamily.h \
@@ -77,6 +78,8 @@ vision_uart.o: ../vision_uart.c ../vision_uart.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/m0p/dl_systick.h \
  ../vision_receiver.h ../vision_protocol.h ../vision_tuning_console.h
 ../vision_uart.h:
+../app_features.h:
+../debug_telemetry.h:
 ti_msp_dl_config.h:
 C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/msp.h:
 C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/DeviceFamily.h:

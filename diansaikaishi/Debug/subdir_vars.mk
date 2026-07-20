@@ -13,10 +13,13 @@ C_SRCS += \
 ../app_config.c \
 ../car_controller.c \
 ../car_state.c \
+../debug_telemetry.c \
+../emergency_stop.c \
 ../empty.c \
 ./ti_msp_dl_config.c \
 C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/m0p/startup_system_files/ticlang/startup_mspm0g350x_ticlang.c \
 ../encoder.c \
+../fault.c \
 ../gimbal.c \
 ../gimbal_stepper.c \
 ../gimbal_tracker.c \
@@ -38,6 +41,7 @@ C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/m0p/startup_system_files/ticlan
 ../oled.c \
 ../oled_ui.c \
 ../pid.c \
+../runtime_snapshot.c \
 ../servo.c \
 ../track_sensor.c \
 ../ultrasonic.c \
@@ -46,7 +50,8 @@ C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/m0p/startup_system_files/ticlan
 ../vision_receiver.c \
 ../vision_tuning_console.c \
 ../vision_uart.c \
-../vision_yaw_tuning.c 
+../vision_yaw_tuning.c \
+../watchdog_monitor.c 
 
 GEN_CMDS += \
 ./device_linker.cmd 
@@ -61,10 +66,13 @@ C_DEPS += \
 ./app_config.d \
 ./car_controller.d \
 ./car_state.d \
+./debug_telemetry.d \
+./emergency_stop.d \
 ./empty.d \
 ./ti_msp_dl_config.d \
 ./startup_mspm0g350x_ticlang.d \
 ./encoder.d \
+./fault.d \
 ./gimbal.d \
 ./gimbal_stepper.d \
 ./gimbal_tracker.d \
@@ -86,6 +94,7 @@ C_DEPS += \
 ./oled.d \
 ./oled_ui.d \
 ./pid.d \
+./runtime_snapshot.d \
 ./servo.d \
 ./track_sensor.d \
 ./ultrasonic.d \
@@ -94,7 +103,8 @@ C_DEPS += \
 ./vision_receiver.d \
 ./vision_tuning_console.d \
 ./vision_uart.d \
-./vision_yaw_tuning.d 
+./vision_yaw_tuning.d \
+./watchdog_monitor.d 
 
 GEN_OPTS += \
 ./device.opt 
@@ -104,10 +114,13 @@ OBJS += \
 ./app_config.o \
 ./car_controller.o \
 ./car_state.o \
+./debug_telemetry.o \
+./emergency_stop.o \
 ./empty.o \
 ./ti_msp_dl_config.o \
 ./startup_mspm0g350x_ticlang.o \
 ./encoder.o \
+./fault.o \
 ./gimbal.o \
 ./gimbal_stepper.o \
 ./gimbal_tracker.o \
@@ -129,6 +142,7 @@ OBJS += \
 ./oled.o \
 ./oled_ui.o \
 ./pid.o \
+./runtime_snapshot.o \
 ./servo.o \
 ./track_sensor.o \
 ./ultrasonic.o \
@@ -137,7 +151,8 @@ OBJS += \
 ./vision_receiver.o \
 ./vision_tuning_console.o \
 ./vision_uart.o \
-./vision_yaw_tuning.o 
+./vision_yaw_tuning.o \
+./watchdog_monitor.o 
 
 GEN_MISC_FILES += \
 ./device.cmd.genlibs \
@@ -149,10 +164,13 @@ OBJS__QUOTED += \
 "app_config.o" \
 "car_controller.o" \
 "car_state.o" \
+"debug_telemetry.o" \
+"emergency_stop.o" \
 "empty.o" \
 "ti_msp_dl_config.o" \
 "startup_mspm0g350x_ticlang.o" \
 "encoder.o" \
+"fault.o" \
 "gimbal.o" \
 "gimbal_stepper.o" \
 "gimbal_tracker.o" \
@@ -174,6 +192,7 @@ OBJS__QUOTED += \
 "oled.o" \
 "oled_ui.o" \
 "pid.o" \
+"runtime_snapshot.o" \
 "servo.o" \
 "track_sensor.o" \
 "ultrasonic.o" \
@@ -182,7 +201,8 @@ OBJS__QUOTED += \
 "vision_receiver.o" \
 "vision_tuning_console.o" \
 "vision_uart.o" \
-"vision_yaw_tuning.o" 
+"vision_yaw_tuning.o" \
+"watchdog_monitor.o" 
 
 GEN_MISC_FILES__QUOTED += \
 "device.cmd.genlibs" \
@@ -194,10 +214,13 @@ C_DEPS__QUOTED += \
 "app_config.d" \
 "car_controller.d" \
 "car_state.d" \
+"debug_telemetry.d" \
+"emergency_stop.d" \
 "empty.d" \
 "ti_msp_dl_config.d" \
 "startup_mspm0g350x_ticlang.d" \
 "encoder.d" \
+"fault.d" \
 "gimbal.d" \
 "gimbal_stepper.d" \
 "gimbal_tracker.d" \
@@ -219,6 +242,7 @@ C_DEPS__QUOTED += \
 "oled.d" \
 "oled_ui.d" \
 "pid.d" \
+"runtime_snapshot.d" \
 "servo.d" \
 "track_sensor.d" \
 "ultrasonic.d" \
@@ -227,7 +251,8 @@ C_DEPS__QUOTED += \
 "vision_receiver.d" \
 "vision_tuning_console.d" \
 "vision_uart.d" \
-"vision_yaw_tuning.d" 
+"vision_yaw_tuning.d" \
+"watchdog_monitor.d" 
 
 GEN_FILES__QUOTED += \
 "device_linker.cmd" \
@@ -239,10 +264,13 @@ C_SRCS__QUOTED += \
 "../app_config.c" \
 "../car_controller.c" \
 "../car_state.c" \
+"../debug_telemetry.c" \
+"../emergency_stop.c" \
 "../empty.c" \
 "./ti_msp_dl_config.c" \
 "C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/m0p/startup_system_files/ticlang/startup_mspm0g350x_ticlang.c" \
 "../encoder.c" \
+"../fault.c" \
 "../gimbal.c" \
 "../gimbal_stepper.c" \
 "../gimbal_tracker.c" \
@@ -264,6 +292,7 @@ C_SRCS__QUOTED += \
 "../oled.c" \
 "../oled_ui.c" \
 "../pid.c" \
+"../runtime_snapshot.c" \
 "../servo.c" \
 "../track_sensor.c" \
 "../ultrasonic.c" \
@@ -272,7 +301,8 @@ C_SRCS__QUOTED += \
 "../vision_receiver.c" \
 "../vision_tuning_console.c" \
 "../vision_uart.c" \
-"../vision_yaw_tuning.c" 
+"../vision_yaw_tuning.c" \
+"../watchdog_monitor.c" 
 
 SYSCFG_SRCS__QUOTED += \
 "../empty.syscfg" 
