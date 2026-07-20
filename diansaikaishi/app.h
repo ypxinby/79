@@ -14,6 +14,6 @@ extern volatile uint8_t g_trackModeDebug;
 extern volatile uint8_t g_trackTurnDebug;
 
 void App_Init(void);
-void App_Update_20ms(void);
+void App_Update_20ms(uint32_t elapsed_ms);
 
 #endif

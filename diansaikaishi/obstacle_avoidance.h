@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "fault.h"
 #include "motion_types.h"
 
 typedef enum {
@@ -26,10 +27,14 @@ typedef struct {
     uint16_t wait_ms;
     uint16_t settle_ms;
     uint8_t center_count;
+    uint32_t state_elapsed_ms;
+    FaultCode failure_code;
+    ObstacleAvoidState failure_stage;
+    uint16_t failure_detail;
 } ObstacleAvoidanceFeedback;
 
 void ObstacleAvoidance_Init(void);
-void ObstacleAvoidance_Update_20ms(void);
+void ObstacleAvoidance_Update_20ms(uint32_t elapsed_ms);
 bool ObstacleAvoidance_IsActive(void);
 bool ObstacleAvoidance_IsFailed(void);
 bool ObstacleAvoidance_IsResumeGraceActive(void);

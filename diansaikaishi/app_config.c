@@ -61,6 +61,7 @@ void AppConfig_InitDefault(void)
     g_appConfig.lost_recover_max_ms = 1400;
     g_appConfig.turn_min_ms = 160;
     g_appConfig.turn_max_ms = 1400;
+    g_appConfig.yaw_turn_timeout_ms = 2500U;
     g_appConfig.gyro_deadband_dps = 1.5f;
 
     g_appConfig.heading_kp = 20;
@@ -83,6 +84,7 @@ void AppConfig_InitDefault(void)
     g_appConfig.avoid_wait_before_ms = 2000;
     g_appConfig.avoid_resume_grace_ms = 200;
     g_appConfig.avoid_reacquire_settle_ms = 300;
+    g_appConfig.avoid_reacquire_timeout_ms = 5000U;
 }
 
 void AppConfig_LimitAll(void)
@@ -137,6 +139,12 @@ void AppConfig_LimitAll(void)
     if (g_appConfig.turn_max_ms > 2000U) {
         g_appConfig.turn_max_ms = 2000U;
     }
+    if (g_appConfig.yaw_turn_timeout_ms < 200U) {
+        g_appConfig.yaw_turn_timeout_ms = 200U;
+    }
+    if (g_appConfig.yaw_turn_timeout_ms > 10000U) {
+        g_appConfig.yaw_turn_timeout_ms = 10000U;
+    }
     g_appConfig.heading_kp = clamp_i16(g_appConfig.heading_kp, 0, 1000);
     g_appConfig.heading_kd = clamp_i16(g_appConfig.heading_kd, 0, 1000);
     g_appConfig.heading_scale =
@@ -179,6 +187,12 @@ void AppConfig_LimitAll(void)
     }
     if (g_appConfig.avoid_reacquire_settle_ms > 2000U) {
         g_appConfig.avoid_reacquire_settle_ms = 2000U;
+    }
+    if (g_appConfig.avoid_reacquire_timeout_ms < 500U) {
+        g_appConfig.avoid_reacquire_timeout_ms = 500U;
+    }
+    if (g_appConfig.avoid_reacquire_timeout_ms > 15000U) {
+        g_appConfig.avoid_reacquire_timeout_ms = 15000U;
     }
 }
 

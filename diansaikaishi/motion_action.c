@@ -3,9 +3,10 @@
 #include "app_config.h"
 #include "car_controller.h"
 #include "car_state.h"
+#include "emergency_stop.h"
 #include "imu.h"
+#include "watchdog_monitor.h"
 
-#define MOTION_ACTION_PERIOD_MS      (20U)
 #define REACQUIRE_CENTER_CONFIRM_COUNT  (3U)
 #define REACQUIRE_SETTLE_MS             (300U)
 
@@ -138,6 +139,13 @@ bool MotionAction_Start(const MotionAction *action,
 {
     MotionAction_Init();
 
+    if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
+        motion_action_set_result(MOTION_RESULT_FAILED,
+            MOTION_ERROR_INVALID_ACTION);
+        motion_action_stop_car();
+        return false;
+    }
+
     if (action == (const MotionAction *)0) {
         motion_action_set_result(MOTION_RESULT_FAILED,
             MOTION_ERROR_INVALID_ACTION);
@@ -186,7 +194,8 @@ bool MotionAction_Start(const MotionAction *action,
                 return false;
             }
             CarController_StartTurnToYawRelative(
-                action->params.turn_to_yaw.angle_deg);
+                action->params.turn_to_yaw.angle_deg,
+                action->timeout_ms);
             motion_action_set_result(MOTION_RESULT_RUNNING,
                 MOTION_ERROR_NONE);
             return true;
@@ -240,7 +249,7 @@ bool MotionAction_Start(const MotionAction *action,
     }
 }
 
-MotionActionResult MotionAction_Update_20ms(void)
+MotionActionResult MotionAction_Update_20ms(uint32_t elapsed_ms)
 {
     const MotionAction *action = g_motionActionRuntime.action;
 
@@ -252,9 +261,10 @@ MotionActionResult MotionAction_Update_20ms(void)
         return g_motionActionRuntime.result;
     }
 
-    if (g_motionActionRuntime.elapsed_ms <
-        UINT32_MAX - MOTION_ACTION_PERIOD_MS) {
-        g_motionActionRuntime.elapsed_ms += MOTION_ACTION_PERIOD_MS;
+    if (g_motionActionRuntime.elapsed_ms > UINT32_MAX - elapsed_ms) {
+        g_motionActionRuntime.elapsed_ms = UINT32_MAX;
+    } else {
+        g_motionActionRuntime.elapsed_ms += elapsed_ms;
     }
 
     if (action == (const MotionAction *)0) {
@@ -373,7 +383,18 @@ MotionActionResult MotionAction_Update_20ms(void)
                     MOTION_ERROR_IMU_NOT_READY);
                 break;
             }
-            if (motion_action_car_is_error() || feedback->operation_failed) {
+            if (feedback->operation_failed) {
+                if (feedback->error_code ==
+                    CAR_CONTROLLER_ERROR_YAW_TURN_TIMEOUT) {
+                    motion_action_set_result(MOTION_RESULT_TIMEOUT,
+                        MOTION_ERROR_TURN_TIMEOUT);
+                } else {
+                    motion_action_set_result(MOTION_RESULT_FAILED,
+                        MOTION_ERROR_IMU_NOT_READY);
+                }
+                break;
+            }
+            if (motion_action_car_is_error()) {
                 motion_action_set_result(MOTION_RESULT_FAILED,
                     MOTION_ERROR_TURN_TIMEOUT);
                 break;
@@ -450,11 +471,15 @@ MotionActionResult MotionAction_Update_20ms(void)
                     MOTION_ERROR_LINE_LOST);
                 break;
             }
-            if (g_motionActionRuntime.reacquire_settle_ms <
-                UINT16_MAX - MOTION_ACTION_PERIOD_MS) {
-                g_motionActionRuntime.reacquire_settle_ms =
-                    (uint16_t)(g_motionActionRuntime.reacquire_settle_ms +
-                        MOTION_ACTION_PERIOD_MS);
+            if (elapsed_ms >= UINT16_MAX) {
+                g_motionActionRuntime.reacquire_settle_ms = UINT16_MAX;
+            } else if (g_motionActionRuntime.reacquire_settle_ms >
+                (uint16_t)(UINT16_MAX - (uint16_t)elapsed_ms)) {
+                g_motionActionRuntime.reacquire_settle_ms = UINT16_MAX;
+            } else {
+                g_motionActionRuntime.reacquire_settle_ms = (uint16_t)(
+                    g_motionActionRuntime.reacquire_settle_ms +
+                    (uint16_t)elapsed_ms);
             }
             if (feedback->center_detected &&
                 (g_motionActionRuntime.reacquire_center_count < UINT8_MAX)) {
@@ -500,7 +525,8 @@ bool MotionAction_ReapplyControllerTarget(void)
     const MotionAction *action = g_motionActionRuntime.action;
 
     if ((action == (const MotionAction *)0) ||
-        !g_motionActionRuntime.started) {
+        !g_motionActionRuntime.started || EmergencyStop_IsActive() ||
+        WatchdogMonitor_HasTripped()) {
         return false;
     }
 

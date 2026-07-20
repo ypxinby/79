@@ -27,6 +27,13 @@ typedef enum {
     CAR_TURN_POLICY_IGNORE
 } CarTurnHandlingPolicy;
 
+typedef enum {
+    CAR_CONTROLLER_ERROR_NONE = 0,
+    CAR_CONTROLLER_ERROR_IMU_NOT_READY,
+    CAR_CONTROLLER_ERROR_YAW_TURN_TIMEOUT,
+    CAR_CONTROLLER_ERROR_INVALID_MODE
+} CarControllerErrorCode;
+
 typedef struct {
     uint8_t current_lap;
     uint8_t sensor_raw;
@@ -48,7 +55,7 @@ typedef struct {
 
     uint8_t lost_count;
     uint16_t lost_elapsed_ms;
-    uint16_t turn_elapsed_ms;
+    uint32_t turn_elapsed_ms;
     uint16_t yaw_turn_stable_ms;
     uint16_t heading_straight_elapsed_ms;
     uint16_t drive_heading_duration_ms;
@@ -56,6 +63,7 @@ typedef struct {
 
     float yaw_turn_target_deg;
     float yaw_turn_error_deg;
+    uint32_t yaw_turn_timeout_ms;
     float drive_heading_target_yaw_deg;
 } AppRuntime;
 
@@ -72,7 +80,7 @@ typedef struct {
     TrackTurnType detected_turn;
     bool turn_completed;
     bool operation_failed;
-    uint16_t error_code;
+    CarControllerErrorCode error_code;
 } CarControllerFeedback;
 
 extern AppRuntime g_appRuntime;
@@ -80,13 +88,14 @@ extern AppRuntime g_appRuntime;
 void CarController_Init(void);
 void CarController_ResetRuntime(void);
 void CarController_ResetTransientState(void);
-void CarController_Update_20ms(void);
+void CarController_Update_20ms(uint32_t elapsed_ms);
 void CarController_Stop(void);
 void CarController_StartSeekLine(float target_yaw_deg);
 void CarController_StartFollowLine(CarTurnHandlingPolicy turn_policy);
 void CarController_StartTurnLeft90(void);
 void CarController_StartTurnRight90(void);
-void CarController_StartTurnToYawRelative(float angle_deg);
+void CarController_StartTurnToYawRelative(float angle_deg,
+    uint32_t timeout_ms);
 void CarController_StartDriveHeading(uint32_t duration_ms);
 void CarController_UseCurrentHeadingForSeek(void);
 void CarController_SetSeekTargetYaw(float target_yaw_deg);

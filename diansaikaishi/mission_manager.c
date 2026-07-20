@@ -2,10 +2,10 @@
 
 #include "car_controller.h"
 #include "car_state.h"
+#include "emergency_stop.h"
 #include "imu.h"
 #include "motion_action.h"
-
-#define MISSION_UPDATE_PERIOD_MS    (20U)
+#include "watchdog_monitor.h"
 
 static MissionRuntime g_missionRuntime;
 
@@ -154,6 +154,9 @@ bool MissionManager_SelectPrevious(void)
 
 bool MissionManager_Start(void)
 {
+    if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
+        return false;
+    }
     if ((g_missionRuntime.definition == (const MissionDefinition *)0) ||
         (g_missionRuntime.status == MISSION_STATUS_ERROR)) {
         return false;
@@ -180,6 +183,9 @@ void MissionManager_Pause(void)
 
 void MissionManager_Resume(void)
 {
+    if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
+        return;
+    }
     if (g_missionRuntime.status != MISSION_STATUS_PAUSED) {
         return;
     }
@@ -192,6 +198,10 @@ void MissionManager_Resume(void)
 
 void MissionManager_Cancel(void)
 {
+    if (g_missionRuntime.status == MISSION_STATUS_ERROR) {
+        return;
+    }
+
     MotionAction_Cancel();
     g_missionRuntime.status = MISSION_STATUS_READY;
     mission_reset_runtime_counters();
@@ -209,13 +219,14 @@ void MissionManager_Reset(void)
     CarState_Set(CAR_STATE_READY);
 }
 
-void MissionManager_Update_20ms(void)
+void MissionManager_Update_20ms(uint32_t elapsed_ms)
 {
     const MotionAction *action;
     const MotionActionRuntime *action_runtime;
     MotionActionResult result;
 
-    if (g_missionRuntime.status != MISSION_STATUS_RUNNING) {
+    if ((g_missionRuntime.status != MISSION_STATUS_RUNNING) ||
+        EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
         return;
     }
     if (g_missionRuntime.external_hold) {
@@ -232,9 +243,10 @@ void MissionManager_Update_20ms(void)
     action =
         &g_missionRuntime.definition->actions[g_missionRuntime.current_action_index];
 
-    if (g_missionRuntime.mission_elapsed_ms <
-        UINT32_MAX - MISSION_UPDATE_PERIOD_MS) {
-        g_missionRuntime.mission_elapsed_ms += MISSION_UPDATE_PERIOD_MS;
+    if (g_missionRuntime.mission_elapsed_ms > UINT32_MAX - elapsed_ms) {
+        g_missionRuntime.mission_elapsed_ms = UINT32_MAX;
+    } else {
+        g_missionRuntime.mission_elapsed_ms += elapsed_ms;
     }
 
     action_runtime = MotionAction_GetRuntime();
@@ -246,7 +258,7 @@ void MissionManager_Update_20ms(void)
         }
     }
 
-    result = MotionAction_Update_20ms();
+    result = MotionAction_Update_20ms(elapsed_ms);
     action_runtime = MotionAction_GetRuntime();
     g_missionRuntime.action_elapsed_ms = action_runtime->elapsed_ms;
     g_missionRuntime.last_action_result = result;
@@ -322,4 +334,10 @@ void MissionManager_SetExternalHold(bool enable)
 bool MissionManager_IsExternallyHeld(void)
 {
     return g_missionRuntime.external_hold;
+}
+
+void MissionManager_ReportExternalFailure(uint16_t error_code)
+{
+    g_missionRuntime.external_hold = true;
+    mission_finish_error(error_code);
 }

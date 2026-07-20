@@ -4,6 +4,7 @@
 #include "app_features.h"
 #include "car_controller.h"
 #include "car_state.h"
+#include "fault.h"
 #include "gimbal.h"
 #include "gimbal_tracker.h"
 #include "heading_control.h"
@@ -122,6 +123,7 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
     const char *actionName = "NONE";
     const UltrasonicFeedback *ultrasonic = Ultrasonic_GetFeedback();
     const ObstacleFeedback *obstacle = ObstacleMonitor_GetFeedback();
+    const FaultRecord *fault = Fault_GetRecord();
     uint16_t missionIndex = MissionManager_GetSelectedMissionIndex();
 
     (void)raw;
@@ -154,14 +156,23 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
     OLED_PrintInt16((int16_t)ObstacleAvoidance_IsActive());
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("U:");
-    if (ultrasonic->measurement_valid) {
-        OLED_PrintInt16((int16_t)ultrasonic->distance_cm);
+    if (fault->code != FAULT_CODE_NONE) {
+        OLED_PrintString("F:");
+        OLED_PrintString(FaultCode_ToShortString(fault->code));
+        OLED_PrintString(" D:");
+        OLED_PrintInt16((int16_t)fault->detail);
+        OLED_PrintString(" S:");
+        OLED_PrintInt16((int16_t)fault->context);
     } else {
-        OLED_PrintInt16(0);
+        OLED_PrintString("U:");
+        if (ultrasonic->measurement_valid) {
+            OLED_PrintInt16((int16_t)ultrasonic->distance_cm);
+        } else {
+            OLED_PrintInt16(0);
+        }
+        OLED_PrintString(" IMU:");
+        OLED_PrintInt16(Imu_IsReady() ? 1 : 0);
     }
-    OLED_PrintString(" IMU:");
-    OLED_PrintInt16(Imu_IsReady() ? 1 : 0);
 }
 
 static void print_obstacle_page(void)
@@ -172,6 +183,7 @@ static void print_obstacle_page(void)
     const ObstacleScanFeedback *scan = ObstacleScanner_GetFeedback();
 #endif
     const ObstacleAvoidanceFeedback *avoid = ObstacleAvoidance_GetFeedback();
+    const FaultRecord *fault = Fault_GetRecord();
 
     OLED_SetCursor(0, 0);
     OLED_PrintString("O:");
@@ -215,11 +227,18 @@ static void print_obstacle_page(void)
     }
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("SC:");
-    OLED_PrintString(obstacle_scan_state_to_string(scan->state));
-    OLED_PrintString(" D:");
-    OLED_PrintString(ObstacleScanner_DirectionToString(
-        scan->recommended_direction));
+    if (fault->code != FAULT_CODE_NONE) {
+        OLED_PrintString("F:");
+        OLED_PrintString(FaultCode_ToShortString(fault->code));
+        OLED_PrintString(" S:");
+        OLED_PrintInt16((int16_t)fault->context);
+    } else {
+        OLED_PrintString("SC:");
+        OLED_PrintString(obstacle_scan_state_to_string(scan->state));
+        OLED_PrintString(" D:");
+        OLED_PrintString(ObstacleScanner_DirectionToString(
+            scan->recommended_direction));
+    }
 #else
     OLED_PrintString(" V:");
     OLED_PrintInt16((int16_t)obstacle->distance_valid);
@@ -231,8 +250,15 @@ static void print_obstacle_page(void)
     OLED_PrintInt16((int16_t)obstacle->clear_confirm_count);
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("DIST:");
-    OLED_PrintInt16((int16_t)obstacle->distance_cm);
+    if (fault->code != FAULT_CODE_NONE) {
+        OLED_PrintString("F:");
+        OLED_PrintString(FaultCode_ToShortString(fault->code));
+        OLED_PrintString(" S:");
+        OLED_PrintInt16((int16_t)fault->context);
+    } else {
+        OLED_PrintString("DIST:");
+        OLED_PrintInt16((int16_t)obstacle->distance_cm);
+    }
 #endif
 }
 

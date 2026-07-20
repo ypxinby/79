@@ -2,10 +2,12 @@
 
 #include "car_controller.h"
 #include "car_state.h"
+#include "emergency_stop.h"
 #include "mission_manager.h"
 #include "obstacle_avoidance.h"
 #include "obstacle_monitor.h"
 #include "ultrasonic.h"
+#include "watchdog_monitor.h"
 
 #define OBSTACLE_EMERGENCY_DISTANCE_CM  (10U)
 
@@ -44,13 +46,14 @@ void ObstacleSafety_Update_20ms(void)
     TrackRunMode mode = CarController_GetRunMode();
     bool canHold = obstacle_safety_can_hold_mode(mode);
 
-    if (CarState_Get() != CAR_STATE_RUNNING) {
-        obstacle_safety_apply_hold(false);
+    if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped() ||
+        ObstacleAvoidance_IsFailed()) {
+        obstacle_safety_apply_hold(true);
         return;
     }
 
-    if (ObstacleAvoidance_IsFailed()) {
-        obstacle_safety_apply_hold(true);
+    if (CarState_Get() != CAR_STATE_RUNNING) {
+        obstacle_safety_apply_hold(false);
         return;
     }
 

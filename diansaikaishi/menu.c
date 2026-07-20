@@ -3,11 +3,15 @@
 #include "app_features.h"
 #include "car_controller.h"
 #include "car_state.h"
+#include "emergency_stop.h"
+#include "fault.h"
 #include "gimbal.h"
 #include "gimbal_tracker.h"
 #include "gimbal_vision_pitch_tracker.h"
 #include "gimbal_vision_yaw_tracker.h"
 #include "mission_manager.h"
+#include "obstacle_avoidance.h"
+#include "watchdog_monitor.h"
 
 static OledPage g_oledPage;
 static OledPage g_paramReturnPage;
@@ -417,15 +421,13 @@ static void menu_handle_status_key(KeyEvent event)
                     break;
             }
             break;
-        case KEY2_LONG:
-            if (state == CAR_STATE_PAUSED) {
-                MissionManager_Resume();
-            }
-            break;
         case KEY3_SHORT:
             MissionManager_Cancel();
             break;
         case KEY3_LONG:
+            Fault_Clear();
+            WatchdogMonitor_Reset();
+            ObstacleAvoidance_Init();
             CarController_ResetRuntime();
             MissionManager_Reset();
             g_oledPage = OLED_PAGE_STATUS;
@@ -475,6 +477,20 @@ void Menu_Init(void)
 void Menu_HandleKeyEvent(KeyEvent event)
 {
     if (event == KEY_EVENT_NONE) {
+        return;
+    }
+
+    if (EmergencyStop_IsActive()) {
+        if (event == KEY3_LONG) {
+            EmergencyStop_Reset();
+            g_oledPage = OLED_PAGE_STATUS;
+        }
+        return;
+    }
+
+    if (event == KEY2_LONG) {
+        EmergencyStop_Trigger();
+        g_oledPage = OLED_PAGE_STATUS;
         return;
     }
 

@@ -1,5 +1,7 @@
 #include "vision_uart.h"
 
+#include "app_features.h"
+#include "debug_telemetry.h"
 #include "ti_msp_dl_config.h"
 #include "vision_receiver.h"
 #include "vision_tuning_console.h"
@@ -29,6 +31,17 @@ void VisionUart_Process(void)
         DL_UART_Main_transmitData(UART_VISION_INST, byte);
         transmitted++;
     }
+
+#if FEATURE_DEBUG_TELEMETRY_VISION_UART
+    while ((transmitted < VISION_TUNING_TX_PROCESS_BUDGET) &&
+        !DL_UART_Main_isTXFIFOFull(UART_VISION_INST)) {
+        if (DebugTelemetry_TryPopTxByte(&byte) == 0U) {
+            break;
+        }
+        DL_UART_Main_transmitData(UART_VISION_INST, byte);
+        transmitted++;
+    }
+#endif
 }
 
 void UART_VISION_INST_IRQHandler(void)

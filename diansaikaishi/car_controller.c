@@ -3,16 +3,19 @@
 #include "app_config.h"
 #include "app_features.h"
 #include "car_state.h"
+#include "emergency_stop.h"
+#include "fault.h"
 #include "heading_control.h"
 #include "imu.h"
 #include "motor.h"
+#include "scheduler_monitor.h"
 #include "track_sensor.h"
+#include "watchdog_monitor.h"
 
 #ifndef TRACK_REVERSE_CORRECTION
 #define TRACK_REVERSE_CORRECTION    (0)
 #endif
 
-#define CAR_CONTROLLER_PERIOD_MS    (20U)
 #define SEEK_HEADING_DEADBAND_DEG   (1.0f)
 #define YAW_TURN_SLOW_THRESHOLD_DEG (12.0f)
 #define YAW_TURN_DONE_TOLERANCE_DEG (5.0f)
@@ -30,6 +33,25 @@ AppRuntime g_appRuntime;
 static CarControllerFeedback g_carControllerFeedback;
 static CarTurnHandlingPolicy g_followTurnPolicy = CAR_TURN_POLICY_AUTO;
 static bool g_safetyHold;
+
+static uint32_t add_elapsed_u32(uint32_t value, uint32_t elapsed_ms)
+{
+    if (value > UINT32_MAX - elapsed_ms) {
+        return UINT32_MAX;
+    }
+    return value + elapsed_ms;
+}
+
+static uint16_t add_elapsed_u16(uint16_t value, uint32_t elapsed_ms)
+{
+    if (elapsed_ms >= UINT16_MAX) {
+        return UINT16_MAX;
+    }
+    if (value > (uint16_t)(UINT16_MAX - (uint16_t)elapsed_ms)) {
+        return UINT16_MAX;
+    }
+    return (uint16_t)(value + (uint16_t)elapsed_ms);
+}
 
 static int16_t clamp_i16(int32_t value, int16_t minValue, int16_t maxValue)
 {
@@ -87,12 +109,13 @@ static void update_feedback_from_runtime(void)
     g_carControllerFeedback.detected_turn = TRACK_TURN_NONE;
     g_carControllerFeedback.turn_completed = false;
     g_carControllerFeedback.operation_failed = false;
-    g_carControllerFeedback.error_code = 0U;
+    g_carControllerFeedback.error_code = CAR_CONTROLLER_ERROR_NONE;
 }
 
 static void set_output_speed(int16_t leftSpeed, int16_t rightSpeed)
 {
-    if (g_safetyHold) {
+    if (g_safetyHold || EmergencyStop_IsActive() ||
+        WatchdogMonitor_HasTripped()) {
         Motor_Stop();
         g_appRuntime.left_speed = 0;
         g_appRuntime.right_speed = 0;
@@ -148,7 +171,7 @@ static bool is_heading_control_allowed(int16_t error, int16_t derivative)
 }
 
 static int16_t update_heading_control_correction(int16_t error,
-    int16_t derivative)
+    int16_t derivative, uint32_t elapsed_ms)
 {
 #if ENABLE_IMU && ENABLE_HEADING_CONTROL
     const HeadingControlRuntime *heading;
@@ -160,9 +183,8 @@ static int16_t update_heading_control_correction(int16_t error,
 
     if (g_appRuntime.heading_straight_elapsed_ms <
         g_appConfig.heading_lock_delay_ms) {
-        g_appRuntime.heading_straight_elapsed_ms =
-            (uint16_t)(g_appRuntime.heading_straight_elapsed_ms +
-                CAR_CONTROLLER_PERIOD_MS);
+        g_appRuntime.heading_straight_elapsed_ms = add_elapsed_u16(
+            g_appRuntime.heading_straight_elapsed_ms, elapsed_ms);
         g_appRuntime.heading_correction = 0;
         return 0;
     }
@@ -175,7 +197,7 @@ static int16_t update_heading_control_correction(int16_t error,
 
     g_appRuntime.heading_correction =
         HeadingControl_Update(Imu_GetYaw(), Imu_GetCorrectedGyroZDps(),
-            0.02f);
+            (float)elapsed_ms / 1000.0f);
 
     return g_appRuntime.heading_correction;
 #else
@@ -185,7 +207,7 @@ static int16_t update_heading_control_correction(int16_t error,
 #endif
 }
 
-static int16_t update_seek_heading_correction(void)
+static int16_t update_seek_heading_correction(uint32_t elapsed_ms)
 {
 #if ENABLE_IMU && ENABLE_HEADING_CONTROL
     const HeadingControlRuntime *heading;
@@ -208,7 +230,7 @@ static int16_t update_seek_heading_correction(void)
 
     g_appRuntime.heading_correction =
         HeadingControl_Update(Imu_GetYaw(), Imu_GetCorrectedGyroZDps(),
-            0.02f);
+            (float)elapsed_ms / 1000.0f);
 
     if (abs_float(heading->heading_error_deg) <= SEEK_HEADING_DEADBAND_DEG) {
         g_appRuntime.heading_correction = 0;
@@ -220,10 +242,10 @@ static int16_t update_seek_heading_correction(void)
 #endif
 }
 
-static void handle_seek_line(void)
+static void handle_seek_line(uint32_t elapsed_ms)
 {
     if (TrackSensor_IsLineLost(g_appRuntime.sensor_raw)) {
-        int16_t correction = update_seek_heading_correction();
+        int16_t correction = update_seek_heading_correction(elapsed_ms);
 
         g_appRuntime.correction = correction;
         set_output_speed(
@@ -241,7 +263,7 @@ static void handle_seek_line(void)
     reset_heading_control_runtime();
 }
 
-static void handle_follow_line(void)
+static void handle_follow_line(uint32_t elapsed_ms)
 {
     TrackTurnType turn;
     int16_t error;
@@ -304,7 +326,8 @@ static void handle_follow_line(void)
         correction = -correction;
     }
 
-    correction += update_heading_control_correction(error, derivative);
+    correction += update_heading_control_correction(error, derivative,
+        elapsed_ms);
     correction = clamp_i16(correction,
         (int16_t)-g_appConfig.max_correction,
         g_appConfig.max_correction);
@@ -318,7 +341,7 @@ static void handle_follow_line(void)
     g_appRuntime.last_error = error;
 }
 
-static void handle_lost_recover(void)
+static void handle_lost_recover(uint32_t elapsed_ms)
 {
     if (!TrackSensor_IsLineLost(g_appRuntime.sensor_raw)) {
         g_appRuntime.lost_count = 0;
@@ -335,9 +358,8 @@ static void handle_lost_recover(void)
         g_appRuntime.lost_count++;
     }
 
-    if (g_appRuntime.lost_elapsed_ms < UINT16_MAX - CAR_CONTROLLER_PERIOD_MS) {
-        g_appRuntime.lost_elapsed_ms += CAR_CONTROLLER_PERIOD_MS;
-    }
+    g_appRuntime.lost_elapsed_ms = add_elapsed_u16(
+        g_appRuntime.lost_elapsed_ms, elapsed_ms);
 
     g_appRuntime.correction = 0;
     reset_heading_control_runtime();
@@ -360,11 +382,10 @@ static void handle_lost_recover(void)
     }
 }
 
-static void handle_turn_90(uint8_t turnLeft)
+static void handle_turn_90(uint8_t turnLeft, uint32_t elapsed_ms)
 {
-    if (g_appRuntime.turn_elapsed_ms < UINT16_MAX - CAR_CONTROLLER_PERIOD_MS) {
-        g_appRuntime.turn_elapsed_ms += CAR_CONTROLLER_PERIOD_MS;
-    }
+    g_appRuntime.turn_elapsed_ms = add_elapsed_u32(
+        g_appRuntime.turn_elapsed_ms, elapsed_ms);
 
     g_appRuntime.correction = 0;
     reset_heading_control_runtime();
@@ -395,7 +416,7 @@ static void handle_turn_90(uint8_t turnLeft)
     }
 }
 
-static void handle_turn_to_yaw(void)
+static void handle_turn_to_yaw(uint32_t elapsed_ms)
 {
     float error;
     float absError;
@@ -405,13 +426,18 @@ static void handle_turn_to_yaw(void)
 
     g_appRuntime.correction = 0;
     reset_heading_control_runtime();
+    g_appRuntime.turn_elapsed_ms = add_elapsed_u32(
+        g_appRuntime.turn_elapsed_ms, elapsed_ms);
 
     if (!Imu_IsReady()) {
         Motor_Stop();
         g_appRuntime.left_speed = 0;
         g_appRuntime.right_speed = 0;
         g_carControllerFeedback.operation_failed = true;
-        g_carControllerFeedback.error_code = 1U;
+        g_carControllerFeedback.error_code =
+            CAR_CONTROLLER_ERROR_IMU_NOT_READY;
+        Fault_Raise(FAULT_CODE_TURN_YAW_IMU_NOT_READY, 0U, 0U,
+            SystemTime_GetMs());
         CarState_Set(CAR_STATE_ERROR);
         return;
     }
@@ -422,12 +448,8 @@ static void handle_turn_to_yaw(void)
     g_appRuntime.yaw_turn_error_deg = error;
 
     if (absError <= YAW_TURN_DONE_TOLERANCE_DEG) {
-        if (g_appRuntime.yaw_turn_stable_ms <
-            UINT16_MAX - CAR_CONTROLLER_PERIOD_MS) {
-            g_appRuntime.yaw_turn_stable_ms =
-                (uint16_t)(g_appRuntime.yaw_turn_stable_ms +
-                    CAR_CONTROLLER_PERIOD_MS);
-        }
+        g_appRuntime.yaw_turn_stable_ms = add_elapsed_u16(
+            g_appRuntime.yaw_turn_stable_ms, elapsed_ms);
         if (g_appRuntime.yaw_turn_stable_ms >= YAW_TURN_STABLE_MS) {
             Motor_Stop();
             g_appRuntime.left_speed = 0;
@@ -439,6 +461,23 @@ static void handle_turn_to_yaw(void)
         }
     } else {
         g_appRuntime.yaw_turn_stable_ms = 0;
+    }
+
+    if ((g_appRuntime.yaw_turn_timeout_ms != 0U) &&
+        (g_appRuntime.turn_elapsed_ms >=
+            g_appRuntime.yaw_turn_timeout_ms)) {
+        Motor_Stop();
+        g_appRuntime.left_speed = 0;
+        g_appRuntime.right_speed = 0;
+        g_carControllerFeedback.operation_failed = true;
+        g_carControllerFeedback.error_code =
+            CAR_CONTROLLER_ERROR_YAW_TURN_TIMEOUT;
+        Fault_Raise(FAULT_CODE_TURN_YAW_TIMEOUT,
+            (uint16_t)((g_appRuntime.turn_elapsed_ms > UINT16_MAX) ?
+                UINT16_MAX : g_appRuntime.turn_elapsed_ms),
+            0U, SystemTime_GetMs());
+        CarState_Set(CAR_STATE_ERROR);
+        return;
     }
 
     slowSpeed = (int16_t)(g_appConfig.turn_speed / 2);
@@ -463,7 +502,7 @@ static void handle_turn_to_yaw(void)
     }
 }
 
-static void handle_drive_heading(void)
+static void handle_drive_heading(uint32_t elapsed_ms)
 {
     int16_t correction;
 
@@ -473,17 +512,14 @@ static void handle_drive_heading(void)
         g_appRuntime.right_speed = 0;
         g_appRuntime.correction = 0;
         g_carControllerFeedback.operation_failed = true;
-        g_carControllerFeedback.error_code = 1U;
+        g_carControllerFeedback.error_code =
+            CAR_CONTROLLER_ERROR_IMU_NOT_READY;
         CarState_Set(CAR_STATE_ERROR);
         return;
     }
 
-    if (g_appRuntime.heading_straight_elapsed_ms <
-        UINT16_MAX - CAR_CONTROLLER_PERIOD_MS) {
-        g_appRuntime.heading_straight_elapsed_ms =
-            (uint16_t)(g_appRuntime.heading_straight_elapsed_ms +
-                CAR_CONTROLLER_PERIOD_MS);
-    }
+    g_appRuntime.heading_straight_elapsed_ms = add_elapsed_u16(
+        g_appRuntime.heading_straight_elapsed_ms, elapsed_ms);
     if (g_appRuntime.heading_straight_elapsed_ms >=
         g_appRuntime.drive_heading_duration_ms) {
         Motor_Stop();
@@ -500,7 +536,7 @@ static void handle_drive_heading(void)
     }
 
     correction = HeadingControl_Update(Imu_GetYaw(),
-        Imu_GetCorrectedGyroZDps(), 0.02f);
+        Imu_GetCorrectedGyroZDps(), (float)elapsed_ms / 1000.0f);
     g_appRuntime.heading_correction = correction;
     g_appRuntime.correction = correction;
 
@@ -540,6 +576,7 @@ void CarController_ResetRuntime(void)
     g_appRuntime.lap_cooldown_ms = 0;
     g_appRuntime.yaw_turn_target_deg = 0.0f;
     g_appRuntime.yaw_turn_error_deg = 0.0f;
+    g_appRuntime.yaw_turn_timeout_ms = 0U;
     g_appRuntime.drive_heading_target_yaw_deg = 0.0f;
     g_followTurnPolicy = CAR_TURN_POLICY_AUTO;
     g_safetyHold = false;
@@ -561,6 +598,7 @@ void CarController_ResetTransientState(void)
     g_appRuntime.heading_straight_elapsed_ms = 0;
     g_appRuntime.drive_heading_duration_ms = 0;
     g_appRuntime.yaw_turn_error_deg = 0.0f;
+    g_appRuntime.yaw_turn_timeout_ms = 0U;
     g_appRuntime.drive_heading_target_yaw_deg = 0.0f;
     update_feedback_from_runtime();
     reset_heading_control_runtime();
@@ -577,6 +615,10 @@ void CarController_Stop(void)
 
 void CarController_StartSeekLine(float target_yaw_deg)
 {
+    if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
+        Motor_Stop();
+        return;
+    }
     CarController_ResetRuntime();
     CarController_SetSeekTargetYaw(target_yaw_deg);
     g_appRuntime.run_mode = TRACK_MODE_SEEK_LINE;
@@ -585,6 +627,10 @@ void CarController_StartSeekLine(float target_yaw_deg)
 
 void CarController_StartFollowLine(CarTurnHandlingPolicy turn_policy)
 {
+    if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
+        Motor_Stop();
+        return;
+    }
     CarController_ResetTransientState();
     g_followTurnPolicy = turn_policy;
     g_appRuntime.has_seen_line = 1;
@@ -596,6 +642,10 @@ void CarController_StartFollowLine(CarTurnHandlingPolicy turn_policy)
 
 void CarController_StartTurnLeft90(void)
 {
+    if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
+        Motor_Stop();
+        return;
+    }
     CarController_ResetTransientState();
     g_followTurnPolicy = CAR_TURN_POLICY_AUTO;
     g_appRuntime.recover_direction = RECOVER_DIRECTION_LEFT;
@@ -605,6 +655,10 @@ void CarController_StartTurnLeft90(void)
 
 void CarController_StartTurnRight90(void)
 {
+    if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
+        Motor_Stop();
+        return;
+    }
     CarController_ResetTransientState();
     g_followTurnPolicy = CAR_TURN_POLICY_AUTO;
     g_appRuntime.recover_direction = RECOVER_DIRECTION_RIGHT;
@@ -612,12 +666,20 @@ void CarController_StartTurnRight90(void)
     CarState_Set(CAR_STATE_RUNNING);
 }
 
-void CarController_StartTurnToYawRelative(float angle_deg)
+void CarController_StartTurnToYawRelative(float angle_deg,
+    uint32_t timeout_ms)
 {
+    if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
+        Motor_Stop();
+        return;
+    }
     CarController_ResetTransientState();
     g_followTurnPolicy = CAR_TURN_POLICY_IGNORE;
     g_appRuntime.yaw_turn_target_deg = Imu_GetYaw() + angle_deg;
     g_appRuntime.yaw_turn_error_deg = angle_deg;
+    g_appRuntime.yaw_turn_timeout_ms =
+        (timeout_ms != 0U) ? timeout_ms :
+        g_appConfig.yaw_turn_timeout_ms;
     g_appRuntime.yaw_turn_stable_ms = 0U;
     g_appRuntime.run_mode = TRACK_MODE_TURN_TO_YAW;
     CarState_Set(CAR_STATE_RUNNING);
@@ -625,6 +687,10 @@ void CarController_StartTurnToYawRelative(float angle_deg)
 
 void CarController_StartDriveHeading(uint32_t duration_ms)
 {
+    if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
+        Motor_Stop();
+        return;
+    }
     CarController_ResetTransientState();
     g_followTurnPolicy = CAR_TURN_POLICY_IGNORE;
     g_appRuntime.drive_heading_target_yaw_deg = Imu_GetYaw();
@@ -655,6 +721,13 @@ void CarController_SetSeekTargetYaw(float target_yaw_deg)
 
 void CarController_SetSafetyHold(bool enable)
 {
+    if (!enable && (EmergencyStop_IsActive() ||
+        WatchdogMonitor_HasTripped())) {
+        g_safetyHold = true;
+        Motor_Stop();
+        return;
+    }
+
     if ((g_safetyHold != enable) && !enable) {
         g_appRuntime.last_error = g_appRuntime.line_error;
         g_appRuntime.last_valid_error = g_appRuntime.line_error;
@@ -678,12 +751,13 @@ bool CarController_IsSafetyHoldActive(void)
     return g_safetyHold;
 }
 
-void CarController_Update_20ms(void)
+void CarController_Update_20ms(uint32_t elapsed_ms)
 {
     update_sensor_runtime();
     update_feedback_from_runtime();
 
-    if (CarState_Get() != CAR_STATE_RUNNING) {
+    if ((CarState_Get() != CAR_STATE_RUNNING) ||
+        EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
         Motor_Stop();
         g_appRuntime.left_speed = 0;
         g_appRuntime.right_speed = 0;
@@ -704,25 +778,25 @@ void CarController_Update_20ms(void)
 
     switch (g_appRuntime.run_mode) {
         case TRACK_MODE_SEEK_LINE:
-            handle_seek_line();
+            handle_seek_line(elapsed_ms);
             break;
         case TRACK_MODE_FOLLOW_LINE:
-            handle_follow_line();
+            handle_follow_line(elapsed_ms);
             break;
         case TRACK_MODE_LOST_RECOVER:
-            handle_lost_recover();
+            handle_lost_recover(elapsed_ms);
             break;
         case TRACK_MODE_TURN_LEFT_90:
-            handle_turn_90(1U);
+            handle_turn_90(1U, elapsed_ms);
             break;
         case TRACK_MODE_TURN_RIGHT_90:
-            handle_turn_90(0U);
+            handle_turn_90(0U, elapsed_ms);
             break;
         case TRACK_MODE_TURN_TO_YAW:
-            handle_turn_to_yaw();
+            handle_turn_to_yaw(elapsed_ms);
             break;
         case TRACK_MODE_DRIVE_HEADING:
-            handle_drive_heading();
+            handle_drive_heading(elapsed_ms);
             break;
         default:
             Motor_Stop();
@@ -731,6 +805,10 @@ void CarController_Update_20ms(void)
             g_appRuntime.correction = 0;
             reset_heading_control_runtime();
             g_carControllerFeedback.operation_failed = true;
+            g_carControllerFeedback.error_code =
+                CAR_CONTROLLER_ERROR_INVALID_MODE;
+            Fault_Raise(FAULT_CODE_CONTROLLER_INVALID_MODE, 0U, 0U,
+                SystemTime_GetMs());
             CarState_Set(CAR_STATE_ERROR);
             break;
     }

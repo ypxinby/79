@@ -41,12 +41,13 @@ void MissionManager_Pause(void);
 void MissionManager_Resume(void);
 void MissionManager_Cancel(void);
 void MissionManager_Reset(void);
-void MissionManager_Update_20ms(void);
+void MissionManager_Update_20ms(uint32_t elapsed_ms);
 const MissionRuntime *MissionManager_GetRuntime(void);
 uint8_t MissionManager_GetSelectedMissionId(void);
 uint16_t MissionManager_GetSelectedMissionIndex(void);
 uint16_t MissionManager_GetMissionCount(void);
 void MissionManager_SetExternalHold(bool enable);
 bool MissionManager_IsExternallyHeld(void);
+void MissionManager_ReportExternalFailure(uint16_t error_code);
 
 #endif

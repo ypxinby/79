@@ -20,7 +20,7 @@ typedef struct {
 void MotionAction_Init(void);
 bool MotionAction_Start(const MotionAction *action,
     float mission_start_yaw_deg);
-MotionActionResult MotionAction_Update_20ms(void);
+MotionActionResult MotionAction_Update_20ms(uint32_t elapsed_ms);
 void MotionAction_Cancel(void);
 bool MotionAction_ReapplyControllerTarget(void);
 ObstaclePolicy MotionAction_GetCurrentObstaclePolicy(void);
