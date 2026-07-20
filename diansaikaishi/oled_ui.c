@@ -11,6 +11,7 @@
 #include "menu.h"
 #include "gimbal_vision_adapter.h"
 #include "gimbal_vision_pitch_tracker.h"
+#include "gimbal_vision_yaw_tracker.h"
 #include "mission_manager.h"
 #include "motion_action.h"
 #include "obstacle_avoidance.h"
@@ -698,6 +699,67 @@ static void print_gimbal_vision_adapter_page(void)
     OLED_PrintInt16(observation->error_y_px);
 }
 
+static const char *vision_yaw_state_to_string(GimbalVisionYawState state)
+{
+    switch (state) {
+        case GIMBAL_VISION_YAW_WAIT_ZERO:
+            return "ZER";
+        case GIMBAL_VISION_YAW_WAIT_OBSERVATION:
+            return "WAI";
+        case GIMBAL_VISION_YAW_TRACKING:
+            return "TRK";
+        case GIMBAL_VISION_YAW_CENTERED:
+            return "CTR";
+        case GIMBAL_VISION_YAW_TARGET_LOST:
+            return "LOS";
+        case GIMBAL_VISION_YAW_COMM_TIMEOUT:
+            return "TMO";
+        case GIMBAL_VISION_YAW_LIMITED:
+            return "LIM";
+        case GIMBAL_VISION_YAW_WORLD_LOCKED:
+            return "WLK";
+        case GIMBAL_VISION_YAW_PREEMPTED:
+            return "PRE";
+        case GIMBAL_VISION_YAW_DISABLED:
+        default:
+            return "DIS";
+    }
+}
+
+static void print_gimbal_vision_yaw_page(void)
+{
+    const GimbalVisionYawFeedback *yaw =
+        GimbalVisionYawTracker_GetFeedback();
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("YVT:");
+    OLED_PrintString(vision_yaw_state_to_string(yaw->state));
+    OLED_PrintString(" E");
+    OLED_PrintUInt16(yaw->enabled);
+    OLED_PrintString(" Z");
+    OLED_PrintUInt16(yaw->position_valid);
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("EX:");
+    OLED_PrintInt16(yaw->error_x_px);
+    OLED_PrintString(" S:");
+    print_signed_x10(yaw->command_speed_deg_s_x10);
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("T:");
+    print_signed_x10(yaw->target_wrapped_deg_x10);
+    OLED_PrintString(" C:");
+    print_signed_x10(yaw->current_wrapped_deg_x10);
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("L:");
+    OLED_PrintInt16((int16_t)yaw->limit_direction);
+    OLED_PrintString(" P");
+    OLED_PrintUInt16(yaw->positive_limit);
+    OLED_PrintString(" N");
+    OLED_PrintUInt16(yaw->negative_limit);
+}
+
 static const char *vision_pitch_state_to_string(
     GimbalVisionPitchState state)
 {
@@ -896,6 +958,13 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
         case OLED_PAGE_GIMBAL_VISION_ADAPTER:
 #if FEATURE_GIMBAL_OLED_TEST
             print_gimbal_vision_adapter_page();
+#else
+            print_status_page(raw, error, keyEvent);
+#endif
+            break;
+        case OLED_PAGE_GIMBAL_VISION_YAW:
+#if FEATURE_GIMBAL_OLED_TEST
+            print_gimbal_vision_yaw_page();
 #else
             print_status_page(raw, error, keyEvent);
 #endif

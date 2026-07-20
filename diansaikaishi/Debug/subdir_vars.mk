@@ -22,6 +22,7 @@ C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/m0p/startup_system_files/ticlan
 ../gimbal_tracker.c \
 ../gimbal_vision_adapter.c \
 ../gimbal_vision_pitch_tracker.c \
+../gimbal_vision_yaw_tracker.c \
 ../heading_control.c \
 ../imu.c \
 ../key.c \
@@ -68,6 +69,7 @@ C_DEPS += \
 ./gimbal_tracker.d \
 ./gimbal_vision_adapter.d \
 ./gimbal_vision_pitch_tracker.d \
+./gimbal_vision_yaw_tracker.d \
 ./heading_control.d \
 ./imu.d \
 ./key.d \
@@ -109,6 +111,7 @@ OBJS += \
 ./gimbal_tracker.o \
 ./gimbal_vision_adapter.o \
 ./gimbal_vision_pitch_tracker.o \
+./gimbal_vision_yaw_tracker.o \
 ./heading_control.o \
 ./imu.o \
 ./key.o \
@@ -152,6 +155,7 @@ OBJS__QUOTED += \
 "gimbal_tracker.o" \
 "gimbal_vision_adapter.o" \
 "gimbal_vision_pitch_tracker.o" \
+"gimbal_vision_yaw_tracker.o" \
 "heading_control.o" \
 "imu.o" \
 "key.o" \
@@ -195,6 +199,7 @@ C_DEPS__QUOTED += \
 "gimbal_tracker.d" \
 "gimbal_vision_adapter.d" \
 "gimbal_vision_pitch_tracker.d" \
+"gimbal_vision_yaw_tracker.d" \
 "heading_control.d" \
 "imu.d" \
 "key.d" \
@@ -238,6 +243,7 @@ C_SRCS__QUOTED += \
 "../gimbal_tracker.c" \
 "../gimbal_vision_adapter.c" \
 "../gimbal_vision_pitch_tracker.c" \
+"../gimbal_vision_yaw_tracker.c" \
 "../heading_control.c" \
 "../imu.c" \
 "../key.c" \

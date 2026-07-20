@@ -12,6 +12,7 @@
 #include "gimbal_tracker.h"
 #include "gimbal_vision_adapter.h"
 #include "gimbal_vision_pitch_tracker.h"
+#include "gimbal_vision_yaw_tracker.h"
 #include "motor.h"
 #include "servo.h"
 #include "ti_msp_dl_config.h"
@@ -44,6 +45,7 @@ int main(void)
     GimbalVisionAdapter_Init();
     VisionPitchTuning_Init();
     GimbalVisionPitchTracker_Init();
+    GimbalVisionYawTracker_Init();
     VisionTuningConsole_Init();
     VisionUart_Init();
 
@@ -71,6 +73,7 @@ int main(void)
             __enable_irq();
 
             if (trackerUpdateDue) {
+                GimbalVisionYawTracker_Update10ms(g_localTimeMs);
                 GimbalVisionPitchTracker_Update10ms(g_localTimeMs);
                 GimbalTracker_Update(0.010f);
             }

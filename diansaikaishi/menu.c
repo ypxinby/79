@@ -6,6 +6,7 @@
 #include "gimbal.h"
 #include "gimbal_tracker.h"
 #include "gimbal_vision_pitch_tracker.h"
+#include "gimbal_vision_yaw_tracker.h"
 #include "mission_manager.h"
 
 static OledPage g_oledPage;
@@ -46,6 +47,7 @@ static uint8_t menu_is_debug_page(OledPage page)
 {
     return ((page == OLED_PAGE_VISION_RECEIVER) ||
         (page == OLED_PAGE_GIMBAL_VISION_ADAPTER) ||
+        (page == OLED_PAGE_GIMBAL_VISION_YAW) ||
         (page == OLED_PAGE_GIMBAL_TRACKER) ||
         (page == OLED_PAGE_GIMBAL_TRACKER_PITCH) ||
         (page == OLED_PAGE_HEADING) ||
@@ -61,6 +63,9 @@ static void menu_next_debug_page(void)
             g_oledPage = OLED_PAGE_GIMBAL_VISION_ADAPTER;
             break;
         case OLED_PAGE_GIMBAL_VISION_ADAPTER:
+            g_oledPage = OLED_PAGE_GIMBAL_VISION_YAW;
+            break;
+        case OLED_PAGE_GIMBAL_VISION_YAW:
             g_oledPage = OLED_PAGE_GIMBAL_TRACKER;
             break;
         case OLED_PAGE_GIMBAL_TRACKER:
@@ -158,9 +163,19 @@ static void menu_handle_status_key(KeyEvent event)
             return;
         }
         if ((g_oledPage != OLED_PAGE_GIMBAL_TRACKER) &&
-            (g_oledPage != OLED_PAGE_GIMBAL_TRACKER_PITCH)) {
+            (g_oledPage != OLED_PAGE_GIMBAL_TRACKER_PITCH) &&
+            (g_oledPage != OLED_PAGE_GIMBAL_VISION_YAW)) {
             return;
         }
+    }
+
+    if (g_oledPage == OLED_PAGE_GIMBAL_VISION_YAW) {
+        if (event == KEY2_SHORT) {
+            (void)GimbalVisionYawTracker_Enable(1U);
+        } else if (event == KEY3_SHORT) {
+            (void)GimbalVisionYawTracker_Enable(0U);
+        }
+        return;
     }
 
     if (g_oledPage == OLED_PAGE_VISION_PITCH_TUNING) {

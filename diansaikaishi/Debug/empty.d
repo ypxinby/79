@@ -2,7 +2,8 @@
 
 empty.o: ../empty.c ../app.h ../encoder.h ../gimbal.h ../gimbal_tracker.h \
  ../gimbal_vision_adapter.h ../vision_protocol.h \
- ../gimbal_vision_pitch_tracker.h ../motor.h ../servo.h \
+ ../gimbal_vision_pitch_tracker.h ../gimbal_vision_yaw_tracker.h \
+ ../motor.h ../servo.h \
  ti_msp_dl_config.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/msp.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/DeviceFamily.h \
@@ -86,6 +87,7 @@ empty.o: ../empty.c ../app.h ../encoder.h ../gimbal.h ../gimbal_tracker.h \
 ../gimbal_vision_adapter.h:
 ../vision_protocol.h:
 ../gimbal_vision_pitch_tracker.h:
+../gimbal_vision_yaw_tracker.h:
 ../motor.h:
 ../servo.h:
 ti_msp_dl_config.h:
