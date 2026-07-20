@@ -77,7 +77,8 @@ empty.o: ../empty.c ../app.h ../encoder.h ../gimbal.h ../gimbal_tracker.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/dl_wwdt.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/m0p/dl_interrupt.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/m0p/dl_systick.h \
- ../ultrasonic.h ../vision_receiver.h ../vision_uart.h
+ ../ultrasonic.h ../vision_receiver.h ../vision_pitch_tuning.h \
+ ../vision_tuning_console.h ../vision_uart.h
 ../app.h:
 ../encoder.h:
 ../gimbal.h:
@@ -163,4 +164,6 @@ C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/m0p/dl_interrupt.h:
 C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/m0p/dl_systick.h:
 ../ultrasonic.h:
 ../vision_receiver.h:
+../vision_pitch_tuning.h:
+../vision_tuning_console.h:
 ../vision_uart.h:

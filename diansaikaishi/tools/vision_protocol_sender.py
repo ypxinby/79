@@ -28,6 +28,11 @@ FLAG_HAS_CONFIDENCE = 1 << 3
 FLAG_SOURCE_RESTART = 1 << 4
 FLAG_RESERVED_MASK = 0xE0
 
+PITCH_REVERSAL_POSITIVE_Y = 340
+PITCH_REVERSAL_NEGATIVE_Y = 140
+PITCH_REVERSAL_HOLD_S = 1
+PITCH_REVERSAL_CYCLES = 10
+
 HEADER_STRUCT = struct.Struct("<2sBBBBH")
 PAYLOAD_STRUCT = struct.Struct("<IHIHHHHHHHHHH")
 CRC_STRUCT = struct.Struct("<H")
@@ -335,6 +340,46 @@ def normal_operations(
     return operations
 
 
+def pitch_reversal_operations(
+    args: argparse.Namespace, session_id: int, start_time: float
+) -> list[WriteOperation]:
+    operations: list[WriteOperation] = []
+    period_s = 1.0 / args.fps
+    frames_per_hold = int(round(args.fps * PITCH_REVERSAL_HOLD_S))
+    frame_index = 0
+
+    for cycle in range(PITCH_REVERSAL_CYCLES):
+        for direction, target_y in (
+            ("positive", PITCH_REVERSAL_POSITIVE_Y),
+            ("negative", PITCH_REVERSAL_NEGATIVE_Y),
+        ):
+            for block_index in range(frames_per_hold):
+                sequence = (args.sequence + frame_index) & 0xFFFF
+                timestamp_ms = timestamp_for(args, frame_index, start_time)
+                restart = frame_index < args.restart_frames
+                report = replace(
+                    make_valid_report(
+                        args,
+                        session_id,
+                        sequence,
+                        timestamp_ms,
+                        restart,
+                    ),
+                    target_center_y=target_y,
+                )
+                label = (
+                    f"pitch-reversal-{direction}-"
+                    f"cycle-{cycle + 1:02d}-frame-{block_index + 1:02d}"
+                )
+                record = make_record(label, report)
+                operations.append(
+                    WriteOperation(label, record.frame, (record,), period_s)
+                )
+                frame_index += 1
+
+    return operations
+
+
 def abnormal_operations(
     args: argparse.Namespace, session_id: int, start_time: float
 ) -> list[WriteOperation]:
@@ -548,6 +593,20 @@ class SerialSink:
 
 def print_operation(operation: WriteOperation, connected: bool) -> None:
     destination = "serial" if connected else "offline"
+    if operation.label.startswith("pitch-reversal-"):
+        record = operation.frames[0]
+        report = record.report
+        error_y = report.target_center_y - (report.frame_height // 2)
+        print(
+            f"SEND mode={operation.label} destination={destination} "
+            f"session_id=0x{report.session_id:08X} "
+            f"sequence={report.sequence} "
+            f"y={report.target_center_y} "
+            f"error_y={error_y} "
+            f"timestamp_ms={report.timestamp_ms}"
+        )
+        return
+
     print(f"\nWRITE mode={operation.label} destination={destination} bytes={len(operation.data)}")
     for record in operation.frames:
         appended_crc = stored_crc(record.frame)
@@ -659,6 +718,7 @@ def build_parser() -> argparse.ArgumentParser:
             "valid",
             "no-target",
             "alternating",
+            "pitch-reversal",
             "half",
             "truncated",
             "sticky",
@@ -722,6 +782,11 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("--bad-length must fit uint16")
     if args.noise_length < 0:
         raise ValueError("--noise-length cannot be negative")
+    if args.mode == "pitch-reversal":
+        if args.height != 480:
+            raise ValueError("pitch-reversal requires --height 480")
+        if args.fps != round(args.fps):
+            raise ValueError("pitch-reversal requires an integer --fps")
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -737,6 +802,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         start_time = time.monotonic()
         if args.mode in ("valid", "no-target", "alternating"):
             operations = normal_operations(args, session_id, start_time)
+        elif args.mode == "pitch-reversal":
+            operations = pitch_reversal_operations(args, session_id, start_time)
         else:
             operations = abnormal_operations(args, session_id, start_time)
         execute_operations(args, operations)

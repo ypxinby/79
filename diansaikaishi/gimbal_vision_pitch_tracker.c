@@ -3,13 +3,10 @@
 #include "gimbal.h"
 #include "gimbal_tracker.h"
 #include "gimbal_vision_adapter.h"
+#include "vision_pitch_tuning.h"
 
-#define VISION_PITCH_DEADBAND_PX             (8)
-#define VISION_PITCH_KP_DEG_S_PER_PX         (0.06f)
 #define VISION_PITCH_MIN_SPEED_DEG_S         (3.0f)
-#define VISION_PITCH_MAX_SPEED_DEG_S         (6.0f)
 #define VISION_PITCH_ERROR_SIGN              (1.0f)
-#define VISION_PITCH_OBSERVATION_TIMEOUT_MS  (300U)
 
 static GimbalVisionPitchFeedback g_feedback;
 static uint8_t g_enabled;
@@ -25,13 +22,13 @@ static int16_t speed_to_x10(float speedDegS)
     return (int16_t)(value - 0.5f);
 }
 
-static float clamp_speed(float speedDegS)
+static float clamp_speed(float speedDegS, float maxSpeedDegS)
 {
-    if (speedDegS > VISION_PITCH_MAX_SPEED_DEG_S) {
-        return VISION_PITCH_MAX_SPEED_DEG_S;
+    if (speedDegS > maxSpeedDegS) {
+        return maxSpeedDegS;
     }
-    if (speedDegS < -VISION_PITCH_MAX_SPEED_DEG_S) {
-        return -VISION_PITCH_MAX_SPEED_DEG_S;
+    if (speedDegS < -maxSpeedDegS) {
+        return -maxSpeedDegS;
     }
     if ((speedDegS > 0.0f) &&
         (speedDegS < VISION_PITCH_MIN_SPEED_DEG_S)) {
@@ -44,10 +41,12 @@ static float clamp_speed(float speedDegS)
     return speedDegS;
 }
 
-static uint8_t error_is_deadbanded(int16_t errorY)
+static uint8_t error_is_deadbanded(int16_t errorY, uint16_t deadbandPx)
 {
-    return ((errorY >= -VISION_PITCH_DEADBAND_PX) &&
-        (errorY <= VISION_PITCH_DEADBAND_PX)) ? 1U : 0U;
+    int32_t deadband = (int32_t)deadbandPx;
+
+    return (((int32_t)errorY >= -deadband) &&
+        ((int32_t)errorY <= deadband)) ? 1U : 0U;
 }
 
 static void stop_tracking(void)
@@ -121,8 +120,10 @@ void GimbalVisionPitchTracker_Update10ms(uint32_t localTimeMs)
         GimbalVisionAdapter_GetObservation();
     const GimbalTrackerFeedback *legacyTracker =
         GimbalTracker_GetFeedback();
+    VisionPitchTuningParams tuning;
     uint32_t observationAgeMs = 0U;
 
+    VisionPitchTuning_GetSnapshot(&tuning);
     g_feedback.update_count_10ms++;
     refresh_pitch_feedback();
     g_feedback.observation_available = adapter->output_available;
@@ -170,7 +171,7 @@ void GimbalVisionPitchTracker_Update10ms(uint32_t localTimeMs)
         return;
     }
 
-    if (observationAgeMs > VISION_PITCH_OBSERVATION_TIMEOUT_MS) {
+    if (observationAgeMs > tuning.observation_timeout_ms) {
         stop_tracking();
         g_feedback.target_valid = 0U;
         g_feedback.deadbanded = 0U;
@@ -187,7 +188,8 @@ void GimbalVisionPitchTracker_Update10ms(uint32_t localTimeMs)
     }
 
     g_feedback.target_valid = 1U;
-    if (error_is_deadbanded(observation->error_y_px) != 0U) {
+    if (error_is_deadbanded(observation->error_y_px,
+            tuning.deadband_px) != 0U) {
         stop_tracking();
         g_feedback.deadbanded = 1U;
         g_feedback.state = GIMBAL_VISION_PITCH_CENTERED;
@@ -195,9 +197,12 @@ void GimbalVisionPitchTracker_Update10ms(uint32_t localTimeMs)
     }
 
     {
+        float kpDegSPerPx = (float)tuning.kp_x1000 / 1000.0f;
+        float maxSpeedDegS =
+            (float)tuning.max_speed_deg_s_x10 / 10.0f;
         float speedDegS = clamp_speed(VISION_PITCH_ERROR_SIGN *
-            VISION_PITCH_KP_DEG_S_PER_PX *
-            (float)observation->error_y_px);
+            kpDegSPerPx * (float)observation->error_y_px,
+            maxSpeedDegS);
 
         g_feedback.deadbanded = 0U;
         Gimbal_PitchSetTrackingSpeedDegS(speedDegS);

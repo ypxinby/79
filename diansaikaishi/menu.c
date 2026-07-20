@@ -22,32 +22,69 @@ static void menu_enter_param_page(ParamItem item, uint8_t select_item)
     CarState_Set(CAR_STATE_MENU);
 }
 
-static void menu_toggle_status_sensor_page(void)
+static void menu_next_main_page(void)
 {
-    if (g_oledPage == OLED_PAGE_STATUS) {
-        g_oledPage = OLED_PAGE_HEADING;
-    } else if (g_oledPage == OLED_PAGE_HEADING) {
-        g_oledPage = OLED_PAGE_OBSTACLE;
 #if FEATURE_GIMBAL_OLED_TEST
-    } else if (g_oledPage == OLED_PAGE_OBSTACLE) {
+    if (g_oledPage == OLED_PAGE_STATUS) {
         g_oledPage = OLED_PAGE_GIMBAL;
     } else if (g_oledPage == OLED_PAGE_GIMBAL) {
         g_oledPage = OLED_PAGE_GIMBAL_PITCH;
     } else if (g_oledPage == OLED_PAGE_GIMBAL_PITCH) {
-        g_oledPage = OLED_PAGE_GIMBAL_TRACKER;
-    } else if (g_oledPage == OLED_PAGE_GIMBAL_TRACKER) {
-        g_oledPage = OLED_PAGE_GIMBAL_TRACKER_PITCH;
-    } else if (g_oledPage == OLED_PAGE_GIMBAL_TRACKER_PITCH) {
-        g_oledPage = OLED_PAGE_VISION_RECEIVER;
-    } else if (g_oledPage == OLED_PAGE_VISION_RECEIVER) {
-        g_oledPage = OLED_PAGE_GIMBAL_VISION_ADAPTER;
-    } else if (g_oledPage == OLED_PAGE_GIMBAL_VISION_ADAPTER) {
         g_oledPage = OLED_PAGE_GIMBAL_VISION_PITCH;
-#endif
+    } else if (g_oledPage == OLED_PAGE_GIMBAL_VISION_PITCH) {
+        g_oledPage = OLED_PAGE_VISION_PITCH_TUNING;
     } else {
         g_oledPage = OLED_PAGE_STATUS;
     }
+#else
+    g_oledPage = OLED_PAGE_STATUS;
+#endif
 }
+
+#if FEATURE_GIMBAL_OLED_TEST
+static uint8_t menu_is_debug_page(OledPage page)
+{
+    return ((page == OLED_PAGE_VISION_RECEIVER) ||
+        (page == OLED_PAGE_GIMBAL_VISION_ADAPTER) ||
+        (page == OLED_PAGE_GIMBAL_TRACKER) ||
+        (page == OLED_PAGE_GIMBAL_TRACKER_PITCH) ||
+        (page == OLED_PAGE_HEADING) ||
+        (page == OLED_PAGE_OBSTACLE) ||
+        (page == OLED_PAGE_IMU) ||
+        (page == OLED_PAGE_SENSOR)) ? 1U : 0U;
+}
+
+static void menu_next_debug_page(void)
+{
+    switch (g_oledPage) {
+        case OLED_PAGE_VISION_RECEIVER:
+            g_oledPage = OLED_PAGE_GIMBAL_VISION_ADAPTER;
+            break;
+        case OLED_PAGE_GIMBAL_VISION_ADAPTER:
+            g_oledPage = OLED_PAGE_GIMBAL_TRACKER;
+            break;
+        case OLED_PAGE_GIMBAL_TRACKER:
+            g_oledPage = OLED_PAGE_GIMBAL_TRACKER_PITCH;
+            break;
+        case OLED_PAGE_GIMBAL_TRACKER_PITCH:
+            g_oledPage = OLED_PAGE_HEADING;
+            break;
+        case OLED_PAGE_HEADING:
+            g_oledPage = OLED_PAGE_OBSTACLE;
+            break;
+        case OLED_PAGE_OBSTACLE:
+            g_oledPage = OLED_PAGE_IMU;
+            break;
+        case OLED_PAGE_IMU:
+            g_oledPage = OLED_PAGE_SENSOR;
+            break;
+        case OLED_PAGE_SENSOR:
+        default:
+            g_oledPage = OLED_PAGE_VISION_RECEIVER;
+            break;
+    }
+}
+#endif
 
 static void menu_next_param(void)
 {
@@ -111,10 +148,42 @@ static void menu_handle_status_key(KeyEvent event)
     CarState state = CarState_Get();
 
 #if FEATURE_GIMBAL_OLED_TEST
+    if (menu_is_debug_page(g_oledPage) != 0U) {
+        if (event == KEY1_SHORT) {
+            menu_next_debug_page();
+            return;
+        }
+        if (event == KEY1_LONG) {
+            g_oledPage = OLED_PAGE_VISION_PITCH_TUNING;
+            return;
+        }
+        if ((g_oledPage != OLED_PAGE_GIMBAL_TRACKER) &&
+            (g_oledPage != OLED_PAGE_GIMBAL_TRACKER_PITCH)) {
+            return;
+        }
+    }
+
+    if (g_oledPage == OLED_PAGE_VISION_PITCH_TUNING) {
+        switch (event) {
+            case KEY1_SHORT:
+                menu_next_main_page();
+                break;
+            case KEY1_LONG:
+                menu_enter_param_page(g_paramItem, 0U);
+                break;
+            case KEY2_SHORT:
+                g_oledPage = OLED_PAGE_VISION_RECEIVER;
+                break;
+            default:
+                break;
+        }
+        return;
+    }
+
     if (g_oledPage == OLED_PAGE_GIMBAL_VISION_PITCH) {
         switch (event) {
             case KEY1_SHORT:
-                menu_toggle_status_sensor_page();
+                menu_next_main_page();
                 break;
             case KEY1_LONG:
                 menu_enter_param_page(g_paramItem, 0U);
@@ -131,27 +200,11 @@ static void menu_handle_status_key(KeyEvent event)
         return;
     }
 
-    if ((g_oledPage == OLED_PAGE_VISION_RECEIVER) ||
-        (g_oledPage == OLED_PAGE_GIMBAL_VISION_ADAPTER)) {
-        if (event == KEY1_SHORT) {
-            menu_toggle_status_sensor_page();
-        } else if (event == KEY1_LONG) {
-            menu_enter_param_page(g_paramItem, 0U);
-        }
-        return;
-    }
-
     if ((g_oledPage == OLED_PAGE_GIMBAL_TRACKER) ||
         (g_oledPage == OLED_PAGE_GIMBAL_TRACKER_PITCH)) {
         static uint16_t trackerSequence;
 
         switch (event) {
-            case KEY1_SHORT:
-                menu_toggle_status_sensor_page();
-                break;
-            case KEY1_LONG:
-                menu_enter_param_page(g_paramItem, 0U);
-                break;
             case KEY2_SHORT:
             {
                 GimbalTargetObservation observation = {
@@ -208,7 +261,7 @@ static void menu_handle_status_key(KeyEvent event)
         (g_oledPage == OLED_PAGE_GIMBAL_PITCH)) {
         switch (event) {
             case KEY1_SHORT:
-                menu_toggle_status_sensor_page();
+                menu_next_main_page();
                 break;
             case KEY1_LONG:
                 if (g_oledPage == OLED_PAGE_GIMBAL) {
@@ -272,7 +325,7 @@ static void menu_handle_status_key(KeyEvent event)
 
     switch (event) {
         case KEY1_SHORT:
-            menu_toggle_status_sensor_page();
+            menu_next_main_page();
             break;
         case KEY1_LONG:
             menu_enter_param_page(g_paramItem, 0U);

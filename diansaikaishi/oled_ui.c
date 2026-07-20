@@ -21,6 +21,7 @@
 #include "track_sensor.h"
 #include "ultrasonic.h"
 #include "vision_receiver.h"
+#include "vision_pitch_tuning.h"
 
 static int16_t clamp_display_i16(int32_t value)
 {
@@ -120,14 +121,9 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
     const char *actionName = "NONE";
     const UltrasonicFeedback *ultrasonic = Ultrasonic_GetFeedback();
     const ObstacleFeedback *obstacle = ObstacleMonitor_GetFeedback();
-#if FEATURE_OBSTACLE_SCANNER
-    const ObstacleScanFeedback *scan = ObstacleScanner_GetFeedback();
-#endif
     uint16_t missionIndex = MissionManager_GetSelectedMissionIndex();
-    uint16_t missionCount = MissionManager_GetMissionCount();
-    uint32_t actionTimeS = action->elapsed_ms / 1000U;
 
-    (void)error;
+    (void)raw;
     (void)keyEvent;
 
     if (action->action != (const MotionAction *)0) {
@@ -135,10 +131,8 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
     }
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("TASK:");
+    OLED_PrintString("HOME T");
     OLED_PrintInt16((int16_t)(missionIndex + 1U));
-    OLED_PrintChar('/');
-    OLED_PrintInt16((int16_t)missionCount);
     OLED_PrintChar(' ');
     OLED_PrintString(mission_status_to_string(mission->status));
 
@@ -149,38 +143,24 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
     OLED_PrintString(CarController_RunModeToString(CarController_GetRunMode()));
 
     OLED_SetCursor(4, 0);
-    OLED_PrintString("RAW:");
-    OLED_PrintBinary7((uint8_t)(raw & TRACK_RAW_VALID_MASK));
-    OLED_PrintString(" O:");
+    OLED_PrintString("E:");
+    OLED_PrintInt16(error);
+    OLED_PrintString(" O");
     OLED_PrintInt16((int16_t)obstacle->blocked);
-    OLED_PrintString(" H:");
+    OLED_PrintString(" H");
     OLED_PrintInt16((int16_t)ObstacleSafety_IsHolding());
-    OLED_PrintString(" A:");
+    OLED_PrintString(" A");
     OLED_PrintInt16((int16_t)ObstacleAvoidance_IsActive());
 
     OLED_SetCursor(6, 0);
-#if FEATURE_OBSTACLE_SCANNER
-    if (scan->active || scan->complete) {
-        OLED_PrintString("L:");
-        OLED_PrintInt16((int16_t)scan->left_distance_cm);
-        OLED_PrintString(" R:");
-        OLED_PrintInt16((int16_t)scan->right_distance_cm);
-        OLED_PrintString(" D:");
-        OLED_PrintString(ObstacleScanner_DirectionToString(
-            scan->recommended_direction));
+    OLED_PrintString("U:");
+    if (ultrasonic->measurement_valid) {
+        OLED_PrintInt16((int16_t)ultrasonic->distance_cm);
     } else {
-#endif
-        OLED_PrintString("TIME:");
-        OLED_PrintInt16(clamp_display_i16((int32_t)actionTimeS));
-        OLED_PrintString(" U:");
-        if (ultrasonic->measurement_valid) {
-            OLED_PrintInt16((int16_t)ultrasonic->distance_cm);
-        } else {
-            OLED_PrintInt16(0);
-        }
-#if FEATURE_OBSTACLE_SCANNER
+        OLED_PrintInt16(0);
     }
-#endif
+    OLED_PrintString(" IMU:");
+    OLED_PrintInt16(Imu_IsReady() ? 1 : 0);
 }
 
 static void print_obstacle_page(void)
@@ -416,37 +396,35 @@ static const char *gimbal_mode_to_string(GimbalMode mode)
     }
 }
 
+static void print_uint_scaled(uint16_t value, uint8_t fractionalDigits);
+static void print_signed_x10(int16_t value);
+static void print_alpha_x1000(uint16_t value);
+
 static void print_gimbal_page(void)
 {
     const GimbalFeedback *gimbal = Gimbal_YawGetFeedback();
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("GYAW P14B Z:");
+    OLED_PrintString("YAW Z");
     OLED_PrintInt16((int16_t)gimbal->position_valid);
-    OLED_PrintString(" W:");
+    OLED_PrintString(" WL");
     OLED_PrintInt16((int16_t)gimbal->world_lock_enabled);
 
     OLED_SetCursor(2, 0);
-    OLED_PrintString("CY:");
-    OLED_PrintInt16(gimbal->car_yaw_deg_x10);
-    OLED_PrintString(" WY:");
-    OLED_PrintInt16(gimbal->locked_world_yaw_deg_x10);
+    OLED_PrintString("ANG:");
+    print_signed_x10(gimbal->continuous_deg_x10);
 
     OLED_SetCursor(4, 0);
-    OLED_PrintString("T:");
-    OLED_PrintInt16(gimbal->target_deg_x10);
-    OLED_PrintString(" W:");
-    OLED_PrintInt16(gimbal->wrapped_deg_x10);
+    OLED_PrintString("TGT:");
+    print_signed_x10(gimbal->target_deg_x10);
     OLED_PrintString(" L:");
     OLED_PrintInt16((int16_t)gimbal->limit_direction);
 
     OLED_SetCursor(6, 0);
     OLED_PrintString("M:");
     OLED_PrintString(gimbal_mode_to_string(gimbal->mode));
-    OLED_PrintString(" R:");
-    OLED_PrintInt16(gimbal->commanded_rpm_x10);
-    OLED_PrintString(" H:");
-    OLED_PrintInt16((int16_t)gimbal->step_half_period_ticks);
+    OLED_PrintString(" RPM:");
+    print_signed_x10(gimbal->commanded_rpm_x10);
 }
 
 static void print_gimbal_pitch_page(void)
@@ -454,30 +432,24 @@ static void print_gimbal_pitch_page(void)
     const GimbalFeedback *gimbal = Gimbal_PitchGetFeedback();
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("GPIT P21 Z:");
+    OLED_PrintString("PITCH Z");
     OLED_PrintInt16((int16_t)gimbal->position_valid);
+    OLED_PrintString(" L");
+    OLED_PrintInt16((int16_t)gimbal->limit_direction);
 
     OLED_SetCursor(2, 0);
-    OLED_PrintString("T:");
-    OLED_PrintInt16(gimbal->target_deg_x10);
-    OLED_PrintString(" C:");
-    OLED_PrintInt16(gimbal->continuous_deg_x10);
+    OLED_PrintString("ANG:");
+    print_signed_x10(gimbal->continuous_deg_x10);
 
     OLED_SetCursor(4, 0);
-    OLED_PrintString("S:");
-    OLED_PrintInt16(clamp_display_i16((int32_t)gimbal->estimated_steps));
-    OLED_PrintString(" D:");
-    OLED_PrintInt16((int16_t)gimbal->direction);
-    OLED_PrintString(" L:");
-    OLED_PrintInt16((int16_t)gimbal->limit_direction);
+    OLED_PrintString("TGT:");
+    print_signed_x10(gimbal->target_deg_x10);
 
     OLED_SetCursor(6, 0);
     OLED_PrintString("M:");
     OLED_PrintString(gimbal_mode_to_string(gimbal->mode));
-    OLED_PrintString(" R:");
-    OLED_PrintInt16(gimbal->commanded_rpm_x10);
-    OLED_PrintString(" H:");
-    OLED_PrintInt16((int16_t)gimbal->step_half_period_ticks);
+    OLED_PrintString(" RPM:");
+    print_signed_x10(gimbal->commanded_rpm_x10);
 }
 
 static void print_gimbal_tracker_page(void)
@@ -513,6 +485,58 @@ static void print_gimbal_tracker_page(void)
     OLED_PrintInt16((int16_t)tracker->yaw_deadbanded);
     OLED_PrintString(" L:");
     OLED_PrintInt16((int16_t)yaw->limit_direction);
+}
+
+static void print_uint_min_width(uint16_t value, uint8_t minWidth)
+{
+    uint32_t divisor = 10U;
+    uint8_t digits = 1U;
+
+    while ((uint32_t)value >= divisor) {
+        digits++;
+        divisor *= 10U;
+    }
+    while (digits < minWidth) {
+        OLED_PrintChar('0');
+        digits++;
+    }
+    OLED_PrintUInt16(value);
+}
+
+static void print_uint_scaled(uint16_t value, uint8_t fractionalDigits)
+{
+    uint16_t divisor = 1U;
+    uint8_t index;
+
+    for (index = 0U; index < fractionalDigits; index++) {
+        divisor = (uint16_t)(divisor * 10U);
+    }
+    OLED_PrintUInt16((uint16_t)(value / divisor));
+    if (fractionalDigits != 0U) {
+        OLED_PrintChar('.');
+        print_uint_min_width((uint16_t)(value % divisor),
+            fractionalDigits);
+    }
+}
+
+static void print_signed_x10(int16_t value)
+{
+    int32_t signedValue = value;
+    uint16_t magnitude;
+
+    if (signedValue < 0) {
+        OLED_PrintChar('-');
+        signedValue = -signedValue;
+    }
+    magnitude = (uint16_t)signedValue;
+    OLED_PrintUInt16((uint16_t)(magnitude / 10U));
+    OLED_PrintChar('.');
+    OLED_PrintChar((char)('0' + (magnitude % 10U)));
+}
+
+static void print_alpha_x1000(uint16_t value)
+{
+    print_uint_scaled((uint16_t)((value + 5U) / 10U), 2U);
 }
 
 static void print_gimbal_tracker_pitch_page(void)
@@ -706,7 +730,7 @@ static void print_gimbal_vision_pitch_page(void)
         GimbalVisionPitchTracker_GetFeedback();
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("PVT:");
+    OLED_PrintString("PVT ");
     OLED_PrintString(vision_pitch_state_to_string(pitch->state));
     OLED_PrintString(" E");
     OLED_PrintUInt16(pitch->enabled);
@@ -714,28 +738,88 @@ static void print_gimbal_vision_pitch_page(void)
     OLED_PrintUInt16(pitch->position_valid);
 
     OLED_SetCursor(2, 0);
-    OLED_PrintString("Y");
+    OLED_PrintString("EY:");
     OLED_PrintInt16(pitch->error_y_px);
-    OLED_PrintString(" Q");
-    OLED_PrintUInt16(pitch->observation_sequence);
-    OLED_PrintString(" A");
-    OLED_PrintUInt16(display_count_3digit(pitch->observation_age_ms));
+    OLED_PrintString(" A:");
+    print_uint_min_width(
+        display_count_3digit(pitch->observation_age_ms), 3U);
 
     OLED_SetCursor(4, 0);
-    OLED_PrintString("SP:");
-    OLED_PrintInt16(pitch->command_speed_deg_s_x10);
-    OLED_PrintString(" PA:");
-    OLED_PrintInt16(pitch->pitch_angle_deg_x10);
+    OLED_PrintString("S:");
+    print_signed_x10(pitch->command_speed_deg_s_x10);
+    OLED_PrintString(" P:");
+    print_signed_x10(pitch->pitch_angle_deg_x10);
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("V");
-    OLED_PrintUInt16(pitch->target_valid);
-    OLED_PrintString(" D");
-    OLED_PrintUInt16(pitch->deadbanded);
-    OLED_PrintString(" R");
-    OLED_PrintUInt16(pitch->tracking_active);
-    OLED_PrintString(" L");
+    OLED_PrintString("Q:");
+    OLED_PrintUInt16(pitch->observation_sequence);
+    OLED_PrintString(" L:");
     OLED_PrintInt16((int16_t)pitch->limit_direction);
+}
+
+static void print_tuning_change_value(VisionPitchTuningParam parameter,
+    uint16_t value)
+{
+    switch (parameter) {
+        case VISION_PITCH_TUNING_PARAM_KP:
+            print_uint_scaled(value, 3U);
+            break;
+        case VISION_PITCH_TUNING_PARAM_MAX_SPEED:
+            print_uint_scaled(value, 1U);
+            break;
+        case VISION_PITCH_TUNING_PARAM_FILTER_ALPHA:
+            print_alpha_x1000(value);
+            break;
+        case VISION_PITCH_TUNING_PARAM_DEADBAND:
+        case VISION_PITCH_TUNING_PARAM_TIMEOUT:
+        default:
+            OLED_PrintUInt16(value);
+            break;
+    }
+}
+
+static void print_vision_pitch_tuning_page(void)
+{
+    const VisionPitchTuningStatus *status =
+        VisionPitchTuning_GetStatus();
+    const VisionPitchTuningLastChange *change =
+        &status->last_change;
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("VPT DB");
+    print_uint_min_width(status->params.deadband_px, 2U);
+    OLED_PrintString(" TO");
+    OLED_PrintUInt16(status->params.observation_timeout_ms);
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("KP");
+    print_uint_scaled(status->params.kp_x1000, 3U);
+    OLED_PrintString(" MAX");
+    print_uint_scaled(status->params.max_speed_deg_s_x10, 1U);
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("ALPHA");
+    print_alpha_x1000(status->params.filter_alpha_x1000);
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("L:");
+    if (change->valid == 0U) {
+        OLED_PrintString("NONE");
+    } else if (change->parameter == VISION_PITCH_TUNING_PARAM_DEFAULT) {
+        OLED_PrintString("DEFAULT");
+    } else {
+        if (change->parameter == VISION_PITCH_TUNING_PARAM_MAX_SPEED) {
+            OLED_PrintString("MAX");
+        } else {
+            OLED_PrintString(VisionPitchTuning_ParamName(
+                change->parameter));
+        }
+        print_tuning_change_value(change->parameter,
+            change->old_value);
+        OLED_PrintChar('>');
+        print_tuning_change_value(change->parameter,
+            change->new_value);
+    }
 }
 #endif
 
@@ -819,6 +903,13 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
         case OLED_PAGE_GIMBAL_VISION_PITCH:
 #if FEATURE_GIMBAL_OLED_TEST
             print_gimbal_vision_pitch_page();
+#else
+            print_status_page(raw, error, keyEvent);
+#endif
+            break;
+        case OLED_PAGE_VISION_PITCH_TUNING:
+#if FEATURE_GIMBAL_OLED_TEST
+            print_vision_pitch_tuning_page();
 #else
             print_status_page(raw, error, keyEvent);
 #endif

@@ -17,6 +17,8 @@
 #include "ti_msp_dl_config.h"
 #include "ultrasonic.h"
 #include "vision_receiver.h"
+#include "vision_pitch_tuning.h"
+#include "vision_tuning_console.h"
 #include "vision_uart.h"
 
 #define APP_TICK_HZ             (10000U)
@@ -40,7 +42,9 @@ int main(void)
     App_Init();
     VisionReceiver_Init();
     GimbalVisionAdapter_Init();
+    VisionPitchTuning_Init();
     GimbalVisionPitchTracker_Init();
+    VisionTuningConsole_Init();
     VisionUart_Init();
 
     SysTick_Config(CPUCLK_FREQ / APP_TICK_HZ);
@@ -51,6 +55,7 @@ int main(void)
         bool gimbalUpdateDue;
         bool trackerUpdateDue;
 
+        VisionUart_Process();
         (void)VisionReceiver_Process(g_localTimeMs,
             VISION_RX_PROCESS_BUDGET);
         GimbalVisionAdapter_Update();

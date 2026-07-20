@@ -29,8 +29,10 @@
 "./servo.o"
 "./track_sensor.o"
 "./ultrasonic.o"
+"./vision_pitch_tuning.o"
 "./vision_protocol.o"
 "./vision_receiver.o"
+"./vision_tuning_console.o"
 "./vision_uart.o"
 -l"./device_linker.cmd"
 -ldevice.cmd.genlibs

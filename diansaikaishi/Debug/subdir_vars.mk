@@ -40,8 +40,10 @@ C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/m0p/startup_system_files/ticlan
 ../servo.c \
 ../track_sensor.c \
 ../ultrasonic.c \
+../vision_pitch_tuning.c \
 ../vision_protocol.c \
 ../vision_receiver.c \
+../vision_tuning_console.c \
 ../vision_uart.c 
 
 GEN_CMDS += \
@@ -84,8 +86,10 @@ C_DEPS += \
 ./servo.d \
 ./track_sensor.d \
 ./ultrasonic.d \
+./vision_pitch_tuning.d \
 ./vision_protocol.d \
 ./vision_receiver.d \
+./vision_tuning_console.d \
 ./vision_uart.d 
 
 GEN_OPTS += \
@@ -123,8 +127,10 @@ OBJS += \
 ./servo.o \
 ./track_sensor.o \
 ./ultrasonic.o \
+./vision_pitch_tuning.o \
 ./vision_protocol.o \
 ./vision_receiver.o \
+./vision_tuning_console.o \
 ./vision_uart.o 
 
 GEN_MISC_FILES += \
@@ -164,8 +170,10 @@ OBJS__QUOTED += \
 "servo.o" \
 "track_sensor.o" \
 "ultrasonic.o" \
+"vision_pitch_tuning.o" \
 "vision_protocol.o" \
 "vision_receiver.o" \
+"vision_tuning_console.o" \
 "vision_uart.o" 
 
 GEN_MISC_FILES__QUOTED += \
@@ -205,8 +213,10 @@ C_DEPS__QUOTED += \
 "servo.d" \
 "track_sensor.d" \
 "ultrasonic.d" \
+"vision_pitch_tuning.d" \
 "vision_protocol.d" \
 "vision_receiver.d" \
+"vision_tuning_console.d" \
 "vision_uart.d" 
 
 GEN_FILES__QUOTED += \
@@ -246,8 +256,10 @@ C_SRCS__QUOTED += \
 "../servo.c" \
 "../track_sensor.c" \
 "../ultrasonic.c" \
+"../vision_pitch_tuning.c" \
 "../vision_protocol.c" \
 "../vision_receiver.c" \
+"../vision_tuning_console.c" \
 "../vision_uart.c" 
 
 SYSCFG_SRCS__QUOTED += \
