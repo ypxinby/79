@@ -33,6 +33,8 @@ static void menu_next_main_page(void)
     } else if (g_oledPage == OLED_PAGE_GIMBAL_PITCH) {
         g_oledPage = OLED_PAGE_GIMBAL_VISION_PITCH;
     } else if (g_oledPage == OLED_PAGE_GIMBAL_VISION_PITCH) {
+        g_oledPage = OLED_PAGE_GIMBAL_VISION_DUAL;
+    } else if (g_oledPage == OLED_PAGE_GIMBAL_VISION_DUAL) {
         g_oledPage = OLED_PAGE_VISION_PITCH_TUNING;
     } else {
         g_oledPage = OLED_PAGE_STATUS;
@@ -98,6 +100,41 @@ static void menu_next_param(void)
         g_paramItem = PARAM_TASK;
     }
 }
+
+#if FEATURE_GIMBAL_OLED_TEST
+static void menu_enable_dual_vision_tracking(void)
+{
+    const GimbalFeedback *yaw;
+    const GimbalFeedback *pitch;
+    uint8_t yawEnabled;
+    uint8_t pitchEnabled;
+
+    GimbalTracker_Enable(0U);
+    yaw = Gimbal_YawGetFeedback();
+    pitch = Gimbal_PitchGetFeedback();
+
+    if ((yaw->position_valid == 0U) ||
+        (pitch->position_valid == 0U) ||
+        (yaw->world_lock_enabled != 0U)) {
+        (void)GimbalVisionYawTracker_Enable(0U);
+        (void)GimbalVisionPitchTracker_Enable(0U);
+        return;
+    }
+
+    yawEnabled = GimbalVisionYawTracker_Enable(1U);
+    pitchEnabled = GimbalVisionPitchTracker_Enable(1U);
+    if ((yawEnabled == 0U) || (pitchEnabled == 0U)) {
+        (void)GimbalVisionYawTracker_Enable(0U);
+        (void)GimbalVisionPitchTracker_Enable(0U);
+    }
+}
+
+static void menu_disable_dual_vision_tracking(void)
+{
+    (void)GimbalVisionYawTracker_Enable(0U);
+    (void)GimbalVisionPitchTracker_Enable(0U);
+}
+#endif
 
 static void menu_adjust_param(int8_t direction, uint8_t fast)
 {
@@ -188,6 +225,26 @@ static void menu_handle_status_key(KeyEvent event)
                 break;
             case KEY2_SHORT:
                 g_oledPage = OLED_PAGE_VISION_RECEIVER;
+                break;
+            default:
+                break;
+        }
+        return;
+    }
+
+    if (g_oledPage == OLED_PAGE_GIMBAL_VISION_DUAL) {
+        switch (event) {
+            case KEY1_SHORT:
+                menu_next_main_page();
+                break;
+            case KEY1_LONG:
+                menu_enter_param_page(g_paramItem, 0U);
+                break;
+            case KEY2_SHORT:
+                menu_enable_dual_vision_tracking();
+                break;
+            case KEY3_SHORT:
+                menu_disable_dual_vision_tracking();
                 break;
             default:
                 break;

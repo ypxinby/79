@@ -819,6 +819,48 @@ static void print_gimbal_vision_pitch_page(void)
     OLED_PrintInt16((int16_t)pitch->limit_direction);
 }
 
+static void print_signed_deg_int_from_x10(int16_t value)
+{
+    OLED_PrintInt16((int16_t)(value / 10));
+}
+
+static void print_gimbal_vision_dual_page(void)
+{
+    const GimbalVisionYawFeedback *yaw =
+        GimbalVisionYawTracker_GetFeedback();
+    const GimbalVisionPitchFeedback *pitch =
+        GimbalVisionPitchTracker_GetFeedback();
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("DVT Y");
+    OLED_PrintString(vision_yaw_state_to_string(yaw->state));
+    OLED_PrintString(" P");
+    OLED_PrintString(vision_pitch_state_to_string(pitch->state));
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("EX");
+    OLED_PrintInt16(yaw->error_x_px);
+    OLED_PrintString(" EY");
+    OLED_PrintInt16(pitch->error_y_px);
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("YS");
+    print_signed_x10(yaw->command_speed_deg_s_x10);
+    OLED_PrintString(" PS");
+    print_signed_x10(pitch->command_speed_deg_s_x10);
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("Z");
+    OLED_PrintUInt16(yaw->position_valid);
+    OLED_PrintUInt16(pitch->position_valid);
+    OLED_PrintString("W");
+    OLED_PrintUInt16(yaw->world_lock_enabled);
+    OLED_PrintString(" Y");
+    print_signed_deg_int_from_x10(yaw->current_wrapped_deg_x10);
+    OLED_PrintString("P");
+    print_signed_deg_int_from_x10(pitch->pitch_angle_deg_x10);
+}
+
 static void print_tuning_change_value(VisionPitchTuningParam parameter,
     uint16_t value)
 {
@@ -972,6 +1014,13 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
         case OLED_PAGE_GIMBAL_VISION_PITCH:
 #if FEATURE_GIMBAL_OLED_TEST
             print_gimbal_vision_pitch_page();
+#else
+            print_status_page(raw, error, keyEvent);
+#endif
+            break;
+        case OLED_PAGE_GIMBAL_VISION_DUAL:
+#if FEATURE_GIMBAL_OLED_TEST
+            print_gimbal_vision_dual_page();
 #else
             print_status_page(raw, error, keyEvent);
 #endif

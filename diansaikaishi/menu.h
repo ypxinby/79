@@ -6,7 +6,7 @@
 #include "key.h"
 
 typedef enum {
-    /* Main page group: HOME -> YAW -> PITCH -> PVT -> VPT. */
+    /* Main page group: HOME -> YAW -> PITCH -> PVT -> DVT -> VPT. */
     OLED_PAGE_STATUS = 0,
     OLED_PAGE_PARAM,
     /* Hidden diagnostic page group entered from VPT with K2 short. */
@@ -21,6 +21,7 @@ typedef enum {
     OLED_PAGE_VISION_RECEIVER,
     OLED_PAGE_GIMBAL_VISION_ADAPTER,
     OLED_PAGE_GIMBAL_VISION_YAW,
+    OLED_PAGE_GIMBAL_VISION_DUAL,
     OLED_PAGE_GIMBAL_VISION_PITCH,
     OLED_PAGE_VISION_PITCH_TUNING
 } OledPage;
