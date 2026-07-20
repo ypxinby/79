@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "vision_pitch_tuning.h"
+#include "vision_yaw_tuning.h"
 
 #define TUNING_RX_RING_SIZE (256U)
 #define TUNING_RX_RING_MASK (TUNING_RX_RING_SIZE - 1U)
@@ -19,7 +20,9 @@
 #error TUNING_TX_RING_SIZE must be a power of two
 #endif
 
-static const char g_commandPrefix[] = "$VPT ";
+#define TUNING_TARGET_NONE  (0U)
+#define TUNING_TARGET_PITCH (1U)
+#define TUNING_TARGET_YAW   (2U)
 
 static volatile uint8_t g_rxRing[TUNING_RX_RING_SIZE];
 static volatile uint16_t g_rxHead;
@@ -30,6 +33,8 @@ static uint16_t g_txTail;
 static char g_line[TUNING_LINE_SIZE];
 static uint8_t g_lineSize;
 static uint8_t g_prefixIndex;
+static uint8_t g_prefixTarget;
+static uint8_t g_commandTarget;
 static uint8_t g_capturing;
 static VisionTuningConsoleStatus g_status;
 
@@ -241,6 +246,27 @@ static uint8_t resolve_parameter(const char *name,
     return 1U;
 }
 
+static uint8_t resolve_yaw_parameter(const char *name,
+    VisionYawTuningParam *parameter, uint8_t *fractionalDigits)
+{
+    if (strcmp(name, "DB") == 0) {
+        *parameter = VISION_YAW_TUNING_PARAM_DEADBAND;
+        *fractionalDigits = 0U;
+    } else if (strcmp(name, "KP") == 0) {
+        *parameter = VISION_YAW_TUNING_PARAM_KP;
+        *fractionalDigits = 3U;
+    } else if (strcmp(name, "MAXSPD") == 0) {
+        *parameter = VISION_YAW_TUNING_PARAM_MAX_SPEED;
+        *fractionalDigits = 1U;
+    } else if (strcmp(name, "TIMEOUT") == 0) {
+        *parameter = VISION_YAW_TUNING_PARAM_TIMEOUT;
+        *fractionalDigits = 0U;
+    } else {
+        return 0U;
+    }
+    return 1U;
+}
+
 static void send_parameter_reply(VisionPitchTuningParam parameter,
     uint16_t value, uint8_t fractionalDigits)
 {
@@ -249,6 +275,20 @@ static void send_parameter_reply(VisionPitchTuningParam parameter,
 
     append_text(reply, &length, "OK ");
     append_text(reply, &length, VisionPitchTuning_ParamName(parameter));
+    append_char(reply, &length, '=');
+    append_scaled(reply, &length, value, fractionalDigits);
+    append_text(reply, &length, "\r\n");
+    tx_enqueue(reply, length);
+}
+
+static void send_yaw_parameter_reply(VisionYawTuningParam parameter,
+    uint16_t value, uint8_t fractionalDigits)
+{
+    char reply[TUNING_REPLY_SIZE];
+    uint16_t length = 0U;
+
+    append_text(reply, &length, "OK ");
+    append_text(reply, &length, VisionYawTuning_ParamName(parameter));
     append_char(reply, &length, '=');
     append_scaled(reply, &length, value, fractionalDigits);
     append_text(reply, &length, "\r\n");
@@ -276,6 +316,25 @@ static void send_all_parameters(void)
     tx_enqueue(reply, length);
 }
 
+static void send_all_yaw_parameters(void)
+{
+    VisionYawTuningParams params;
+    char reply[TUNING_REPLY_SIZE];
+    uint16_t length = 0U;
+
+    VisionYawTuning_GetSnapshot(&params);
+    append_text(reply, &length, "PARAM DB=");
+    append_uint(reply, &length, params.deadband_px);
+    append_text(reply, &length, " KP=");
+    append_scaled(reply, &length, params.kp_x1000, 3U);
+    append_text(reply, &length, " MAXSPD=");
+    append_scaled(reply, &length, params.max_speed_deg_s_x10, 1U);
+    append_text(reply, &length, " TIMEOUT=");
+    append_uint(reply, &length, params.observation_timeout_ms);
+    append_text(reply, &length, " PERSIST=0\r\n");
+    tx_enqueue(reply, length);
+}
+
 static void execute_line(void)
 {
     char *tokens[4];
@@ -294,11 +353,19 @@ static void execute_line(void)
 
     if ((tokenCount == 2U) && (strcmp(tokens[0], "GET") == 0) &&
         (strcmp(tokens[1], "PARAM") == 0)) {
-        send_all_parameters();
+        if (g_commandTarget == TUNING_TARGET_YAW) {
+            send_all_yaw_parameters();
+        } else {
+            send_all_parameters();
+        }
         g_status.success_count++;
     } else if ((tokenCount == 1U) &&
         (strcmp(tokens[0], "DEFAULT") == 0)) {
-        VisionPitchTuning_RestoreDefault();
+        if (g_commandTarget == TUNING_TARGET_YAW) {
+            VisionYawTuning_RestoreDefault();
+        } else {
+            VisionPitchTuning_RestoreDefault();
+        }
         send_simple_reply("OK DEFAULT");
         g_status.success_count++;
     } else if ((tokenCount == 1U) &&
@@ -307,24 +374,46 @@ static void execute_line(void)
         g_status.error_count++;
     } else if ((tokenCount == 3U) &&
         (strcmp(tokens[0], "SET") == 0)) {
-        VisionPitchTuningParam parameter;
         uint8_t fractionalDigits;
         uint16_t value;
 
-        if (resolve_parameter(tokens[1], &parameter,
-                &fractionalDigits) == 0U) {
-            send_simple_reply("ERR PARAM");
-            g_status.error_count++;
-        } else if (parse_scaled_value(tokens[2], fractionalDigits,
-                &value) == 0U) {
-            send_simple_reply("ERR VALUE");
-            g_status.error_count++;
-        } else if (VisionPitchTuning_Set(parameter, value) == 0U) {
-            send_simple_reply("ERR RANGE");
-            g_status.error_count++;
+        if (g_commandTarget == TUNING_TARGET_YAW) {
+            VisionYawTuningParam parameter;
+
+            if (resolve_yaw_parameter(tokens[1], &parameter,
+                    &fractionalDigits) == 0U) {
+                send_simple_reply("ERR PARAM");
+                g_status.error_count++;
+            } else if (parse_scaled_value(tokens[2], fractionalDigits,
+                    &value) == 0U) {
+                send_simple_reply("ERR VALUE");
+                g_status.error_count++;
+            } else if (VisionYawTuning_Set(parameter, value) == 0U) {
+                send_simple_reply("ERR RANGE");
+                g_status.error_count++;
+            } else {
+                send_yaw_parameter_reply(parameter, value,
+                    fractionalDigits);
+                g_status.success_count++;
+            }
         } else {
-            send_parameter_reply(parameter, value, fractionalDigits);
-            g_status.success_count++;
+            VisionPitchTuningParam parameter;
+
+            if (resolve_parameter(tokens[1], &parameter,
+                    &fractionalDigits) == 0U) {
+                send_simple_reply("ERR PARAM");
+                g_status.error_count++;
+            } else if (parse_scaled_value(tokens[2], fractionalDigits,
+                    &value) == 0U) {
+                send_simple_reply("ERR VALUE");
+                g_status.error_count++;
+            } else if (VisionPitchTuning_Set(parameter, value) == 0U) {
+                send_simple_reply("ERR RANGE");
+                g_status.error_count++;
+            } else {
+                send_parameter_reply(parameter, value, fractionalDigits);
+                g_status.success_count++;
+            }
         }
     } else {
         send_simple_reply("ERR COMMAND");
@@ -336,6 +425,8 @@ static void reset_capture(void)
 {
     g_lineSize = 0U;
     g_prefixIndex = 0U;
+    g_prefixTarget = TUNING_TARGET_NONE;
+    g_commandTarget = TUNING_TARGET_NONE;
     g_capturing = 0U;
 }
 
@@ -370,16 +461,49 @@ static void consume_byte(uint8_t byte)
         return;
     }
 
-    if (byte == (uint8_t)g_commandPrefix[g_prefixIndex]) {
-        g_prefixIndex++;
-        if (g_commandPrefix[g_prefixIndex] == '\0') {
-            g_capturing = 1U;
-            g_lineSize = 0U;
-            g_prefixIndex = 0U;
-        }
-    } else {
-        g_prefixIndex =
-            (byte == (uint8_t)g_commandPrefix[0]) ? 1U : 0U;
+    switch (g_prefixIndex) {
+        case 0U:
+            g_prefixIndex = (byte == (uint8_t)'$') ? 1U : 0U;
+            g_prefixTarget = TUNING_TARGET_NONE;
+            break;
+        case 1U:
+            g_prefixIndex = (byte == (uint8_t)'V') ? 2U :
+                ((byte == (uint8_t)'$') ? 1U : 0U);
+            break;
+        case 2U:
+            if (byte == (uint8_t)'P') {
+                g_prefixTarget = TUNING_TARGET_PITCH;
+                g_prefixIndex = 3U;
+            } else if (byte == (uint8_t)'Y') {
+                g_prefixTarget = TUNING_TARGET_YAW;
+                g_prefixIndex = 3U;
+            } else {
+                g_prefixIndex = (byte == (uint8_t)'$') ? 1U : 0U;
+                g_prefixTarget = TUNING_TARGET_NONE;
+            }
+            break;
+        case 3U:
+            g_prefixIndex = (byte == (uint8_t)'T') ? 4U :
+                ((byte == (uint8_t)'$') ? 1U : 0U);
+            if (g_prefixIndex != 4U) {
+                g_prefixTarget = TUNING_TARGET_NONE;
+            }
+            break;
+        case 4U:
+            if (byte == (uint8_t)' ') {
+                g_capturing = 1U;
+                g_lineSize = 0U;
+                g_commandTarget = g_prefixTarget;
+                g_prefixIndex = 0U;
+                g_prefixTarget = TUNING_TARGET_NONE;
+            } else {
+                g_prefixIndex = (byte == (uint8_t)'$') ? 1U : 0U;
+                g_prefixTarget = TUNING_TARGET_NONE;
+            }
+            break;
+        default:
+            reset_capture();
+            break;
     }
 }
 

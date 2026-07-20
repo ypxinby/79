@@ -19,6 +19,7 @@
 #include "ultrasonic.h"
 #include "vision_receiver.h"
 #include "vision_pitch_tuning.h"
+#include "vision_yaw_tuning.h"
 #include "vision_tuning_console.h"
 #include "vision_uart.h"
 
@@ -44,6 +45,7 @@ int main(void)
     VisionReceiver_Init();
     GimbalVisionAdapter_Init();
     VisionPitchTuning_Init();
+    VisionYawTuning_Init();
     GimbalVisionPitchTracker_Init();
     GimbalVisionYawTracker_Init();
     VisionTuningConsole_Init();

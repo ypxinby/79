@@ -35,6 +35,7 @@
 "./vision_receiver.o"
 "./vision_tuning_console.o"
 "./vision_uart.o"
+"./vision_yaw_tuning.o"
 -l"./device_linker.cmd"
 -ldevice.cmd.genlibs
 -llibc.a

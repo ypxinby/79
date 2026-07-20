@@ -3,14 +3,11 @@
 #include "gimbal.h"
 #include "gimbal_tracker.h"
 #include "gimbal_vision_adapter.h"
+#include "vision_yaw_tuning.h"
 
-#define VISION_YAW_DEADBAND_PX             (8)
-#define VISION_YAW_KP_DEG_S_PER_PX         (0.08f)
-#define VISION_YAW_MAX_SPEED_DEG_S         (24.0f)
 #define VISION_YAW_MAX_DELTA_DEG           (0.30f)
 #define VISION_YAW_ERROR_SIGN              (1.0f)
 #define VISION_YAW_UPDATE_DT_S             (0.010f)
-#define VISION_YAW_OBSERVATION_TIMEOUT_MS  (300U)
 
 static GimbalVisionYawFeedback g_feedback;
 static uint8_t g_enabled;
@@ -195,10 +192,12 @@ void GimbalVisionYawTracker_Update10ms(uint32_t localTimeMs)
         GimbalVisionAdapter_GetObservation();
     const GimbalTrackerFeedback *legacyTracker =
         GimbalTracker_GetFeedback();
+    VisionYawTuningParams tuning;
     uint32_t observationAgeMs = 0U;
     float speedDegS;
     float deltaDeg;
 
+    VisionYawTuning_GetSnapshot(&tuning);
     g_feedback.update_count_10ms++;
     refresh_yaw_feedback();
     g_feedback.observation_available = adapter->output_available;
@@ -256,7 +255,7 @@ void GimbalVisionYawTracker_Update10ms(uint32_t localTimeMs)
         return;
     }
 
-    if (observationAgeMs > VISION_YAW_OBSERVATION_TIMEOUT_MS) {
+    if (observationAgeMs > tuning.observation_timeout_ms) {
         stop_owned_tracking();
         g_feedback.target_valid = 0U;
         g_feedback.deadbanded = 0U;
@@ -284,8 +283,8 @@ void GimbalVisionYawTracker_Update10ms(uint32_t localTimeMs)
     }
 
     g_feedback.target_valid = 1U;
-    if ((observation->error_x_px >= -VISION_YAW_DEADBAND_PX) &&
-        (observation->error_x_px <= VISION_YAW_DEADBAND_PX)) {
+    if ((observation->error_x_px >= -(int16_t)tuning.deadband_px) &&
+        (observation->error_x_px <= (int16_t)tuning.deadband_px)) {
         stop_owned_tracking();
         g_feedback.deadbanded = 1U;
         g_feedback.state = GIMBAL_VISION_YAW_CENTERED;
@@ -297,11 +296,11 @@ void GimbalVisionYawTracker_Update10ms(uint32_t localTimeMs)
     }
 
     speedDegS = VISION_YAW_ERROR_SIGN *
-        VISION_YAW_KP_DEG_S_PER_PX *
+        ((float)tuning.kp_x1000 / 1000.0f) *
         (float)observation->error_x_px;
     speedDegS = clamp_f32(speedDegS,
-        -VISION_YAW_MAX_SPEED_DEG_S,
-        VISION_YAW_MAX_SPEED_DEG_S);
+        -((float)tuning.max_speed_deg_s_x10 / 10.0f),
+        (float)tuning.max_speed_deg_s_x10 / 10.0f);
 
     if (speed_points_toward_limit(speedDegS,
             g_feedback.limit_direction) != 0U) {
