@@ -27,6 +27,7 @@
 #include "track_sensor.h"
 #include "ultrasonic.h"
 #include "watchdog_monitor.h"
+#include "wheel_speed_estimator.h"
 
 volatile uint8_t g_trackRaw;
 volatile uint8_t g_trackBlackCount;
@@ -90,6 +91,7 @@ void App_Init(void)
     GimbalTracker_Init();
     Encoder_Reset();
     AppConfig_InitDefault();
+    WheelSpeedEstimator_Init();
 #if ENABLE_IMU
     if (Imu_Init()) {
         (void)Imu_CalibrateGyroBias(200U);
@@ -119,6 +121,9 @@ void App_Update_20ms(uint32_t elapsed_ms)
 {
     uint32_t timestamp_ms = SystemTime_GetMs();
 
+#if FEATURE_WHEEL_SPEED_ESTIMATOR
+    WheelSpeedEstimator_Update(elapsed_ms);
+#endif
     WatchdogMonitor_ApplyFaultIfNeeded(timestamp_ms);
 #if ENABLE_IMU
     Imu_Update((float)elapsed_ms / 1000.0f);

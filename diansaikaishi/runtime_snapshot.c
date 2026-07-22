@@ -9,6 +9,7 @@
 #include "vision_receiver.h"
 #include "vision_tuning_console.h"
 #include "watchdog_monitor.h"
+#include "wheel_speed_estimator.h"
 
 static RuntimeSnapshot g_snapshot;
 
@@ -30,6 +31,8 @@ void RuntimeSnapshot_Update(uint32_t timestamp_ms)
     const VisionTuningConsoleStatus *console =
         VisionTuningConsole_GetStatus();
     const WatchdogMonitorStatus *watchdog = WatchdogMonitor_GetStatus();
+    const volatile WheelSpeedEstimatorRuntime *wheel =
+        WheelSpeedEstimator_GetRuntime();
     SchedulerStats scheduler;
 
     SchedulerMonitor_GetStats(&scheduler);
@@ -64,6 +67,26 @@ void RuntimeSnapshot_Update(uint32_t timestamp_ms)
     g_snapshot.hardware_watchdog_enabled =
         watchdog->hardware_watchdog_enabled;
     g_snapshot.heartbeat_age_ms = watchdog->heartbeat_age_ms;
+    g_snapshot.left_delta_pulse = wheel->left_delta_pulse;
+    g_snapshot.right_delta_pulse = wheel->right_delta_pulse;
+    g_snapshot.left_total_pulse = wheel->left_total_pulse;
+    g_snapshot.right_total_pulse = wheel->right_total_pulse;
+    g_snapshot.left_raw_speed_cmps = wheel->left_raw_speed_cmps;
+    g_snapshot.right_raw_speed_cmps = wheel->right_raw_speed_cmps;
+    g_snapshot.left_speed_cmps = wheel->left_speed_cmps;
+    g_snapshot.right_speed_cmps = wheel->right_speed_cmps;
+    g_snapshot.left_total_distance_cm = wheel->left_total_distance_cm;
+    g_snapshot.right_total_distance_cm = wheel->right_total_distance_cm;
+    g_snapshot.center_distance_cm = wheel->center_distance_cm;
+    g_snapshot.wheel_estimator_valid = wheel->valid;
+    g_snapshot.wheel_estimator_stale = wheel->stale;
+    g_snapshot.wheel_estimator_overflow = wheel->overflow;
+    g_snapshot.wheel_estimator_error_flags = wheel->error_flags;
+    g_snapshot.encoder_ppr_x2 = wheel->encoder_ppr_x2;
+    g_snapshot.wheel_diameter_cm = wheel->wheel_diameter_cm;
+    g_snapshot.wheel_track_cm = wheel->wheel_track_cm;
+    g_snapshot.left_encoder_direction = wheel->left_encoder_direction;
+    g_snapshot.right_encoder_direction = wheel->right_encoder_direction;
 }
 
 const RuntimeSnapshot *RuntimeSnapshot_Get(void)

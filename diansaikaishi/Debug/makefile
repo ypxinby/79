@@ -53,6 +53,7 @@ ORDERED_OBJS += \
 "./vision_uart.o" \
 "./vision_yaw_tuning.o" \
 "./watchdog_monitor.o" \
+"./wheel_speed_estimator.o" \
 $(GEN_CMDS__FLAG) \
 -Wl,-ldevice.cmd.genlibs \
 -Wl,-llibc.a \
@@ -177,8 +178,8 @@ diansaikaishi.out: $(OBJS) $(GEN_CMDS)
 # Other Targets
 clean:
 	-$(RM) $(GEN_MISC_FILES__QUOTED)$(GEN_FILES__QUOTED)$(EXE_OUTPUTS__QUOTED)
-	-$(RM) "app.o" "app_config.o" "car_controller.o" "car_state.o" "debug_telemetry.o" "emergency_stop.o" "empty.o" "ti_msp_dl_config.o" "startup_mspm0g350x_ticlang.o" "encoder.o" "fault.o" "gimbal.o" "gimbal_stepper.o" "gimbal_tracker.o" "gimbal_vision_adapter.o" "gimbal_vision_pitch_tracker.o" "gimbal_vision_yaw_tracker.o" "heading_control.o" "imu.o" "key.o" "menu.o" "mission_library.o" "mission_manager.o" "motion_action.o" "motor.o" "obstacle_avoidance.o" "obstacle_monitor.o" "obstacle_safety.o" "obstacle_scanner.o" "oled.o" "oled_ui.o" "pid.o" "runtime_snapshot.o" "servo.o" "track_sensor.o" "ultrasonic.o" "vision_pitch_tuning.o" "vision_protocol.o" "vision_receiver.o" "vision_tuning_console.o" "vision_uart.o" "vision_yaw_tuning.o" "watchdog_monitor.o" 
-	-$(RM) "app.d" "app_config.d" "car_controller.d" "car_state.d" "debug_telemetry.d" "emergency_stop.d" "empty.d" "ti_msp_dl_config.d" "startup_mspm0g350x_ticlang.d" "encoder.d" "fault.d" "gimbal.d" "gimbal_stepper.d" "gimbal_tracker.d" "gimbal_vision_adapter.d" "gimbal_vision_pitch_tracker.d" "gimbal_vision_yaw_tracker.d" "heading_control.d" "imu.d" "key.d" "menu.d" "mission_library.d" "mission_manager.d" "motion_action.d" "motor.d" "obstacle_avoidance.d" "obstacle_monitor.d" "obstacle_safety.d" "obstacle_scanner.d" "oled.d" "oled_ui.d" "pid.d" "runtime_snapshot.d" "servo.d" "track_sensor.d" "ultrasonic.d" "vision_pitch_tuning.d" "vision_protocol.d" "vision_receiver.d" "vision_tuning_console.d" "vision_uart.d" "vision_yaw_tuning.d" "watchdog_monitor.d" 
+	-$(RM) "app.o" "app_config.o" "car_controller.o" "car_state.o" "debug_telemetry.o" "emergency_stop.o" "empty.o" "ti_msp_dl_config.o" "startup_mspm0g350x_ticlang.o" "encoder.o" "fault.o" "gimbal.o" "gimbal_stepper.o" "gimbal_tracker.o" "gimbal_vision_adapter.o" "gimbal_vision_pitch_tracker.o" "gimbal_vision_yaw_tracker.o" "heading_control.o" "imu.o" "key.o" "menu.o" "mission_library.o" "mission_manager.o" "motion_action.o" "motor.o" "obstacle_avoidance.o" "obstacle_monitor.o" "obstacle_safety.o" "obstacle_scanner.o" "oled.o" "oled_ui.o" "pid.o" "runtime_snapshot.o" "servo.o" "track_sensor.o" "ultrasonic.o" "vision_pitch_tuning.o" "vision_protocol.o" "vision_receiver.o" "vision_tuning_console.o" "vision_uart.o" "vision_yaw_tuning.o" "watchdog_monitor.o" "wheel_speed_estimator.o" 
+	-$(RM) "app.d" "app_config.d" "car_controller.d" "car_state.d" "debug_telemetry.d" "emergency_stop.d" "empty.d" "ti_msp_dl_config.d" "startup_mspm0g350x_ticlang.d" "encoder.d" "fault.d" "gimbal.d" "gimbal_stepper.d" "gimbal_tracker.d" "gimbal_vision_adapter.d" "gimbal_vision_pitch_tracker.d" "gimbal_vision_yaw_tracker.d" "heading_control.d" "imu.d" "key.d" "menu.d" "mission_library.d" "mission_manager.d" "motion_action.d" "motor.d" "obstacle_avoidance.d" "obstacle_monitor.d" "obstacle_safety.d" "obstacle_scanner.d" "oled.d" "oled_ui.d" "pid.d" "runtime_snapshot.d" "servo.d" "track_sensor.d" "ultrasonic.d" "vision_pitch_tuning.d" "vision_protocol.d" "vision_receiver.d" "vision_tuning_console.d" "vision_uart.d" "vision_yaw_tuning.d" "watchdog_monitor.d" "wheel_speed_estimator.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 

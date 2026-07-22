@@ -41,6 +41,7 @@
 "./vision_uart.o"
 "./vision_yaw_tuning.o"
 "./watchdog_monitor.o"
+"./wheel_speed_estimator.o"
 -l"./device_linker.cmd"
 -ldevice.cmd.genlibs
 -llibc.a

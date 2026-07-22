@@ -3,6 +3,13 @@
 
 #include <stdint.h>
 
+/* P3 calibration placeholders: replace only after physical measurement. */
+#define WHEEL_ENCODER_PPR_X2_DEFAULT       (0U)    /* TODO: measure */
+#define WHEEL_DIAMETER_CM_DEFAULT          (0.0f)  /* TODO: measure */
+#define WHEEL_TRACK_CM_DEFAULT             (0.0f)  /* TODO: measure */
+#define LEFT_ENCODER_DIRECTION_DEFAULT     (1)     /* TODO: verify sign */
+#define RIGHT_ENCODER_DIRECTION_DEFAULT    (1)     /* TODO: verify sign */
+
 typedef struct {
     uint8_t target_laps;
     uint8_t min_target_laps;
@@ -63,6 +70,13 @@ typedef struct {
     uint16_t avoid_resume_grace_ms;
     uint16_t avoid_reacquire_settle_ms;
     uint32_t avoid_reacquire_timeout_ms;
+
+    /* Pulses per wheel revolution after the current ENCA both-edge x2 decode. */
+    uint32_t encoder_ppr_x2;
+    float wheel_diameter_cm;
+    float wheel_track_cm;
+    int8_t left_encoder_direction;
+    int8_t right_encoder_direction;
 } AppConfig;
 
 extern AppConfig g_appConfig;

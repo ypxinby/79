@@ -9,7 +9,7 @@ oled_ui.o: ../oled_ui.c ../oled_ui.h ../app.h ../app_config.h \
  ../mission_library.h ../motion_types.h ../motion_action.h \
  ../obstacle_avoidance.h ../obstacle_monitor.h ../obstacle_scanner.h \
  ../obstacle_safety.h ../oled.h ../ultrasonic.h ../vision_receiver.h \
- ../vision_pitch_tuning.h
+ ../vision_pitch_tuning.h ../wheel_speed_estimator.h
 ../oled_ui.h:
 ../app.h:
 ../app_config.h:
@@ -40,3 +40,4 @@ oled_ui.o: ../oled_ui.c ../oled_ui.h ../app.h ../app_config.h \
 ../ultrasonic.h:
 ../vision_receiver.h:
 ../vision_pitch_tuning.h:
+../wheel_speed_estimator.h:

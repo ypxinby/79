@@ -19,6 +19,8 @@
 #define FEATURE_HARDWARE_WATCHDOG  (0)
 /* Keep software PWM as the default until TIMG8 PWM is verified on hardware. */
 #define FEATURE_HW_MOTOR_PWM       (1)
+/* P3 observation only; no wheel-speed feedback is connected to control. */
+#define FEATURE_WHEEL_SPEED_ESTIMATOR (1)
 
 #define ENABLE_IMU                 (1)
 #define ENABLE_HEADING_OBSERVER    (1)

@@ -24,6 +24,7 @@
 #include "ultrasonic.h"
 #include "vision_receiver.h"
 #include "vision_pitch_tuning.h"
+#include "wheel_speed_estimator.h"
 
 static int16_t clamp_display_i16(int32_t value)
 {
@@ -34,6 +35,37 @@ static int16_t clamp_display_i16(int32_t value)
         return -32768;
     }
     return (int16_t)value;
+}
+
+static void print_uint64_decimal(uint64_t value)
+{
+    char digits[20];
+    uint8_t count = 0U;
+
+    do {
+        digits[count] = (char)('0' + (value % 10U));
+        count++;
+        value /= 10U;
+    } while ((value != 0U) && (count < (uint8_t)sizeof(digits)));
+
+    while (count > 0U) {
+        count--;
+        OLED_PrintChar(digits[count]);
+    }
+}
+
+static void print_signed_total_tail(int64_t value)
+{
+    uint64_t magnitude;
+
+    if (value < 0) {
+        OLED_PrintChar('-');
+        magnitude = (uint64_t)(-(value + 1)) + 1U;
+    } else {
+        magnitude = (uint64_t)value;
+    }
+
+    print_uint64_decimal(magnitude % 1000000U);
 }
 
 static const char *motion_action_type_to_string(MotionActionType type)
@@ -260,6 +292,42 @@ static void print_obstacle_page(void)
         OLED_PrintInt16((int16_t)obstacle->distance_cm);
     }
 #endif
+}
+
+static void print_encoder_page(void)
+{
+    const volatile WheelSpeedEstimatorRuntime *wheel =
+        WheelSpeedEstimator_GetRuntime();
+    int16_t leftRawSpeed =
+        clamp_display_i16((int32_t)wheel->left_raw_speed_cmps);
+    int16_t rightRawSpeed =
+        clamp_display_i16((int32_t)wheel->right_raw_speed_cmps);
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("LD:");
+    OLED_PrintInt16(clamp_display_i16(wheel->left_delta_pulse));
+    OLED_PrintString(" RD:");
+    OLED_PrintInt16(clamp_display_i16(wheel->right_delta_pulse));
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("LT:");
+    print_signed_total_tail(wheel->left_total_pulse);
+    OLED_PrintString(" RT:");
+    print_signed_total_tail(wheel->right_total_pulse);
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("LS:");
+    OLED_PrintInt16(leftRawSpeed);
+    OLED_PrintString(" RS:");
+    OLED_PrintInt16(rightRawSpeed);
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("V:");
+    OLED_PrintInt16(wheel->valid ? 1 : 0);
+    OLED_PrintString(" S:");
+    OLED_PrintInt16(wheel->stale ? 1 : 0);
+    OLED_PrintString(" E:");
+    print_uint64_decimal((uint64_t)wheel->error_flags);
 }
 
 static void print_param_page(uint8_t keyEvent)
@@ -987,6 +1055,9 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
             break;
         case OLED_PAGE_OBSTACLE:
             print_obstacle_page();
+            break;
+        case OLED_PAGE_ENCODER:
+            print_encoder_page();
             break;
         case OLED_PAGE_GIMBAL:
 #if FEATURE_GIMBAL_OLED_TEST

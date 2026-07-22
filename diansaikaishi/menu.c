@@ -29,23 +29,15 @@ static void menu_enter_param_page(ParamItem item, uint8_t select_item)
 
 static void menu_next_main_page(void)
 {
-#if FEATURE_GIMBAL_OLED_TEST
     if (g_oledPage == OLED_PAGE_STATUS) {
-        g_oledPage = OLED_PAGE_GIMBAL;
-    } else if (g_oledPage == OLED_PAGE_GIMBAL) {
-        g_oledPage = OLED_PAGE_GIMBAL_PITCH;
-    } else if (g_oledPage == OLED_PAGE_GIMBAL_PITCH) {
-        g_oledPage = OLED_PAGE_GIMBAL_VISION_PITCH;
-    } else if (g_oledPage == OLED_PAGE_GIMBAL_VISION_PITCH) {
-        g_oledPage = OLED_PAGE_GIMBAL_VISION_DUAL;
-    } else if (g_oledPage == OLED_PAGE_GIMBAL_VISION_DUAL) {
-        g_oledPage = OLED_PAGE_VISION_PITCH_TUNING;
+        g_oledPage = OLED_PAGE_HEADING;
+    } else if (g_oledPage == OLED_PAGE_HEADING) {
+        g_oledPage = OLED_PAGE_OBSTACLE;
+    } else if (g_oledPage == OLED_PAGE_OBSTACLE) {
+        g_oledPage = OLED_PAGE_ENCODER;
     } else {
         g_oledPage = OLED_PAGE_STATUS;
     }
-#else
-    g_oledPage = OLED_PAGE_STATUS;
-#endif
 }
 
 #if FEATURE_GIMBAL_OLED_TEST
@@ -56,8 +48,6 @@ static uint8_t menu_is_debug_page(OledPage page)
         (page == OLED_PAGE_GIMBAL_VISION_YAW) ||
         (page == OLED_PAGE_GIMBAL_TRACKER) ||
         (page == OLED_PAGE_GIMBAL_TRACKER_PITCH) ||
-        (page == OLED_PAGE_HEADING) ||
-        (page == OLED_PAGE_OBSTACLE) ||
         (page == OLED_PAGE_IMU) ||
         (page == OLED_PAGE_SENSOR)) ? 1U : 0U;
 }
@@ -78,12 +68,6 @@ static void menu_next_debug_page(void)
             g_oledPage = OLED_PAGE_GIMBAL_TRACKER_PITCH;
             break;
         case OLED_PAGE_GIMBAL_TRACKER_PITCH:
-            g_oledPage = OLED_PAGE_HEADING;
-            break;
-        case OLED_PAGE_HEADING:
-            g_oledPage = OLED_PAGE_OBSTACLE;
-            break;
-        case OLED_PAGE_OBSTACLE:
             g_oledPage = OLED_PAGE_IMU;
             break;
         case OLED_PAGE_IMU:

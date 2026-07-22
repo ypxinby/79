@@ -51,7 +51,8 @@ C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/m0p/startup_system_files/ticlan
 ../vision_tuning_console.c \
 ../vision_uart.c \
 ../vision_yaw_tuning.c \
-../watchdog_monitor.c 
+../watchdog_monitor.c \
+../wheel_speed_estimator.c 
 
 GEN_CMDS += \
 ./device_linker.cmd 
@@ -104,7 +105,8 @@ C_DEPS += \
 ./vision_tuning_console.d \
 ./vision_uart.d \
 ./vision_yaw_tuning.d \
-./watchdog_monitor.d 
+./watchdog_monitor.d \
+./wheel_speed_estimator.d 
 
 GEN_OPTS += \
 ./device.opt 
@@ -152,7 +154,8 @@ OBJS += \
 ./vision_tuning_console.o \
 ./vision_uart.o \
 ./vision_yaw_tuning.o \
-./watchdog_monitor.o 
+./watchdog_monitor.o \
+./wheel_speed_estimator.o 
 
 GEN_MISC_FILES += \
 ./device.cmd.genlibs \
@@ -202,7 +205,8 @@ OBJS__QUOTED += \
 "vision_tuning_console.o" \
 "vision_uart.o" \
 "vision_yaw_tuning.o" \
-"watchdog_monitor.o" 
+"watchdog_monitor.o" \
+"wheel_speed_estimator.o" 
 
 GEN_MISC_FILES__QUOTED += \
 "device.cmd.genlibs" \
@@ -252,7 +256,8 @@ C_DEPS__QUOTED += \
 "vision_tuning_console.d" \
 "vision_uart.d" \
 "vision_yaw_tuning.d" \
-"watchdog_monitor.d" 
+"watchdog_monitor.d" \
+"wheel_speed_estimator.d" 
 
 GEN_FILES__QUOTED += \
 "device_linker.cmd" \
@@ -302,7 +307,8 @@ C_SRCS__QUOTED += \
 "../vision_tuning_console.c" \
 "../vision_uart.c" \
 "../vision_yaw_tuning.c" \
-"../watchdog_monitor.c" 
+"../watchdog_monitor.c" \
+"../wheel_speed_estimator.c" 
 
 SYSCFG_SRCS__QUOTED += \
 "../empty.syscfg" 

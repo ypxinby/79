@@ -85,6 +85,15 @@ void AppConfig_InitDefault(void)
     g_appConfig.avoid_resume_grace_ms = 200;
     g_appConfig.avoid_reacquire_settle_ms = 300;
     g_appConfig.avoid_reacquire_timeout_ms = 5000U;
+
+    /* Intentionally invalid until PPR and chassis dimensions are measured. */
+    g_appConfig.encoder_ppr_x2 = WHEEL_ENCODER_PPR_X2_DEFAULT;
+    g_appConfig.wheel_diameter_cm = WHEEL_DIAMETER_CM_DEFAULT;
+    g_appConfig.wheel_track_cm = WHEEL_TRACK_CM_DEFAULT;
+    g_appConfig.left_encoder_direction =
+        LEFT_ENCODER_DIRECTION_DEFAULT;
+    g_appConfig.right_encoder_direction =
+        RIGHT_ENCODER_DIRECTION_DEFAULT;
 }
 
 void AppConfig_LimitAll(void)
