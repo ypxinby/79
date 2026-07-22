@@ -1,7 +1,7 @@
 # FIXED
 
-empty.o: ../empty.c ../app.h ../encoder.h ../gimbal.h ../gimbal_tracker.h \
- ../gimbal_vision_adapter.h ../vision_protocol.h \
+empty.o: ../empty.c ../app.h ../app_features.h ../encoder.h ../gimbal.h \
+ ../gimbal_tracker.h ../gimbal_vision_adapter.h ../vision_protocol.h \
  ../gimbal_vision_pitch_tracker.h ../gimbal_vision_yaw_tracker.h \
  ../motor.h ../servo.h ../scheduler_monitor.h \
  ti_msp_dl_config.h \
@@ -82,6 +82,7 @@ empty.o: ../empty.c ../app.h ../encoder.h ../gimbal.h ../gimbal_tracker.h \
  ../vision_yaw_tuning.h ../vision_tuning_console.h ../vision_uart.h \
  ../watchdog_monitor.h
 ../app.h:
+../app_features.h:
 ../encoder.h:
 ../gimbal.h:
 ../gimbal_tracker.h:

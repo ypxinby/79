@@ -12,6 +12,8 @@
 const SYSCTL = scripting.addModule("/ti/driverlib/SYSCTL");
 const UART   = scripting.addModule("/ti/driverlib/UART", {}, false);
 const UART1  = UART.addInstance();
+const PWM    = scripting.addModule("/ti/driverlib/PWM", {}, false);
+const PWM1   = PWM.addInstance();
 const GPIO   = scripting.addModule("/ti/driverlib/GPIO", {}, false);
 const GPIO1  = GPIO.addInstance();
 const GPIO2  = GPIO.addInstance();
@@ -45,6 +47,25 @@ UART1.enableFIFO = false;
 UART1.peripheral.txPin.$assign = "PB2";
 UART1.peripheral.rxPin.$assign = "PB3";
 
+PWM1.$name                      = "PWM_MOTOR";
+PWM1.pwmMode                    = "EDGE_ALIGN_UP";
+PWM1.clockSource                = "BUSCLK";
+PWM1.clockDivider               = 1;
+PWM1.clockPrescale              = 1;
+/* DriverLib writes LOAD = timerCount - 1: 32 MHz / 1600 = 20 kHz. */
+PWM1.timerCount                 = 1600;
+PWM1.timerStartTimer            = false;
+PWM1.enableShadowLoad           = false;
+PWM1.peripheral.$assign         = "TIMG8";
+PWM1.peripheral.ccp0Pin.$assign = "PB15";
+PWM1.peripheral.ccp1Pin.$assign = "PB16";
+PWM1.PWM_CHANNEL_0.$name        = "MOTOR_A_PWM";
+PWM1.PWM_CHANNEL_0.dutyCycle    = 0;
+PWM1.PWM_CHANNEL_0.shadowUpdateMode = "IMMEDIATE";
+PWM1.PWM_CHANNEL_1.$name        = "MOTOR_B_PWM";
+PWM1.PWM_CHANNEL_1.dutyCycle    = 0;
+PWM1.PWM_CHANNEL_1.shadowUpdateMode = "IMMEDIATE";
+
 GPIO1.$name                             = "GPIO_TB6612_A";
 GPIO1.port                              = "PORTA";
 GPIO1.associatedPins.create(2);
@@ -57,19 +78,13 @@ GPIO1.associatedPins[1].initialValue    = "CLEARED";
 
 GPIO2.$name                             = "GPIO_TB6612_B";
 GPIO2.port                              = "PORTB";
-GPIO2.associatedPins.create(4);
-GPIO2.associatedPins[0].$name           = "PWMA";
-GPIO2.associatedPins[0].assignedPin     = "15";
+GPIO2.associatedPins.create(2);
+GPIO2.associatedPins[0].$name           = "BIN1";
+GPIO2.associatedPins[0].assignedPin     = "0";
 GPIO2.associatedPins[0].initialValue    = "CLEARED";
-GPIO2.associatedPins[1].$name           = "BIN1";
-GPIO2.associatedPins[1].assignedPin     = "0";
+GPIO2.associatedPins[1].$name           = "BIN2";
+GPIO2.associatedPins[1].assignedPin     = "1";
 GPIO2.associatedPins[1].initialValue    = "CLEARED";
-GPIO2.associatedPins[2].$name           = "BIN2";
-GPIO2.associatedPins[2].assignedPin     = "1";
-GPIO2.associatedPins[2].initialValue    = "CLEARED";
-GPIO2.associatedPins[3].$name           = "PWMB";
-GPIO2.associatedPins[3].assignedPin     = "16";
-GPIO2.associatedPins[3].initialValue    = "CLEARED";
 
 GPIO3.$name                              = "GPIO_ENCODERS";
 GPIO3.port                               = "PORTA";

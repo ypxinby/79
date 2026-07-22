@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #include "app.h"
+#include "app_features.h"
 #include "encoder.h"
 #include "gimbal.h"
 #include "gimbal_tracker.h"
@@ -168,7 +169,9 @@ void SysTick_Handler(void)
     static uint8_t gimbalMsCount;
     static uint8_t trackerMsCount;
 
+#if !FEATURE_HW_MOTOR_PWM
     Motor_PwmTick100us();
+#endif
     Gimbal_Tick100us();
     Servo_Tick100us();
     Ultrasonic_Tick100us();

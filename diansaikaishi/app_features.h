@@ -17,6 +17,8 @@
 #define FEATURE_DEBUG_TELEMETRY_VISION_UART (0)
 /* P1 provides the wrapper/heartbeat only; empty.syscfg has no WWDT yet. */
 #define FEATURE_HARDWARE_WATCHDOG  (0)
+/* Keep software PWM as the default until TIMG8 PWM is verified on hardware. */
+#define FEATURE_HW_MOTOR_PWM       (1)
 
 #define ENABLE_IMU                 (1)
 #define ENABLE_HEADING_OBSERVER    (1)

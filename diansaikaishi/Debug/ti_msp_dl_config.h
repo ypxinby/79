@@ -77,6 +77,26 @@ extern "C" {
 
 
 
+/* Defines for PWM_MOTOR */
+#define PWM_MOTOR_INST                                                     TIMG8
+#define PWM_MOTOR_INST_IRQHandler                               TIMG8_IRQHandler
+#define PWM_MOTOR_INST_INT_IRQN                                 (TIMG8_INT_IRQn)
+#define PWM_MOTOR_INST_CLK_FREQ                                         32000000
+/* GPIO defines for channel 0 */
+#define GPIO_PWM_MOTOR_C0_PORT                                             GPIOB
+#define GPIO_PWM_MOTOR_C0_PIN                                     DL_GPIO_PIN_15
+#define GPIO_PWM_MOTOR_C0_IOMUX                                  (IOMUX_PINCM32)
+#define GPIO_PWM_MOTOR_C0_IOMUX_FUNC                 IOMUX_PINCM32_PF_TIMG8_CCP0
+#define GPIO_PWM_MOTOR_C0_IDX                                DL_TIMER_CC_0_INDEX
+/* GPIO defines for channel 1 */
+#define GPIO_PWM_MOTOR_C1_PORT                                             GPIOB
+#define GPIO_PWM_MOTOR_C1_PIN                                     DL_GPIO_PIN_16
+#define GPIO_PWM_MOTOR_C1_IOMUX                                  (IOMUX_PINCM33)
+#define GPIO_PWM_MOTOR_C1_IOMUX_FUNC                 IOMUX_PINCM33_PF_TIMG8_CCP1
+#define GPIO_PWM_MOTOR_C1_IDX                                DL_TIMER_CC_1_INDEX
+
+
+
 /* Defines for UART_VISION */
 #define UART_VISION_INST                                                   UART3
 #define UART_VISION_INST_FREQUENCY                                      32000000
@@ -110,18 +130,12 @@ extern "C" {
 /* Port definition for Pin Group GPIO_TB6612_B */
 #define GPIO_TB6612_B_PORT                                               (GPIOB)
 
-/* Defines for PWMA: GPIOB.15 with pinCMx 32 on package pin 3 */
-#define GPIO_TB6612_B_PWMA_PIN                                  (DL_GPIO_PIN_15)
-#define GPIO_TB6612_B_PWMA_IOMUX                                 (IOMUX_PINCM32)
 /* Defines for BIN1: GPIOB.0 with pinCMx 12 on package pin 47 */
 #define GPIO_TB6612_B_BIN1_PIN                                   (DL_GPIO_PIN_0)
 #define GPIO_TB6612_B_BIN1_IOMUX                                 (IOMUX_PINCM12)
 /* Defines for BIN2: GPIOB.1 with pinCMx 13 on package pin 48 */
 #define GPIO_TB6612_B_BIN2_PIN                                   (DL_GPIO_PIN_1)
 #define GPIO_TB6612_B_BIN2_IOMUX                                 (IOMUX_PINCM13)
-/* Defines for PWMB: GPIOB.16 with pinCMx 33 on package pin 4 */
-#define GPIO_TB6612_B_PWMB_PIN                                  (DL_GPIO_PIN_16)
-#define GPIO_TB6612_B_PWMB_IOMUX                                 (IOMUX_PINCM33)
 /* Port definition for Pin Group GPIO_ENCODERS */
 #define GPIO_ENCODERS_PORT                                               (GPIOA)
 
@@ -251,6 +265,7 @@ void SYSCFG_DL_init(void);
 void SYSCFG_DL_initPower(void);
 void SYSCFG_DL_GPIO_init(void);
 void SYSCFG_DL_SYSCTL_init(void);
+void SYSCFG_DL_PWM_MOTOR_init(void);
 void SYSCFG_DL_UART_VISION_init(void);
 
 
