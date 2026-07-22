@@ -134,12 +134,26 @@ void RuntimeSnapshot_Update(uint32_t timestamp_ms)
         motorControl->left.feedforward_term;
     g_snapshot.motor_control_right_feedforward_term =
         motorControl->right.feedforward_term;
+    g_snapshot.motor_control_left_kp_used = motorControl->left.kp_used;
+    g_snapshot.motor_control_right_kp_used = motorControl->right.kp_used;
     g_snapshot.motor_control_left_output =
         motorControl->left.output_command;
     g_snapshot.motor_control_right_output =
         motorControl->right.output_command;
     g_snapshot.motor_control_left_saturated = motorControl->left.saturated;
     g_snapshot.motor_control_right_saturated = motorControl->right.saturated;
+    g_snapshot.motor_control_left_overspeed_gain_active =
+        motorControl->left.overspeed_gain_active;
+    g_snapshot.motor_control_right_overspeed_gain_active =
+        motorControl->right.overspeed_gain_active;
+    g_snapshot.motor_control_left_error_sign_changed =
+        motorControl->left.error_sign_changed;
+    g_snapshot.motor_control_right_error_sign_changed =
+        motorControl->right.error_sign_changed;
+    g_snapshot.motor_control_left_integral_releasing =
+        motorControl->left.integral_releasing;
+    g_snapshot.motor_control_right_integral_releasing =
+        motorControl->right.integral_releasing;
 }
 
 const RuntimeSnapshot *RuntimeSnapshot_Get(void)

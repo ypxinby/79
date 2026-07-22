@@ -87,10 +87,18 @@ typedef struct {
     float motor_control_right_integral_term;
     float motor_control_left_feedforward_term;
     float motor_control_right_feedforward_term;
+    float motor_control_left_kp_used;
+    float motor_control_right_kp_used;
     int16_t motor_control_left_output;
     int16_t motor_control_right_output;
     bool motor_control_left_saturated;
     bool motor_control_right_saturated;
+    bool motor_control_left_overspeed_gain_active;
+    bool motor_control_right_overspeed_gain_active;
+    bool motor_control_left_error_sign_changed;
+    bool motor_control_right_error_sign_changed;
+    bool motor_control_left_integral_releasing;
+    bool motor_control_right_integral_releasing;
 } RuntimeSnapshot;
 
 void RuntimeSnapshot_Init(void);

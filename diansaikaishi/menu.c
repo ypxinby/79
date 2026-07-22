@@ -40,6 +40,8 @@ static void menu_next_main_page(void)
         g_oledPage = OLED_PAGE_ENCODER;
     } else if (g_oledPage == OLED_PAGE_ENCODER) {
         g_oledPage = OLED_PAGE_MOTOR_CONTROL;
+    } else if (g_oledPage == OLED_PAGE_MOTOR_CONTROL) {
+        g_oledPage = OLED_PAGE_MOTOR_CONTROL_DETAIL;
     } else {
         g_oledPage = OLED_PAGE_STATUS;
     }

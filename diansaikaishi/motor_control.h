@@ -26,9 +26,14 @@ typedef struct {
     float proportional_term;
     float integral_term;
     float feedforward_term;
+    float kp_used;
     int16_t output_command;
+    int8_t last_error_sign;
     bool saturated;
     bool direction_change_pending;
+    bool overspeed_gain_active;
+    bool error_sign_changed;
+    bool integral_releasing;
 } MotorControlWheelRuntime;
 
 typedef struct {

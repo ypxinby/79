@@ -52,6 +52,20 @@ static int16_t clamp_display_float_i16(float value)
     return (int16_t)value;
 }
 
+static int16_t clamp_control_term_i16(float value)
+{
+    if (value != value) {
+        return 0;
+    }
+    if (value > 999.0f) {
+        return 999;
+    }
+    if (value < -999.0f) {
+        return -999;
+    }
+    return (int16_t)value;
+}
+
 static void print_uint64_decimal(uint64_t value)
 {
     char digits[20];
@@ -378,6 +392,56 @@ static void print_motor_control_page(void)
     OLED_PrintInt16(wheel->stale ? 1 : 0);
     OLED_PrintString(" E:");
     print_uint64_decimal((uint64_t)control->error_flags);
+}
+
+static void print_motor_control_detail_page(void)
+{
+    const MotorControlRuntime *control = MotorControl_GetRuntime();
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("E:");
+    OLED_PrintInt16(clamp_control_term_i16(control->left.error_cmps));
+    OLED_PrintChar('/');
+    OLED_PrintInt16(clamp_control_term_i16(control->right.error_cmps));
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("F:");
+    OLED_PrintInt16(clamp_control_term_i16(
+        control->left.feedforward_term));
+    OLED_PrintChar('/');
+    OLED_PrintInt16(clamp_control_term_i16(
+        control->right.feedforward_term));
+    OLED_PrintString(" P:");
+    OLED_PrintInt16(clamp_control_term_i16(
+        control->left.proportional_term));
+    OLED_PrintChar('/');
+    OLED_PrintInt16(clamp_control_term_i16(
+        control->right.proportional_term));
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("IV:");
+    OLED_PrintInt16(clamp_control_term_i16(control->left.integral));
+    OLED_PrintChar('/');
+    OLED_PrintInt16(clamp_control_term_i16(control->right.integral));
+    OLED_PrintString(" I:");
+    OLED_PrintInt16(clamp_control_term_i16(control->left.integral_term));
+    OLED_PrintChar('/');
+    OLED_PrintInt16(clamp_control_term_i16(control->right.integral_term));
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("K:");
+    OLED_PrintInt16(clamp_control_term_i16(control->left.kp_used));
+    OLED_PrintChar('/');
+    OLED_PrintInt16(clamp_control_term_i16(control->right.kp_used));
+    OLED_PrintString(" M");
+    OLED_PrintChar(control->left.overspeed_gain_active ? 'O' : 'A');
+    OLED_PrintChar(control->right.overspeed_gain_active ? 'O' : 'A');
+    OLED_PrintString(" R");
+    OLED_PrintChar(control->left.integral_releasing ? '1' : '0');
+    OLED_PrintChar(control->right.integral_releasing ? '1' : '0');
+    OLED_PrintString(" X");
+    OLED_PrintChar(control->left.error_sign_changed ? '1' : '0');
+    OLED_PrintChar(control->right.error_sign_changed ? '1' : '0');
 }
 
 static void print_param_page(uint8_t keyEvent)
@@ -1119,6 +1183,9 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
             break;
         case OLED_PAGE_MOTOR_CONTROL:
             print_motor_control_page();
+            break;
+        case OLED_PAGE_MOTOR_CONTROL_DETAIL:
+            print_motor_control_detail_page();
             break;
         case OLED_PAGE_GIMBAL:
 #if FEATURE_GIMBAL_OLED_TEST

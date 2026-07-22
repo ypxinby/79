@@ -23,6 +23,8 @@
 #define FEATURE_WHEEL_SPEED_ESTIMATOR (1)
 /* P4A closed-loop control is enabled after hardware validation. */
 #define FEATURE_WHEEL_SPEED_CONTROL (1)
+/* Set to 0 to restore the validated P4A PI/feedforward behavior. */
+#define FEATURE_MOTOR_CONTROL_FAST_SETTLING (1)
 /* Minimal closed-loop test: select 10/20/30 cm/s and start with K2 short. */
 #define FEATURE_WHEEL_SPEED_TEST    (1)
 #define WHEEL_SPEED_TEST_TARGET_CMPS (30)

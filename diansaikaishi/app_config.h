@@ -10,15 +10,20 @@
 #define LEFT_ENCODER_DIRECTION_DEFAULT     (-1)
 #define RIGHT_ENCODER_DIRECTION_DEFAULT    (1)
 
-/* P4A initial experiment values: all require elevated-wheel calibration. */
+/* P4 control values; fast-settling additions still require vehicle retest. */
 #define WHEEL_CONTROL_MAX_SPEED_CMPS_DEFAULT      (60.0f)
 #define WHEEL_CONTROL_LEFT_KP_DEFAULT             (4.0f)
 #define WHEEL_CONTROL_LEFT_KI_DEFAULT             (1.0f)
 #define WHEEL_CONTROL_RIGHT_KP_DEFAULT            (4.0f)
 #define WHEEL_CONTROL_RIGHT_KI_DEFAULT            (1.0f)
-#define WHEEL_CONTROL_LEFT_FF_GAIN_DEFAULT        (1.0f)
-#define WHEEL_CONTROL_RIGHT_FF_GAIN_DEFAULT       (1.0f)
+#define WHEEL_CONTROL_LEFT_KP_OVERSPEED_DEFAULT   (5.0f)
+#define WHEEL_CONTROL_RIGHT_KP_OVERSPEED_DEFAULT  (5.0f)
+#define WHEEL_CONTROL_LEFT_FF_GAIN_DEFAULT        (0.5f)
+#define WHEEL_CONTROL_RIGHT_FF_GAIN_DEFAULT       (0.5f)
+#define WHEEL_CONTROL_LEFT_FF_GAIN_LEGACY         (1.0f)
+#define WHEEL_CONTROL_RIGHT_FF_GAIN_LEGACY        (1.0f)
 #define WHEEL_CONTROL_INTEGRAL_LIMIT_DEFAULT      (300.0f)
+#define WHEEL_CONTROL_INTEGRAL_RELEASE_MULTIPLIER_DEFAULT (4.0f)
 #define WHEEL_CONTROL_MAX_ACCEL_CMPS2_DEFAULT     (60.0f)
 #define WHEEL_CONTROL_MAX_DECEL_CMPS2_DEFAULT     (120.0f)
 #define WHEEL_CONTROL_TARGET_TIMEOUT_MS_DEFAULT   (100U)
@@ -96,9 +101,12 @@ typedef struct {
     float wheel_control_left_ki;
     float wheel_control_right_kp;
     float wheel_control_right_ki;
+    float wheel_control_left_kp_overspeed;
+    float wheel_control_right_kp_overspeed;
     float wheel_control_left_feedforward_gain;
     float wheel_control_right_feedforward_gain;
     float wheel_control_integral_limit;
+    float wheel_control_integral_release_multiplier;
     float wheel_control_max_accel_cmps2;
     float wheel_control_max_decel_cmps2;
     uint32_t wheel_control_target_timeout_ms;

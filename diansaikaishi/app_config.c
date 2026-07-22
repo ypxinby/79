@@ -1,4 +1,5 @@
 #include "app_config.h"
+#include "app_features.h"
 #include "track_sensor.h"
 
 AppConfig g_appConfig;
@@ -95,19 +96,32 @@ void AppConfig_InitDefault(void)
     g_appConfig.right_encoder_direction =
         RIGHT_ENCODER_DIRECTION_DEFAULT;
 
-    /* P4A control defaults are conservative starting points, not calibration. */
+    /* P4 defaults include the 30 cm/s fast-settling vehicle-test update. */
     g_appConfig.wheel_control_max_speed_cmps =
         WHEEL_CONTROL_MAX_SPEED_CMPS_DEFAULT;
     g_appConfig.wheel_control_left_kp = WHEEL_CONTROL_LEFT_KP_DEFAULT;
     g_appConfig.wheel_control_left_ki = WHEEL_CONTROL_LEFT_KI_DEFAULT;
     g_appConfig.wheel_control_right_kp = WHEEL_CONTROL_RIGHT_KP_DEFAULT;
     g_appConfig.wheel_control_right_ki = WHEEL_CONTROL_RIGHT_KI_DEFAULT;
+    g_appConfig.wheel_control_left_kp_overspeed =
+        WHEEL_CONTROL_LEFT_KP_OVERSPEED_DEFAULT;
+    g_appConfig.wheel_control_right_kp_overspeed =
+        WHEEL_CONTROL_RIGHT_KP_OVERSPEED_DEFAULT;
+#if FEATURE_MOTOR_CONTROL_FAST_SETTLING
     g_appConfig.wheel_control_left_feedforward_gain =
         WHEEL_CONTROL_LEFT_FF_GAIN_DEFAULT;
     g_appConfig.wheel_control_right_feedforward_gain =
         WHEEL_CONTROL_RIGHT_FF_GAIN_DEFAULT;
+#else
+    g_appConfig.wheel_control_left_feedforward_gain =
+        WHEEL_CONTROL_LEFT_FF_GAIN_LEGACY;
+    g_appConfig.wheel_control_right_feedforward_gain =
+        WHEEL_CONTROL_RIGHT_FF_GAIN_LEGACY;
+#endif
     g_appConfig.wheel_control_integral_limit =
         WHEEL_CONTROL_INTEGRAL_LIMIT_DEFAULT;
+    g_appConfig.wheel_control_integral_release_multiplier =
+        WHEEL_CONTROL_INTEGRAL_RELEASE_MULTIPLIER_DEFAULT;
     g_appConfig.wheel_control_max_accel_cmps2 =
         WHEEL_CONTROL_MAX_ACCEL_CMPS2_DEFAULT;
     g_appConfig.wheel_control_max_decel_cmps2 =

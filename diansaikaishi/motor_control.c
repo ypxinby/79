@@ -17,6 +17,7 @@
 #define MOTOR_CONTROL_CONFIG_GAIN_MAX        (100.0f)
 #define MOTOR_CONTROL_CONFIG_FF_MAX           (2.0f)
 #define MOTOR_CONTROL_CONFIG_INTEGRAL_MAX    (10000.0f)
+#define MOTOR_CONTROL_CONFIG_RELEASE_MAX     (20.0f)
 #define MOTOR_CONTROL_CONFIG_RAMP_MAX_CMPS2  (2000.0f)
 #define MOTOR_CONTROL_TARGET_TIMEOUT_MAX_MS  (2000U)
 #define MOTOR_CONTROL_FEEDBACK_MAX_CMPS      (1000.0f)
@@ -89,6 +90,12 @@ static bool config_is_valid(void)
         config_value_in_range(g_appConfig.wheel_control_right_ki, 0.0f,
             MOTOR_CONTROL_CONFIG_GAIN_MAX) &&
         config_value_in_range(
+            g_appConfig.wheel_control_left_kp_overspeed, 0.0f,
+            MOTOR_CONTROL_CONFIG_GAIN_MAX) &&
+        config_value_in_range(
+            g_appConfig.wheel_control_right_kp_overspeed, 0.0f,
+            MOTOR_CONTROL_CONFIG_GAIN_MAX) &&
+        config_value_in_range(
             g_appConfig.wheel_control_left_feedforward_gain, 0.0f,
             MOTOR_CONTROL_CONFIG_FF_MAX) &&
         config_value_in_range(
@@ -96,6 +103,9 @@ static bool config_is_valid(void)
             MOTOR_CONTROL_CONFIG_FF_MAX) &&
         config_value_in_range(g_appConfig.wheel_control_integral_limit,
             0.1f, MOTOR_CONTROL_CONFIG_INTEGRAL_MAX) &&
+        config_value_in_range(
+            g_appConfig.wheel_control_integral_release_multiplier, 1.0f,
+            MOTOR_CONTROL_CONFIG_RELEASE_MAX) &&
         config_value_in_range(g_appConfig.wheel_control_max_accel_cmps2,
             0.1f, MOTOR_CONTROL_CONFIG_RAMP_MAX_CMPS2) &&
         config_value_in_range(g_appConfig.wheel_control_max_decel_cmps2,
@@ -124,9 +134,14 @@ static void clear_wheel_controller(MotorControlWheelRuntime *wheel,
     wheel->proportional_term = 0.0f;
     wheel->integral_term = 0.0f;
     wheel->feedforward_term = 0.0f;
+    wheel->kp_used = 0.0f;
     wheel->output_command = 0;
+    wheel->last_error_sign = 0;
     wheel->saturated = false;
     wheel->direction_change_pending = false;
+    wheel->overspeed_gain_active = false;
+    wheel->error_sign_changed = false;
+    wheel->integral_releasing = false;
 }
 
 static void stop_output(bool clear_target)
@@ -201,8 +216,13 @@ static bool update_ramped_target(MotorControlWheelRuntime *wheel,
             wheel->proportional_term = 0.0f;
             wheel->integral_term = 0.0f;
             wheel->feedforward_term = 0.0f;
+            wheel->kp_used = 0.0f;
             wheel->output_command = 0;
+            wheel->last_error_sign = 0;
             wheel->saturated = false;
+            wheel->overspeed_gain_active = false;
+            wheel->error_sign_changed = false;
+            wheel->integral_releasing = false;
             wheel->error_cmps = wheel->ramped_target_speed_cmps -
                 wheel->measured_speed_cmps;
             if (wheel->ramped_target_speed_cmps == 0.0f) {
@@ -226,8 +246,9 @@ static bool update_ramped_target(MotorControlWheelRuntime *wheel,
     return true;
 }
 
-static int16_t update_wheel(MotorControlWheelRuntime *wheel, float kp,
-    float ki, float feedforward_gain, float elapsed_seconds)
+static int16_t update_wheel(MotorControlWheelRuntime *wheel,
+    float kp_accel, float kp_overspeed, float ki,
+    float feedforward_gain, float elapsed_seconds)
 {
     float candidate_integral;
     float candidate_integral_term;
@@ -235,6 +256,7 @@ static int16_t update_wheel(MotorControlWheelRuntime *wheel, float kp,
     float minimum_output;
     float maximum_output;
     float limited_output;
+    int8_t error_sign;
     bool reject_integral;
 
     if (!update_ramped_target(wheel, elapsed_seconds)) {
@@ -243,14 +265,50 @@ static int16_t update_wheel(MotorControlWheelRuntime *wheel, float kp,
 
     wheel->error_cmps = wheel->ramped_target_speed_cmps -
         wheel->measured_speed_cmps;
-    wheel->proportional_term = kp * wheel->error_cmps;
+    error_sign = sign_float(wheel->error_cmps);
+    wheel->error_sign_changed = (error_sign != 0) &&
+        (wheel->last_error_sign != 0) &&
+        (error_sign != wheel->last_error_sign);
+    if (error_sign != 0) {
+        wheel->last_error_sign = error_sign;
+    }
+
+#if FEATURE_MOTOR_CONTROL_FAST_SETTLING
+    wheel->overspeed_gain_active =
+        ((wheel->ramped_target_speed_cmps > 0.0f) &&
+            (wheel->error_cmps < 0.0f)) ||
+        ((wheel->ramped_target_speed_cmps < 0.0f) &&
+            (wheel->error_cmps > 0.0f));
+    wheel->kp_used = wheel->overspeed_gain_active ?
+        kp_overspeed : kp_accel;
+    wheel->integral_releasing =
+        ((wheel->ramped_target_speed_cmps > 0.0f) &&
+            (wheel->error_cmps < 0.0f) && (wheel->integral > 0.0f)) ||
+        ((wheel->ramped_target_speed_cmps < 0.0f) &&
+            (wheel->error_cmps > 0.0f) && (wheel->integral < 0.0f));
+#else
+    (void)kp_overspeed;
+    wheel->overspeed_gain_active = false;
+    wheel->kp_used = kp_accel;
+    wheel->integral_releasing = false;
+#endif
+    wheel->proportional_term = wheel->kp_used * wheel->error_cmps;
     wheel->feedforward_term =
         (wheel->ramped_target_speed_cmps /
             g_appConfig.wheel_control_max_speed_cmps) *
         (float)MOTOR_MAX_DUTY * feedforward_gain;
 
-    candidate_integral = wheel->integral +
-        wheel->error_cmps * elapsed_seconds;
+    candidate_integral = wheel->integral + wheel->error_cmps *
+        elapsed_seconds * (wheel->integral_releasing ?
+            g_appConfig.wheel_control_integral_release_multiplier : 1.0f);
+    if (wheel->integral_releasing) {
+        if ((wheel->integral > 0.0f) && (candidate_integral < 0.0f)) {
+            candidate_integral = 0.0f;
+        } else if ((wheel->integral < 0.0f) &&
+            (candidate_integral > 0.0f)) {
+            candidate_integral = 0.0f;
+        }
+    }
     candidate_integral = clamp_float(candidate_integral,
         -g_appConfig.wheel_control_integral_limit,
         g_appConfig.wheel_control_integral_limit);
@@ -271,7 +329,7 @@ static int16_t update_wheel(MotorControlWheelRuntime *wheel, float kp,
             (wheel->error_cmps > 0.0f)) ||
         ((unsaturated_output < minimum_output) &&
             (wheel->error_cmps < 0.0f));
-    if (!reject_integral) {
+    if (wheel->integral_releasing || !reject_integral) {
         wheel->integral = candidate_integral;
     }
     wheel->integral_term = ki * wheel->integral;
@@ -469,10 +527,12 @@ void MotorControl_Update(uint32_t elapsed_ms)
     elapsed_seconds = (float)elapsed_ms / 1000.0f;
     left_output = update_wheel(&g_runtime.left,
         g_appConfig.wheel_control_left_kp,
+        g_appConfig.wheel_control_left_kp_overspeed,
         g_appConfig.wheel_control_left_ki,
         g_appConfig.wheel_control_left_feedforward_gain, elapsed_seconds);
     right_output = update_wheel(&g_runtime.right,
         g_appConfig.wheel_control_right_kp,
+        g_appConfig.wheel_control_right_kp_overspeed,
         g_appConfig.wheel_control_right_ki,
         g_appConfig.wheel_control_right_feedforward_gain, elapsed_seconds);
 
