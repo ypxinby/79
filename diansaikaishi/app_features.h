@@ -21,11 +21,25 @@
 #define FEATURE_HW_MOTOR_PWM       (1)
 /* P3 observation only; no wheel-speed feedback is connected to control. */
 #define FEATURE_WHEEL_SPEED_ESTIMATOR (1)
-/* P4A defaults off until the PI skeleton passes elevated-wheel testing. */
+/* P4A closed-loop control is enabled after hardware validation. */
 #define FEATURE_WHEEL_SPEED_CONTROL (1)
+/* Minimal closed-loop test: select 10/20/30 cm/s and start with K2 short. */
+#define FEATURE_WHEEL_SPEED_TEST    (1)
+#define WHEEL_SPEED_TEST_TARGET_CMPS (30)
 
 #if FEATURE_WHEEL_SPEED_CONTROL && !FEATURE_WHEEL_SPEED_ESTIMATOR
 #error FEATURE_WHEEL_SPEED_CONTROL requires FEATURE_WHEEL_SPEED_ESTIMATOR
+#endif
+
+#if FEATURE_WHEEL_SPEED_TEST && !FEATURE_WHEEL_SPEED_CONTROL
+#error FEATURE_WHEEL_SPEED_TEST requires FEATURE_WHEEL_SPEED_CONTROL
+#endif
+
+#if FEATURE_WHEEL_SPEED_TEST && \
+    (WHEEL_SPEED_TEST_TARGET_CMPS != 10) && \
+    (WHEEL_SPEED_TEST_TARGET_CMPS != 20) && \
+    (WHEEL_SPEED_TEST_TARGET_CMPS != 30)
+#error WHEEL_SPEED_TEST_TARGET_CMPS must be 10, 20, or 30
 #endif
 
 #define ENABLE_IMU                 (1)

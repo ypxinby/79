@@ -49,6 +49,8 @@ typedef struct {
 void MotorControl_Init(void);
 void MotorControl_SetNormalizedTarget(int16_t left_command,
     int16_t right_command);
+void MotorControl_SetSpeedTargetCmps(float left_target_cmps,
+    float right_target_cmps);
 void MotorControl_Update(uint32_t elapsed_ms);
 void MotorControl_Stop(void);
 void MotorControl_Reset(void);

@@ -62,6 +62,22 @@ static void App_UpdateHeadingObserver(uint32_t elapsed_ms)
 #endif
 }
 
+#if FEATURE_WHEEL_SPEED_TEST
+static void App_UpdateWheelSpeedTest(uint32_t elapsed_ms)
+{
+    ObstacleSafety_Update_20ms();
+    if ((CarState_Get() == CAR_STATE_RUNNING) &&
+        !CarController_IsSafetyHoldActive()) {
+        MotorControl_SetSpeedTargetCmps(
+            (float)WHEEL_SPEED_TEST_TARGET_CMPS,
+            (float)WHEEL_SPEED_TEST_TARGET_CMPS);
+    } else {
+        MotorControl_Stop();
+    }
+    MotorControl_Update(elapsed_ms);
+}
+#endif
+
 static void App_UpdateDebugAndUi(uint32_t timestamp_ms)
 {
     g_trackRaw = g_appRuntime.sensor_raw;
@@ -165,12 +181,16 @@ void App_Update_20ms(uint32_t elapsed_ms)
         return;
     }
 
+#if FEATURE_WHEEL_SPEED_TEST
+    App_UpdateWheelSpeedTest(elapsed_ms);
+#else
     MissionManager_Update_20ms(elapsed_ms);
     ObstacleSafety_Update_20ms();
     ObstacleAvoidance_Update_20ms(elapsed_ms);
     CarController_Update_20ms(elapsed_ms);
 #if FEATURE_WHEEL_SPEED_CONTROL
     MotorControl_Update(elapsed_ms);
+#endif
 #endif
 
     App_UpdateDebugAndUi(SystemTime_GetMs());

@@ -321,6 +321,54 @@ void MotorControl_SetNormalizedTarget(int16_t left_command,
     g_targetRefreshed = true;
 }
 
+void MotorControl_SetSpeedTargetCmps(float left_target_cmps,
+    float right_target_cmps)
+{
+    float maximum_speed = g_appConfig.wheel_control_max_speed_cmps;
+    float left_normalized;
+    float right_normalized;
+
+    if (!config_value_in_range(maximum_speed, 0.1f,
+        MOTOR_CONTROL_CONFIG_SPEED_MAX_CMPS)) {
+        g_runtime.left.normalized_target = 0;
+        g_runtime.right.normalized_target = 0;
+        g_runtime.left.raw_target_speed_cmps = 0.0f;
+        g_runtime.right.raw_target_speed_cmps = 0.0f;
+        g_runtime.target_age_ms = 0U;
+        g_targetRefreshed = true;
+        return;
+    }
+
+    if (left_target_cmps != left_target_cmps) {
+        left_target_cmps = 0.0f;
+    }
+    if (right_target_cmps != right_target_cmps) {
+        right_target_cmps = 0.0f;
+    }
+    left_target_cmps = clamp_float(left_target_cmps, -maximum_speed,
+        maximum_speed);
+    right_target_cmps = clamp_float(right_target_cmps, -maximum_speed,
+        maximum_speed);
+
+    left_normalized = (left_target_cmps / maximum_speed) *
+        (float)MOTOR_MAX_DUTY;
+    right_normalized = (right_target_cmps / maximum_speed) *
+        (float)MOTOR_MAX_DUTY;
+    left_normalized += (left_normalized > 0.0f) ? 0.5f :
+        ((left_normalized < 0.0f) ? -0.5f : 0.0f);
+    right_normalized += (right_normalized > 0.0f) ? 0.5f :
+        ((right_normalized < 0.0f) ? -0.5f : 0.0f);
+
+    g_runtime.left.normalized_target = clamp_normalized_command(
+        (int16_t)left_normalized);
+    g_runtime.right.normalized_target = clamp_normalized_command(
+        (int16_t)right_normalized);
+    g_runtime.left.raw_target_speed_cmps = left_target_cmps;
+    g_runtime.right.raw_target_speed_cmps = right_target_cmps;
+    g_runtime.target_age_ms = 0U;
+    g_targetRefreshed = true;
+}
+
 void MotorControl_Update(uint32_t elapsed_ms)
 {
     const volatile WheelSpeedEstimatorRuntime *wheel =
