@@ -3,12 +3,12 @@
 
 #include <stdint.h>
 
-/* P3 calibration placeholders: replace only after physical measurement. */
-#define WHEEL_ENCODER_PPR_X2_DEFAULT       (0U)    /* TODO: measure */
-#define WHEEL_DIAMETER_CM_DEFAULT          (0.0f)  /* TODO: measure */
-#define WHEEL_TRACK_CM_DEFAULT             (0.0f)  /* TODO: measure */
-#define LEFT_ENCODER_DIRECTION_DEFAULT     (1)     /* TODO: verify sign */
-#define RIGHT_ENCODER_DIRECTION_DEFAULT    (1)     /* TODO: verify sign */
+/* P3 measured chassis and current ENCA both-edge x2 decoder calibration. */
+#define WHEEL_ENCODER_PPR_X2_DEFAULT       (734U)
+#define WHEEL_DIAMETER_CM_DEFAULT          (6.5f)
+#define WHEEL_TRACK_CM_DEFAULT             (11.25f)
+#define LEFT_ENCODER_DIRECTION_DEFAULT     (-1)
+#define RIGHT_ENCODER_DIRECTION_DEFAULT    (1)
 
 typedef struct {
     uint8_t target_laps;
