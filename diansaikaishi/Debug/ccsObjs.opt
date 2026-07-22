@@ -23,6 +23,7 @@
 "./mission_manager.o"
 "./motion_action.o"
 "./motor.o"
+"./motor_control.o"
 "./obstacle_avoidance.o"
 "./obstacle_monitor.o"
 "./obstacle_safety.o"

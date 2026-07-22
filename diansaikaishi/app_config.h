@@ -10,6 +10,19 @@
 #define LEFT_ENCODER_DIRECTION_DEFAULT     (-1)
 #define RIGHT_ENCODER_DIRECTION_DEFAULT    (1)
 
+/* P4A initial experiment values: all require elevated-wheel calibration. */
+#define WHEEL_CONTROL_MAX_SPEED_CMPS_DEFAULT      (60.0f)
+#define WHEEL_CONTROL_LEFT_KP_DEFAULT             (4.0f)
+#define WHEEL_CONTROL_LEFT_KI_DEFAULT             (1.0f)
+#define WHEEL_CONTROL_RIGHT_KP_DEFAULT            (4.0f)
+#define WHEEL_CONTROL_RIGHT_KI_DEFAULT            (1.0f)
+#define WHEEL_CONTROL_LEFT_FF_GAIN_DEFAULT        (1.0f)
+#define WHEEL_CONTROL_RIGHT_FF_GAIN_DEFAULT       (1.0f)
+#define WHEEL_CONTROL_INTEGRAL_LIMIT_DEFAULT      (300.0f)
+#define WHEEL_CONTROL_MAX_ACCEL_CMPS2_DEFAULT     (60.0f)
+#define WHEEL_CONTROL_MAX_DECEL_CMPS2_DEFAULT     (120.0f)
+#define WHEEL_CONTROL_TARGET_TIMEOUT_MS_DEFAULT   (100U)
+
 typedef struct {
     uint8_t target_laps;
     uint8_t min_target_laps;
@@ -77,6 +90,18 @@ typedef struct {
     float wheel_track_cm;
     int8_t left_encoder_direction;
     int8_t right_encoder_direction;
+
+    float wheel_control_max_speed_cmps;
+    float wheel_control_left_kp;
+    float wheel_control_left_ki;
+    float wheel_control_right_kp;
+    float wheel_control_right_ki;
+    float wheel_control_left_feedforward_gain;
+    float wheel_control_right_feedforward_gain;
+    float wheel_control_integral_limit;
+    float wheel_control_max_accel_cmps2;
+    float wheel_control_max_decel_cmps2;
+    uint32_t wheel_control_target_timeout_ms;
 } AppConfig;
 
 extern AppConfig g_appConfig;

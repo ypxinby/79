@@ -34,6 +34,7 @@ C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/m0p/startup_system_files/ticlan
 ../mission_manager.c \
 ../motion_action.c \
 ../motor.c \
+../motor_control.c \
 ../obstacle_avoidance.c \
 ../obstacle_monitor.c \
 ../obstacle_safety.c \
@@ -88,6 +89,7 @@ C_DEPS += \
 ./mission_manager.d \
 ./motion_action.d \
 ./motor.d \
+./motor_control.d \
 ./obstacle_avoidance.d \
 ./obstacle_monitor.d \
 ./obstacle_safety.d \
@@ -137,6 +139,7 @@ OBJS += \
 ./mission_manager.o \
 ./motion_action.o \
 ./motor.o \
+./motor_control.o \
 ./obstacle_avoidance.o \
 ./obstacle_monitor.o \
 ./obstacle_safety.o \
@@ -188,6 +191,7 @@ OBJS__QUOTED += \
 "mission_manager.o" \
 "motion_action.o" \
 "motor.o" \
+"motor_control.o" \
 "obstacle_avoidance.o" \
 "obstacle_monitor.o" \
 "obstacle_safety.o" \
@@ -239,6 +243,7 @@ C_DEPS__QUOTED += \
 "mission_manager.d" \
 "motion_action.d" \
 "motor.d" \
+"motor_control.d" \
 "obstacle_avoidance.d" \
 "obstacle_monitor.d" \
 "obstacle_safety.d" \
@@ -290,6 +295,7 @@ C_SRCS__QUOTED += \
 "../mission_manager.c" \
 "../motion_action.c" \
 "../motor.c" \
+"../motor_control.c" \
 "../obstacle_avoidance.c" \
 "../obstacle_monitor.c" \
 "../obstacle_safety.c" \

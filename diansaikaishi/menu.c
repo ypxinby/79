@@ -10,6 +10,7 @@
 #include "gimbal_vision_pitch_tracker.h"
 #include "gimbal_vision_yaw_tracker.h"
 #include "mission_manager.h"
+#include "motor_control.h"
 #include "obstacle_avoidance.h"
 #include "watchdog_monitor.h"
 
@@ -30,11 +31,15 @@ static void menu_enter_param_page(ParamItem item, uint8_t select_item)
 static void menu_next_main_page(void)
 {
     if (g_oledPage == OLED_PAGE_STATUS) {
+        g_oledPage = OLED_PAGE_SENSOR;
+    } else if (g_oledPage == OLED_PAGE_SENSOR) {
         g_oledPage = OLED_PAGE_HEADING;
     } else if (g_oledPage == OLED_PAGE_HEADING) {
         g_oledPage = OLED_PAGE_OBSTACLE;
     } else if (g_oledPage == OLED_PAGE_OBSTACLE) {
         g_oledPage = OLED_PAGE_ENCODER;
+    } else if (g_oledPage == OLED_PAGE_ENCODER) {
+        g_oledPage = OLED_PAGE_MOTOR_CONTROL;
     } else {
         g_oledPage = OLED_PAGE_STATUS;
     }
@@ -48,8 +53,7 @@ static uint8_t menu_is_debug_page(OledPage page)
         (page == OLED_PAGE_GIMBAL_VISION_YAW) ||
         (page == OLED_PAGE_GIMBAL_TRACKER) ||
         (page == OLED_PAGE_GIMBAL_TRACKER_PITCH) ||
-        (page == OLED_PAGE_IMU) ||
-        (page == OLED_PAGE_SENSOR)) ? 1U : 0U;
+        (page == OLED_PAGE_IMU)) ? 1U : 0U;
 }
 
 static void menu_next_debug_page(void)
@@ -71,9 +75,6 @@ static void menu_next_debug_page(void)
             g_oledPage = OLED_PAGE_IMU;
             break;
         case OLED_PAGE_IMU:
-            g_oledPage = OLED_PAGE_SENSOR;
-            break;
-        case OLED_PAGE_SENSOR:
         default:
             g_oledPage = OLED_PAGE_VISION_RECEIVER;
             break;
@@ -414,6 +415,9 @@ static void menu_handle_status_key(KeyEvent event)
             ObstacleAvoidance_Init();
             CarController_ResetRuntime();
             MissionManager_Reset();
+#if FEATURE_WHEEL_SPEED_CONTROL
+            MotorControl_Reset();
+#endif
             g_oledPage = OLED_PAGE_STATUS;
             break;
         default:

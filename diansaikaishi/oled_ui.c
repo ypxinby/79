@@ -15,6 +15,7 @@
 #include "gimbal_vision_yaw_tracker.h"
 #include "mission_manager.h"
 #include "motion_action.h"
+#include "motor_control.h"
 #include "obstacle_avoidance.h"
 #include "obstacle_monitor.h"
 #include "obstacle_scanner.h"
@@ -32,6 +33,20 @@ static int16_t clamp_display_i16(int32_t value)
         return 32767;
     }
     if (value < -32768) {
+        return -32768;
+    }
+    return (int16_t)value;
+}
+
+static int16_t clamp_display_float_i16(float value)
+{
+    if (value != value) {
+        return 0;
+    }
+    if (value > 32767.0f) {
+        return 32767;
+    }
+    if (value < -32768.0f) {
         return -32768;
     }
     return (int16_t)value;
@@ -330,6 +345,41 @@ static void print_encoder_page(void)
     print_uint64_decimal((uint64_t)wheel->error_flags);
 }
 
+static void print_motor_control_page(void)
+{
+    const MotorControlRuntime *control = MotorControl_GetRuntime();
+    const volatile WheelSpeedEstimatorRuntime *wheel =
+        WheelSpeedEstimator_GetRuntime();
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("LT:");
+    OLED_PrintInt16(clamp_display_float_i16(
+        control->left.ramped_target_speed_cmps));
+    OLED_PrintString(" RT:");
+    OLED_PrintInt16(clamp_display_float_i16(
+        control->right.ramped_target_speed_cmps));
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("LM:");
+    OLED_PrintInt16(clamp_display_float_i16(wheel->left_speed_cmps));
+    OLED_PrintString(" RM:");
+    OLED_PrintInt16(clamp_display_float_i16(wheel->right_speed_cmps));
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("LO:");
+    OLED_PrintInt16(control->left.output_command);
+    OLED_PrintString(" RO:");
+    OLED_PrintInt16(control->right.output_command);
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("V:");
+    OLED_PrintInt16(control->valid ? 1 : 0);
+    OLED_PrintString(" S:");
+    OLED_PrintInt16(wheel->stale ? 1 : 0);
+    OLED_PrintString(" E:");
+    print_uint64_decimal((uint64_t)control->error_flags);
+}
+
 static void print_param_page(uint8_t keyEvent)
 {
     ParamItem item = Menu_GetParamItem();
@@ -380,26 +430,34 @@ static void print_param_page(uint8_t keyEvent)
 
 static void print_sensor_page(uint8_t raw, uint8_t blackCount, int16_t error)
 {
+    (void)error;
+
     OLED_SetCursor(0, 0);
-    OLED_PrintString("SENSOR");
-    OLED_PrintString(" M:");
-    OLED_PrintString(CarController_RunModeToString(CarController_GetRunMode()));
+    OLED_PrintString("GRAY B=1 S1->S7");
 
     OLED_SetCursor(2, 0);
-    OLED_PrintString("RAW:");
-    OLED_PrintBinary7((uint8_t)(raw & TRACK_RAW_VALID_MASK));
+    OLED_PrintString("S1:");
+    OLED_PrintChar((raw & (1U << 0)) ? '1' : '0');
+    OLED_PrintString(" S2:");
+    OLED_PrintChar((raw & (1U << 1)) ? '1' : '0');
+    OLED_PrintString(" S3:");
+    OLED_PrintChar((raw & (1U << 2)) ? '1' : '0');
+    OLED_PrintString(" S4:");
+    OLED_PrintChar((raw & (1U << 3)) ? '1' : '0');
 
     OLED_SetCursor(4, 0);
-    OLED_PrintString("CNT:");
-    OLED_PrintInt16((int16_t)blackCount);
+    OLED_PrintString("S5:");
+    OLED_PrintChar((raw & (1U << 4)) ? '1' : '0');
+    OLED_PrintString(" S6:");
+    OLED_PrintChar((raw & (1U << 5)) ? '1' : '0');
+    OLED_PrintString(" S7:");
+    OLED_PrintChar((raw & (1U << 6)) ? '1' : '0');
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("LOST:");
-    OLED_PrintInt16((int16_t)g_appRuntime.lost_count);
-    OLED_PrintString(" T:");
-    OLED_PrintInt16((int16_t)g_trackTurnDebug);
-    OLED_PrintString(" E:");
-    OLED_PrintInt16(error);
+    OLED_PrintString("RAW7..1:");
+    OLED_PrintBinary7((uint8_t)(raw & TRACK_RAW_VALID_MASK));
+    OLED_PrintString(" C:");
+    OLED_PrintInt16((int16_t)blackCount);
 }
 
 static void print_imu_page(void)
@@ -1058,6 +1116,9 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
             break;
         case OLED_PAGE_ENCODER:
             print_encoder_page();
+            break;
+        case OLED_PAGE_MOTOR_CONTROL:
+            print_motor_control_page();
             break;
         case OLED_PAGE_GIMBAL:
 #if FEATURE_GIMBAL_OLED_TEST

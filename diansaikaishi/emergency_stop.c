@@ -1,9 +1,11 @@
 #include "emergency_stop.h"
 
+#include "app_features.h"
 #include "car_controller.h"
 #include "fault.h"
 #include "mission_manager.h"
 #include "motor.h"
+#include "motor_control.h"
 #include "obstacle_avoidance.h"
 #include "obstacle_safety.h"
 #include "scheduler_monitor.h"
@@ -45,6 +47,9 @@ void EmergencyStop_Reset(void)
     }
 
     Motor_Stop();
+#if FEATURE_WHEEL_SPEED_CONTROL
+    MotorControl_Reset();
+#endif
     g_emergencyStopActive = false;
     WatchdogMonitor_Reset();
     ObstacleAvoidance_Init();

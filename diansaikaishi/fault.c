@@ -69,6 +69,8 @@ const char *FaultCode_ToShortString(FaultCode code)
             return "ESTP";
         case FAULT_CODE_CONTROLLER_INVALID_MODE:
             return "CTRL";
+        case FAULT_CODE_MOTOR_CONTROL:
+            return "MCTL";
         default:
             return "UNK";
     }

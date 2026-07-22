@@ -21,6 +21,12 @@
 #define FEATURE_HW_MOTOR_PWM       (1)
 /* P3 observation only; no wheel-speed feedback is connected to control. */
 #define FEATURE_WHEEL_SPEED_ESTIMATOR (1)
+/* P4A defaults off until the PI skeleton passes elevated-wheel testing. */
+#define FEATURE_WHEEL_SPEED_CONTROL (1)
+
+#if FEATURE_WHEEL_SPEED_CONTROL && !FEATURE_WHEEL_SPEED_ESTIMATOR
+#error FEATURE_WHEEL_SPEED_CONTROL requires FEATURE_WHEEL_SPEED_ESTIMATOR
+#endif
 
 #define ENABLE_IMU                 (1)
 #define ENABLE_HEADING_OBSERVER    (1)

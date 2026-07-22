@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "imu.h"
+#include "motor_control.h"
 #include "motion_action.h"
 #include "obstacle_safety.h"
 #include "scheduler_monitor.h"
@@ -33,6 +34,7 @@ void RuntimeSnapshot_Update(uint32_t timestamp_ms)
     const WatchdogMonitorStatus *watchdog = WatchdogMonitor_GetStatus();
     const volatile WheelSpeedEstimatorRuntime *wheel =
         WheelSpeedEstimator_GetRuntime();
+    const MotorControlRuntime *motorControl = MotorControl_GetRuntime();
     SchedulerStats scheduler;
 
     SchedulerMonitor_GetStats(&scheduler);
@@ -87,6 +89,57 @@ void RuntimeSnapshot_Update(uint32_t timestamp_ms)
     g_snapshot.wheel_track_cm = wheel->wheel_track_cm;
     g_snapshot.left_encoder_direction = wheel->left_encoder_direction;
     g_snapshot.right_encoder_direction = wheel->right_encoder_direction;
+    g_snapshot.motor_control_enabled = motorControl->enabled;
+    g_snapshot.motor_control_valid = motorControl->valid;
+    g_snapshot.motor_control_error_latched = motorControl->error_latched;
+    g_snapshot.motor_control_safety_inhibited =
+        motorControl->safety_inhibited;
+    g_snapshot.motor_control_target_refresh_timeout =
+        motorControl->target_refresh_timeout;
+    g_snapshot.motor_control_error_flags = motorControl->error_flags;
+    g_snapshot.motor_control_estimator_error_flags =
+        motorControl->estimator_error_flags;
+    g_snapshot.motor_control_target_age_ms = motorControl->target_age_ms;
+    g_snapshot.motor_control_left_normalized_target =
+        motorControl->left.normalized_target;
+    g_snapshot.motor_control_right_normalized_target =
+        motorControl->right.normalized_target;
+    g_snapshot.motor_control_left_raw_target_cmps =
+        motorControl->left.raw_target_speed_cmps;
+    g_snapshot.motor_control_right_raw_target_cmps =
+        motorControl->right.raw_target_speed_cmps;
+    g_snapshot.motor_control_left_ramped_target_cmps =
+        motorControl->left.ramped_target_speed_cmps;
+    g_snapshot.motor_control_right_ramped_target_cmps =
+        motorControl->right.ramped_target_speed_cmps;
+    g_snapshot.motor_control_left_measured_cmps =
+        motorControl->left.measured_speed_cmps;
+    g_snapshot.motor_control_right_measured_cmps =
+        motorControl->right.measured_speed_cmps;
+    g_snapshot.motor_control_left_error_cmps =
+        motorControl->left.error_cmps;
+    g_snapshot.motor_control_right_error_cmps =
+        motorControl->right.error_cmps;
+    g_snapshot.motor_control_left_integral = motorControl->left.integral;
+    g_snapshot.motor_control_right_integral = motorControl->right.integral;
+    g_snapshot.motor_control_left_proportional_term =
+        motorControl->left.proportional_term;
+    g_snapshot.motor_control_right_proportional_term =
+        motorControl->right.proportional_term;
+    g_snapshot.motor_control_left_integral_term =
+        motorControl->left.integral_term;
+    g_snapshot.motor_control_right_integral_term =
+        motorControl->right.integral_term;
+    g_snapshot.motor_control_left_feedforward_term =
+        motorControl->left.feedforward_term;
+    g_snapshot.motor_control_right_feedforward_term =
+        motorControl->right.feedforward_term;
+    g_snapshot.motor_control_left_output =
+        motorControl->left.output_command;
+    g_snapshot.motor_control_right_output =
+        motorControl->right.output_command;
+    g_snapshot.motor_control_left_saturated = motorControl->left.saturated;
+    g_snapshot.motor_control_right_saturated = motorControl->right.saturated;
 }
 
 const RuntimeSnapshot *RuntimeSnapshot_Get(void)

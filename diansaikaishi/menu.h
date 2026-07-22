@@ -6,7 +6,7 @@
 #include "key.h"
 
 typedef enum {
-    /* Main page group: STATUS -> HEAD -> OBS -> ENC. */
+    /* Main page group: STATUS -> GRAY -> HEAD -> OBS -> ENC -> MCTRL. */
     OLED_PAGE_STATUS = 0,
     OLED_PAGE_PARAM,
     /* Hidden diagnostic page group entered from VPT with K2 short. */
@@ -15,6 +15,7 @@ typedef enum {
     OLED_PAGE_HEADING,
     OLED_PAGE_OBSTACLE,
     OLED_PAGE_ENCODER,
+    OLED_PAGE_MOTOR_CONTROL,
     OLED_PAGE_GIMBAL,
     OLED_PAGE_GIMBAL_PITCH,
     OLED_PAGE_GIMBAL_TRACKER,

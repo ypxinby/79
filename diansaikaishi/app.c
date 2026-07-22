@@ -16,6 +16,7 @@
 #include "menu.h"
 #include "mission_manager.h"
 #include "motor.h"
+#include "motor_control.h"
 #include "obstacle_avoidance.h"
 #include "obstacle_monitor.h"
 #include "obstacle_scanner.h"
@@ -92,6 +93,7 @@ void App_Init(void)
     Encoder_Reset();
     AppConfig_InitDefault();
     WheelSpeedEstimator_Init();
+    MotorControl_Init();
 #if ENABLE_IMU
     if (Imu_Init()) {
         (void)Imu_CalibrateGyroBias(200U);
@@ -155,6 +157,9 @@ void App_Update_20ms(uint32_t elapsed_ms)
 
     WatchdogMonitor_ApplyFaultIfNeeded(SystemTime_GetMs());
     if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
+#if FEATURE_WHEEL_SPEED_CONTROL
+        MotorControl_Update(elapsed_ms);
+#endif
         EmergencyStop_Enforce();
         App_UpdateDebugAndUi(SystemTime_GetMs());
         return;
@@ -164,6 +169,9 @@ void App_Update_20ms(uint32_t elapsed_ms)
     ObstacleSafety_Update_20ms();
     ObstacleAvoidance_Update_20ms(elapsed_ms);
     CarController_Update_20ms(elapsed_ms);
+#if FEATURE_WHEEL_SPEED_CONTROL
+    MotorControl_Update(elapsed_ms);
+#endif
 
     App_UpdateDebugAndUi(SystemTime_GetMs());
 }

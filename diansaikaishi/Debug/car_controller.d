@@ -3,7 +3,8 @@
 car_controller.o: ../car_controller.c ../car_controller.h \
  ../track_sensor.h ../app_config.h ../app_features.h ../car_state.h \
  ../emergency_stop.h ../fault.h ../heading_control.h ../imu.h \
- ../motor.h ../scheduler_monitor.h ../watchdog_monitor.h
+ ../motor.h ../motor_control.h ../scheduler_monitor.h \
+ ../watchdog_monitor.h
 ../car_controller.h:
 ../track_sensor.h:
 ../app_config.h:
@@ -14,5 +15,6 @@ car_controller.o: ../car_controller.c ../car_controller.h \
 ../heading_control.h:
 ../imu.h:
 ../motor.h:
+../motor_control.h:
 ../scheduler_monitor.h:
 ../watchdog_monitor.h:

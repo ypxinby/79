@@ -94,6 +94,26 @@ void AppConfig_InitDefault(void)
         LEFT_ENCODER_DIRECTION_DEFAULT;
     g_appConfig.right_encoder_direction =
         RIGHT_ENCODER_DIRECTION_DEFAULT;
+
+    /* P4A control defaults are conservative starting points, not calibration. */
+    g_appConfig.wheel_control_max_speed_cmps =
+        WHEEL_CONTROL_MAX_SPEED_CMPS_DEFAULT;
+    g_appConfig.wheel_control_left_kp = WHEEL_CONTROL_LEFT_KP_DEFAULT;
+    g_appConfig.wheel_control_left_ki = WHEEL_CONTROL_LEFT_KI_DEFAULT;
+    g_appConfig.wheel_control_right_kp = WHEEL_CONTROL_RIGHT_KP_DEFAULT;
+    g_appConfig.wheel_control_right_ki = WHEEL_CONTROL_RIGHT_KI_DEFAULT;
+    g_appConfig.wheel_control_left_feedforward_gain =
+        WHEEL_CONTROL_LEFT_FF_GAIN_DEFAULT;
+    g_appConfig.wheel_control_right_feedforward_gain =
+        WHEEL_CONTROL_RIGHT_FF_GAIN_DEFAULT;
+    g_appConfig.wheel_control_integral_limit =
+        WHEEL_CONTROL_INTEGRAL_LIMIT_DEFAULT;
+    g_appConfig.wheel_control_max_accel_cmps2 =
+        WHEEL_CONTROL_MAX_ACCEL_CMPS2_DEFAULT;
+    g_appConfig.wheel_control_max_decel_cmps2 =
+        WHEEL_CONTROL_MAX_DECEL_CMPS2_DEFAULT;
+    g_appConfig.wheel_control_target_timeout_ms =
+        WHEEL_CONTROL_TARGET_TIMEOUT_MS_DEFAULT;
 }
 
 void AppConfig_LimitAll(void)
