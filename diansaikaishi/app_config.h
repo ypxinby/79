@@ -34,6 +34,8 @@
  * the validated legacy track_kp/track_kd settings.
  */
 #define LINE_CONTROL_V2_BASE_COMMAND_DEFAULT             (220)
+#define LINE_CONTROL_V2_LOST_TURN_COMMAND_DEFAULT        (280)
+#define LINE_LOST_SEARCH_MAX_MS_DEFAULT                  (1200U)
 #define LINE_CONTROL_V2_ERROR_FILTER_ALPHA_DEFAULT       (0.35f)
 #define LINE_CONTROL_V2_DERIV_FILTER_ALPHA_DEFAULT       (0.20f)
 #define LINE_CONTROL_V2_KP_DEFAULT                       (0.35f)
@@ -127,6 +129,8 @@ typedef struct {
     uint32_t wheel_control_target_timeout_ms;
 
     int16_t line_control_v2_base_command;
+    int16_t line_control_v2_lost_turn_command;
+    uint32_t line_lost_search_max_ms;
     float line_control_v2_error_filter_alpha;
     float line_control_v2_derivative_filter_alpha;
     float line_control_v2_kp;

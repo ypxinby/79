@@ -68,15 +68,21 @@ void RuntimeSnapshot_Update(uint32_t timestamp_ms)
         lineControl->left_low_speed_zeroed;
     g_snapshot.line_control_right_low_speed_zeroed =
         lineControl->right_low_speed_zeroed;
-    g_snapshot.line_control_last_turn_direction =
-        lineControl->last_turn_direction;
-    g_snapshot.line_control_direction_valid = lineControl->direction_valid;
+    g_snapshot.line_control_state = lineControl->state;
+    g_snapshot.line_control_turn_mark = lineControl->turn_mark;
+    g_snapshot.line_control_turn_mark_valid =
+        lineControl->turn_mark_valid;
+    g_snapshot.line_control_lost_elapsed_ms =
+        lineControl->lost_elapsed_ms;
+    g_snapshot.line_control_recover_timeout =
+        lineControl->recover_timeout;
+    g_snapshot.line_control_stop_reason = lineControl->stop_reason;
     g_snapshot.line_control_last_valid_pattern =
         lineControl->last_valid_pattern;
     g_snapshot.line_control_last_valid_error =
         lineControl->last_valid_error;
-    g_snapshot.line_control_direction_update_count =
-        lineControl->direction_update_count;
+    g_snapshot.line_control_turn_mark_update_count =
+        lineControl->turn_mark_update_count;
     g_snapshot.yaw_deg = Imu_GetYaw();
     g_snapshot.gyro_z_dps = Imu_GetCorrectedGyroZDps();
     g_snapshot.obstacle_state = obstacle->state;

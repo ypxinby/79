@@ -288,6 +288,7 @@ static void handle_follow_line(uint32_t elapsed_ms)
     TrackTurnType turn;
     int16_t error;
 #if FEATURE_LINE_CONTROL_V2
+    const LineControllerRuntime *line;
     int16_t leftCommand = 0;
     int16_t rightCommand = 0;
 #else
@@ -299,8 +300,40 @@ static void handle_follow_line(uint32_t elapsed_ms)
     LineController_Update(elapsed_ms, g_appRuntime.sensor_raw,
         g_appConfig.line_control_v2_base_command,
         &leftCommand, &rightCommand);
-#endif
+    line = LineController_GetRuntime();
+    error = g_appRuntime.line_error;
+    g_appRuntime.correction = line->correction;
+    g_appRuntime.heading_correction = 0;
+    if (line->lost_elapsed_ms > UINT16_MAX) {
+        g_appRuntime.lost_elapsed_ms = UINT16_MAX;
+    } else {
+        g_appRuntime.lost_elapsed_ms =
+            (uint16_t)line->lost_elapsed_ms;
+    }
 
+    if (line->line_valid) {
+        g_appRuntime.lost_count = 0U;
+        g_appRuntime.last_error = error;
+        g_appRuntime.last_valid_error = error;
+        update_recover_direction_from_error(error);
+    } else if (g_appRuntime.lost_count < UINT8_MAX) {
+        g_appRuntime.lost_count++;
+    }
+
+    /* V2 keeps legacy 90-degree detection as report-only task feedback. */
+    if ((g_followTurnPolicy == CAR_TURN_POLICY_REPORT_ONLY) &&
+        line->line_valid &&
+        (line->state == LINE_CONTROL_STATE_FOLLOW)) {
+        turn = TrackSensor_DetectTurn(g_appRuntime.sensor_raw, error);
+        g_carControllerFeedback.detected_turn = turn;
+    } else {
+        g_carControllerFeedback.detected_turn = TRACK_TURN_NONE;
+    }
+
+    reset_heading_control_runtime();
+    set_output_speed(leftCommand, rightCommand);
+    return;
+#else
     if (TrackSensor_IsLineLost(g_appRuntime.sensor_raw)) {
         g_appRuntime.correction = 0;
         reset_heading_control_runtime();
@@ -330,9 +363,6 @@ static void handle_follow_line(uint32_t elapsed_ms)
         g_appRuntime.recover_direction = RECOVER_DIRECTION_LEFT;
         g_appRuntime.run_mode = TRACK_MODE_TURN_LEFT_90;
         g_appRuntime.correction = 0;
-#if FEATURE_LINE_CONTROL_V2
-        LineController_ResetControlState();
-#endif
         reset_heading_control_runtime();
         return;
     }
@@ -341,24 +371,10 @@ static void handle_follow_line(uint32_t elapsed_ms)
         g_appRuntime.recover_direction = RECOVER_DIRECTION_RIGHT;
         g_appRuntime.run_mode = TRACK_MODE_TURN_RIGHT_90;
         g_appRuntime.correction = 0;
-#if FEATURE_LINE_CONTROL_V2
-        LineController_ResetControlState();
-#endif
         reset_heading_control_runtime();
         return;
     }
 
-#if FEATURE_LINE_CONTROL_V2
-    {
-        const LineControllerRuntime *line = LineController_GetRuntime();
-
-        g_appRuntime.correction = line->correction;
-        g_appRuntime.heading_correction = 0;
-        set_output_speed(leftCommand, rightCommand);
-        g_appRuntime.last_error = error;
-        return;
-    }
-#else
     derivative = (int16_t)(error - g_appRuntime.last_error);
 
     correction =

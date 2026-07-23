@@ -10,6 +10,19 @@ typedef enum {
     LINE_TURN_DIRECTION_RIGHT = 1
 } LineTurnDirection;
 
+typedef enum {
+    LINE_CONTROL_STATE_FOLLOW = 0,
+    LINE_CONTROL_STATE_LOST_TURN_LEFT,
+    LINE_CONTROL_STATE_LOST_TURN_RIGHT,
+    LINE_CONTROL_STATE_STOP
+} LineControlState;
+
+typedef enum {
+    LINE_CONTROL_STOP_REASON_NONE = 0,
+    LINE_CONTROL_STOP_REASON_NO_DIRECTION,
+    LINE_CONTROL_STOP_REASON_RECOVER_TIMEOUT
+} LineControlStopReason;
+
 typedef struct {
     bool enabled;
     bool config_valid;
@@ -30,11 +43,15 @@ typedef struct {
     bool left_low_speed_zeroed;
     bool right_low_speed_zeroed;
 
-    LineTurnDirection last_turn_direction;
-    bool direction_valid;
+    LineControlState state;
+    LineTurnDirection turn_mark;
+    bool turn_mark_valid;
+    uint32_t lost_elapsed_ms;
+    bool recover_timeout;
+    LineControlStopReason stop_reason;
     uint8_t last_valid_pattern;
     int16_t last_valid_error;
-    uint32_t direction_update_count;
+    uint32_t turn_mark_update_count;
     uint32_t update_count;
 } LineControllerRuntime;
 

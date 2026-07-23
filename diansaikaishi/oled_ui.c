@@ -506,47 +506,64 @@ static void print_sensor_page(uint8_t raw, uint8_t blackCount, int16_t error)
 {
 #if FEATURE_LINE_CONTROL_V2
     const LineControllerRuntime *line = LineController_GetRuntime();
-    char direction = 'U';
+    const char *state = "FOLLOW";
+    const char *stopReason = "NONE";
+    char turnMark = 'U';
 
     (void)raw;
     (void)blackCount;
     (void)error;
 
-    if (line->last_turn_direction == LINE_TURN_DIRECTION_LEFT) {
-        direction = 'L';
-    } else if (line->last_turn_direction == LINE_TURN_DIRECTION_RIGHT) {
-        direction = 'R';
+    if (line->state == LINE_CONTROL_STATE_LOST_TURN_LEFT) {
+        state = "LOST_L";
+    } else if (line->state == LINE_CONTROL_STATE_LOST_TURN_RIGHT) {
+        state = "LOST_R";
+    } else if (line->state == LINE_CONTROL_STATE_STOP) {
+        state = "STOP";
+    }
+
+    if (line->turn_mark == LINE_TURN_DIRECTION_LEFT) {
+        turnMark = 'L';
+    } else if (line->turn_mark == LINE_TURN_DIRECTION_RIGHT) {
+        turnMark = 'R';
+    }
+
+    if (line->stop_reason == LINE_CONTROL_STOP_REASON_NO_DIRECTION) {
+        stopReason = "NO_DIR";
+    } else if (line->stop_reason ==
+        LINE_CONTROL_STOP_REASON_RECOVER_TIMEOUT) {
+        stopReason = "TIMEOUT";
     }
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("P1:");
+    OLED_PrintString(state);
+    OLED_PrintString(" P:");
     print_track_pattern_s1_to_s7(line->sensor_pattern);
     OLED_PrintString(" N:");
     OLED_PrintInt16((int16_t)line->active_count);
-    OLED_PrintString(" B:");
-    OLED_PrintInt16(line->base_command);
 
     OLED_SetCursor(2, 0);
-    OLED_PrintString("R:");
-    OLED_PrintInt16(line->raw_error);
-    OLED_PrintString(" F:");
-    OLED_PrintInt16(clamp_display_float_i16(line->filtered_error));
+    OLED_PrintString("M:");
+    OLED_PrintChar(turnMark);
+    OLED_PrintString(" V:");
+    OLED_PrintInt16(line->turn_mark_valid ? 1 : 0);
+    OLED_PrintString(" T:");
+    OLED_PrintInt16((line->lost_elapsed_ms > 32767U) ? 32767 :
+        (int16_t)line->lost_elapsed_ms);
 
     OLED_SetCursor(4, 0);
-    OLED_PrintString("D:");
-    OLED_PrintInt16(clamp_display_float_i16(line->filtered_derivative));
-    OLED_PrintString(" C:");
-    OLED_PrintInt16(line->correction);
+    OLED_PrintString("TO:");
+    OLED_PrintInt16(line->recover_timeout ? 1 : 0);
+    OLED_PrintString(" R:");
+    OLED_PrintString(stopReason);
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("L:");
+    OLED_PrintString("B:");
+    OLED_PrintInt16(line->base_command);
+    OLED_PrintString(" L:");
     OLED_PrintInt16(line->left_target_command);
     OLED_PrintString(" R:");
     OLED_PrintInt16(line->right_target_command);
-    OLED_PrintString(" T:");
-    OLED_PrintChar(direction);
-    OLED_PrintString(" V:");
-    OLED_PrintInt16(line->direction_valid ? 1 : 0);
 #else
     (void)error;
 

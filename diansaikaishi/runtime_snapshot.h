@@ -37,11 +37,15 @@ typedef struct {
     int16_t line_control_right_command;
     bool line_control_left_low_speed_zeroed;
     bool line_control_right_low_speed_zeroed;
-    LineTurnDirection line_control_last_turn_direction;
-    bool line_control_direction_valid;
+    LineControlState line_control_state;
+    LineTurnDirection line_control_turn_mark;
+    bool line_control_turn_mark_valid;
+    uint32_t line_control_lost_elapsed_ms;
+    bool line_control_recover_timeout;
+    LineControlStopReason line_control_stop_reason;
     uint8_t line_control_last_valid_pattern;
     int16_t line_control_last_valid_error;
-    uint32_t line_control_direction_update_count;
+    uint32_t line_control_turn_mark_update_count;
     float yaw_deg;
     float gyro_z_dps;
     ObstacleState obstacle_state;

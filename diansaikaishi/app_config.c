@@ -132,6 +132,11 @@ void AppConfig_InitDefault(void)
     /* P5.1 uses its own fixed normalized base command and filtered PD loop. */
     g_appConfig.line_control_v2_base_command =
         LINE_CONTROL_V2_BASE_COMMAND_DEFAULT;
+    /* P5.2A fixed wheel command and bounded all-white search time. */
+    g_appConfig.line_control_v2_lost_turn_command =
+        LINE_CONTROL_V2_LOST_TURN_COMMAND_DEFAULT;
+    g_appConfig.line_lost_search_max_ms =
+        LINE_LOST_SEARCH_MAX_MS_DEFAULT;
     g_appConfig.line_control_v2_error_filter_alpha =
         LINE_CONTROL_V2_ERROR_FILTER_ALPHA_DEFAULT;
     g_appConfig.line_control_v2_derivative_filter_alpha =
@@ -258,6 +263,13 @@ void AppConfig_LimitAll(void)
 
     g_appConfig.line_control_v2_base_command = clamp_i16(
         g_appConfig.line_control_v2_base_command, 0, 1000);
+    g_appConfig.line_control_v2_lost_turn_command = clamp_i16(
+        g_appConfig.line_control_v2_lost_turn_command, 0, 1000);
+    if ((g_appConfig.line_lost_search_max_ms == 0U) ||
+        (g_appConfig.line_lost_search_max_ms > 10000U)) {
+        g_appConfig.line_lost_search_max_ms =
+            LINE_LOST_SEARCH_MAX_MS_DEFAULT;
+    }
     if ((g_appConfig.line_control_v2_error_filter_alpha <= 0.0f) ||
         (g_appConfig.line_control_v2_error_filter_alpha > 1.0f)) {
         g_appConfig.line_control_v2_error_filter_alpha =
