@@ -33,6 +33,8 @@ static void menu_next_main_page(void)
     if (g_oledPage == OLED_PAGE_STATUS) {
         g_oledPage = OLED_PAGE_SENSOR;
     } else if (g_oledPage == OLED_PAGE_SENSOR) {
+        g_oledPage = OLED_PAGE_IMU;
+    } else if (g_oledPage == OLED_PAGE_IMU) {
         g_oledPage = OLED_PAGE_HEADING;
     } else if (g_oledPage == OLED_PAGE_HEADING) {
         g_oledPage = OLED_PAGE_OBSTACLE;
@@ -54,8 +56,7 @@ static uint8_t menu_is_debug_page(OledPage page)
         (page == OLED_PAGE_GIMBAL_VISION_ADAPTER) ||
         (page == OLED_PAGE_GIMBAL_VISION_YAW) ||
         (page == OLED_PAGE_GIMBAL_TRACKER) ||
-        (page == OLED_PAGE_GIMBAL_TRACKER_PITCH) ||
-        (page == OLED_PAGE_IMU)) ? 1U : 0U;
+        (page == OLED_PAGE_GIMBAL_TRACKER_PITCH)) ? 1U : 0U;
 }
 
 static void menu_next_debug_page(void)
@@ -74,9 +75,6 @@ static void menu_next_debug_page(void)
             g_oledPage = OLED_PAGE_GIMBAL_TRACKER_PITCH;
             break;
         case OLED_PAGE_GIMBAL_TRACKER_PITCH:
-            g_oledPage = OLED_PAGE_IMU;
-            break;
-        case OLED_PAGE_IMU:
         default:
             g_oledPage = OLED_PAGE_VISION_RECEIVER;
             break;

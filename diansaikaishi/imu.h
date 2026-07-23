@@ -13,10 +13,19 @@ typedef struct {
 
     bool initialized;
     bool calibrated;
-    bool data_valid;
+    bool valid;
+    bool stale;
+    bool dt_valid;
+    bool short_gap_compensating;
 
     uint32_t update_count;
+    uint32_t sample_dt_ms;
+    float sample_dt_s;
+    uint32_t last_success_age_ms;
+    uint32_t read_fail_count;
+    uint32_t consecutive_read_fail_count;
     uint32_t read_error_count;
+    uint32_t gyro_range_error_count;
 
     uint8_t i2c_addr;
     uint8_t last_who_am_i;
@@ -27,8 +36,9 @@ typedef struct {
 
 bool Imu_Init(void);
 bool Imu_ReadRawGyroZ(int16_t *raw_gyro_z);
+/* Blocking bias calibration; the caller must keep the vehicle stationary. */
 bool Imu_CalibrateGyroBias(uint16_t sample_count);
-void Imu_Update(float dt_s);
+void Imu_Update(uint32_t elapsed_ms);
 void Imu_ResetYaw(void);
 void Imu_SetYaw(float yaw_deg);
 float Imu_GetYaw(void);

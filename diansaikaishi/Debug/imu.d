@@ -1,6 +1,7 @@
 # FIXED
 
-imu.o: ../imu.c ../imu.h ../app_config.h ../app_features.h \
+imu.o: ../imu.c ../imu.h ../angle_utils.h ../app_config.h \
+ ../app_features.h \
  ti_msp_dl_config.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/msp.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/DeviceFamily.h \
@@ -76,6 +77,7 @@ imu.o: ../imu.c ../imu.h ../app_config.h ../app_features.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/m0p/dl_interrupt.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/m0p/dl_systick.h
 ../imu.h:
+../angle_utils.h:
 ../app_config.h:
 ../app_features.h:
 ti_msp_dl_config.h:

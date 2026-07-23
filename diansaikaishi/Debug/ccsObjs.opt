@@ -1,3 +1,4 @@
+"./angle_utils.o"
 "./app.o"
 "./app_config.o"
 "./car_controller.o"

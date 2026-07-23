@@ -64,6 +64,12 @@ void AppConfig_InitDefault(void)
     g_appConfig.turn_max_ms = 1400;
     g_appConfig.yaw_turn_timeout_ms = 2500U;
     g_appConfig.gyro_deadband_dps = 1.5f;
+    g_appConfig.imu_dt_min_ms = IMU_DT_MIN_MS_DEFAULT;
+    g_appConfig.imu_dt_max_ms = IMU_DT_MAX_MS_DEFAULT;
+    g_appConfig.imu_short_gap_max_ms = IMU_SHORT_GAP_MAX_MS_DEFAULT;
+    g_appConfig.imu_stale_timeout_ms = IMU_STALE_TIMEOUT_MS_DEFAULT;
+    g_appConfig.imu_max_abs_gyro_dps =
+        IMU_MAX_ABS_GYRO_DPS_DEFAULT;
 
     g_appConfig.heading_kp = 20;
     g_appConfig.heading_kd = 5;
@@ -210,6 +216,31 @@ void AppConfig_LimitAll(void)
     }
     if (g_appConfig.yaw_turn_timeout_ms > 10000U) {
         g_appConfig.yaw_turn_timeout_ms = 10000U;
+    }
+    if ((g_appConfig.imu_dt_min_ms == 0U) ||
+        (g_appConfig.imu_dt_min_ms > 20U)) {
+        g_appConfig.imu_dt_min_ms = IMU_DT_MIN_MS_DEFAULT;
+    }
+    if ((g_appConfig.imu_dt_max_ms < g_appConfig.imu_dt_min_ms) ||
+        (g_appConfig.imu_dt_max_ms > 100U)) {
+        g_appConfig.imu_dt_max_ms = IMU_DT_MAX_MS_DEFAULT;
+    }
+    if ((g_appConfig.imu_short_gap_max_ms <
+            g_appConfig.imu_dt_max_ms) ||
+        (g_appConfig.imu_short_gap_max_ms > 500U)) {
+        g_appConfig.imu_short_gap_max_ms =
+            IMU_SHORT_GAP_MAX_MS_DEFAULT;
+    }
+    if ((g_appConfig.imu_stale_timeout_ms <=
+            g_appConfig.imu_short_gap_max_ms) ||
+        (g_appConfig.imu_stale_timeout_ms > 1000U)) {
+        g_appConfig.imu_stale_timeout_ms =
+            IMU_STALE_TIMEOUT_MS_DEFAULT;
+    }
+    if ((g_appConfig.imu_max_abs_gyro_dps <= 0.0f) ||
+        (g_appConfig.imu_max_abs_gyro_dps > 250.0f)) {
+        g_appConfig.imu_max_abs_gyro_dps =
+            IMU_MAX_ABS_GYRO_DPS_DEFAULT;
     }
     g_appConfig.heading_kp = clamp_i16(g_appConfig.heading_kp, 0, 1000);
     g_appConfig.heading_kd = clamp_i16(g_appConfig.heading_kd, 0, 1000);

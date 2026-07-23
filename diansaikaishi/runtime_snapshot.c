@@ -33,6 +33,7 @@ void RuntimeSnapshot_Update(uint32_t timestamp_ms)
     const VisionTuningConsoleStatus *console =
         VisionTuningConsole_GetStatus();
     const WatchdogMonitorStatus *watchdog = WatchdogMonitor_GetStatus();
+    const ImuRuntime *imu = Imu_GetRuntime();
     const volatile WheelSpeedEstimatorRuntime *wheel =
         WheelSpeedEstimator_GetRuntime();
     const MotorControlRuntime *motorControl = MotorControl_GetRuntime();
@@ -83,8 +84,24 @@ void RuntimeSnapshot_Update(uint32_t timestamp_ms)
         lineControl->last_valid_error;
     g_snapshot.line_control_turn_mark_update_count =
         lineControl->turn_mark_update_count;
-    g_snapshot.yaw_deg = Imu_GetYaw();
-    g_snapshot.gyro_z_dps = Imu_GetCorrectedGyroZDps();
+    g_snapshot.yaw_deg = imu->yaw_deg;
+    g_snapshot.gyro_z_dps = imu->corrected_gyro_z_dps;
+    g_snapshot.imu_gyro_bias_dps = imu->gyro_bias_dps;
+    g_snapshot.imu_sample_dt_ms = imu->sample_dt_ms;
+    g_snapshot.imu_sample_dt_s = imu->sample_dt_s;
+    g_snapshot.imu_initialized = imu->initialized;
+    g_snapshot.imu_calibrated = imu->calibrated;
+    g_snapshot.imu_valid = imu->valid;
+    g_snapshot.imu_stale = imu->stale;
+    g_snapshot.imu_dt_valid = imu->dt_valid;
+    g_snapshot.imu_short_gap_compensating =
+        imu->short_gap_compensating;
+    g_snapshot.imu_last_success_age_ms = imu->last_success_age_ms;
+    g_snapshot.imu_read_fail_count = imu->read_fail_count;
+    g_snapshot.imu_consecutive_read_fail_count =
+        imu->consecutive_read_fail_count;
+    g_snapshot.imu_gyro_range_error_count =
+        imu->gyro_range_error_count;
     g_snapshot.obstacle_state = obstacle->state;
     g_snapshot.safety_hold = CarController_IsSafetyHoldActive();
     g_snapshot.external_hold = MissionManager_IsExternallyHeld();

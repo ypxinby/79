@@ -1,5 +1,6 @@
 #include "imu.h"
 
+#include "angle_utils.h"
 #include "app_config.h"
 #include "app_features.h"
 #include "ti_msp_dl_config.h"
@@ -40,6 +41,8 @@
 #define IMU_ERROR_GYRO_READ            (9U)
 #define IMU_ERROR_NULL_POINTER         (10U)
 #define IMU_ERROR_CALIBRATION          (11U)
+#define IMU_ERROR_GYRO_RANGE           (12U)
+#define IMU_ERROR_DT_RANGE             (13U)
 #define IMU_CALIBRATION_MIN_VALID_DIV  (10U)
 
 #ifndef GPIO_IMU_PORT
@@ -73,6 +76,10 @@
 #endif
 
 ImuRuntime g_imuRuntime;
+static float g_previousValidCorrectedGyroZDps;
+static uint32_t g_elapsedSinceValidSampleMs;
+static bool g_integrationHistoryValid;
+static bool g_shortGapPending;
 
 static void imu_delay(void)
 {
@@ -325,6 +332,60 @@ static float imu_abs_float(float value)
     return (value < 0.0f) ? -value : value;
 }
 
+static uint32_t imu_add_elapsed_u32(uint32_t value, uint32_t elapsed_ms)
+{
+    if (value > UINT32_MAX - elapsed_ms) {
+        return UINT32_MAX;
+    }
+    return value + elapsed_ms;
+}
+
+static void imu_clear_integration_history(void)
+{
+    g_previousValidCorrectedGyroZDps = 0.0f;
+    g_elapsedSinceValidSampleMs = 0U;
+    g_integrationHistoryValid = false;
+    g_shortGapPending = false;
+    g_imuRuntime.short_gap_compensating = false;
+}
+
+static void imu_handle_unusable_sample(bool read_failed)
+{
+    if (read_failed) {
+        if (g_imuRuntime.read_fail_count < UINT32_MAX) {
+            g_imuRuntime.read_fail_count++;
+        }
+    }
+    if (g_imuRuntime.consecutive_read_fail_count < UINT32_MAX) {
+        g_imuRuntime.consecutive_read_fail_count++;
+    }
+
+    g_imuRuntime.short_gap_compensating = false;
+    if (g_imuRuntime.last_success_age_ms >=
+        g_appConfig.imu_stale_timeout_ms) {
+        g_imuRuntime.stale = true;
+        g_imuRuntime.valid = false;
+        imu_clear_integration_history();
+        return;
+    }
+
+    if (!g_integrationHistoryValid) {
+        g_imuRuntime.valid = false;
+        return;
+    }
+
+    if (g_elapsedSinceValidSampleMs >=
+        g_appConfig.imu_short_gap_max_ms) {
+        g_imuRuntime.valid = false;
+        imu_clear_integration_history();
+        return;
+    }
+
+    g_shortGapPending = true;
+    g_imuRuntime.short_gap_compensating = true;
+    g_imuRuntime.valid = g_imuRuntime.calibrated;
+}
+
 static void imu_reset_runtime(void)
 {
     g_imuRuntime.raw_gyro_z = 0;
@@ -334,14 +395,24 @@ static void imu_reset_runtime(void)
     g_imuRuntime.yaw_deg = 0.0f;
     g_imuRuntime.initialized = false;
     g_imuRuntime.calibrated = false;
-    g_imuRuntime.data_valid = false;
+    g_imuRuntime.valid = false;
+    g_imuRuntime.stale = false;
+    g_imuRuntime.dt_valid = false;
+    g_imuRuntime.short_gap_compensating = false;
     g_imuRuntime.update_count = 0;
+    g_imuRuntime.sample_dt_ms = 0U;
+    g_imuRuntime.sample_dt_s = 0.0f;
+    g_imuRuntime.last_success_age_ms = 0U;
+    g_imuRuntime.read_fail_count = 0U;
+    g_imuRuntime.consecutive_read_fail_count = 0U;
     g_imuRuntime.read_error_count = 0;
+    g_imuRuntime.gyro_range_error_count = 0U;
     g_imuRuntime.i2c_addr = MPU6050_I2C_ADDR_AD0_LOW;
     g_imuRuntime.last_who_am_i = 0;
     g_imuRuntime.last_error_code = IMU_ERROR_NONE;
     g_imuRuntime.bus_state = 0;
     g_imuRuntime.drive_state = 0;
+    imu_clear_integration_history();
 }
 
 bool Imu_Init(void)
@@ -412,14 +483,12 @@ bool Imu_ReadRawGyroZ(int16_t *raw_gyro_z)
 
 #if ENABLE_IMU
     if (!g_imuRuntime.initialized) {
-        g_imuRuntime.data_valid = false;
         g_imuRuntime.last_error_code = IMU_ERROR_NOT_INITIALIZED;
         g_imuRuntime.read_error_count++;
         return false;
     }
 
     if (!mpu6050_read_regs(MPU6050_REG_GYRO_ZOUT_H, data, 2U)) {
-        g_imuRuntime.data_valid = false;
         g_imuRuntime.last_error_code = IMU_ERROR_GYRO_READ;
         g_imuRuntime.read_error_count++;
         return false;
@@ -430,7 +499,6 @@ bool Imu_ReadRawGyroZ(int16_t *raw_gyro_z)
     return true;
 #else
     *raw_gyro_z = 0;
-    g_imuRuntime.data_valid = false;
     g_imuRuntime.last_error_code = IMU_ERROR_NOT_INITIALIZED;
     g_imuRuntime.read_error_count++;
     return false;
@@ -445,6 +513,8 @@ bool Imu_CalibrateGyroBias(uint16_t sample_count)
 
     if (!g_imuRuntime.initialized || (sample_count == 0U)) {
         g_imuRuntime.calibrated = false;
+        g_imuRuntime.valid = false;
+        imu_clear_integration_history();
         g_imuRuntime.last_error_code = IMU_ERROR_CALIBRATION;
         return false;
     }
@@ -472,6 +542,8 @@ bool Imu_CalibrateGyroBias(uint16_t sample_count)
         (uint16_t)(sample_count - (sample_count / IMU_CALIBRATION_MIN_VALID_DIV));
     if (valid_count < min_valid_count) {
         g_imuRuntime.calibrated = false;
+        g_imuRuntime.valid = false;
+        imu_clear_integration_history();
         g_imuRuntime.last_error_code = IMU_ERROR_CALIBRATION;
         return false;
     }
@@ -479,51 +551,110 @@ bool Imu_CalibrateGyroBias(uint16_t sample_count)
     g_imuRuntime.gyro_bias_dps =
         mpu6050_raw_gyro_to_dps((int16_t)(sum / valid_count));
     g_imuRuntime.calibrated = true;
+    g_imuRuntime.valid = false;
+    g_imuRuntime.stale = false;
+    g_imuRuntime.last_success_age_ms = 0U;
+    g_imuRuntime.consecutive_read_fail_count = 0U;
+    imu_clear_integration_history();
     g_imuRuntime.last_error_code = IMU_ERROR_NONE;
 
     return true;
 }
 
-void Imu_Update(float dt_s)
+void Imu_Update(uint32_t elapsed_ms)
 {
     int16_t raw_gyro_z;
+    float gyro_z_dps;
     float corrected_gyro_z;
+    float integration_dt_s;
 
-    (void)dt_s;
     g_imuRuntime.update_count++;
+    g_imuRuntime.sample_dt_ms = elapsed_ms;
+    g_imuRuntime.sample_dt_s = (float)elapsed_ms / 1000.0f;
+    g_imuRuntime.dt_valid =
+        (elapsed_ms >= g_appConfig.imu_dt_min_ms) &&
+        (elapsed_ms <= g_appConfig.imu_dt_max_ms);
+    g_imuRuntime.last_success_age_ms = imu_add_elapsed_u32(
+        g_imuRuntime.last_success_age_ms, elapsed_ms);
+    if (g_integrationHistoryValid) {
+        g_elapsedSinceValidSampleMs = imu_add_elapsed_u32(
+            g_elapsedSinceValidSampleMs, elapsed_ms);
+    }
 
     if (!g_imuRuntime.initialized) {
-        g_imuRuntime.data_valid = false;
+        g_imuRuntime.valid = false;
+        g_imuRuntime.stale = true;
+        imu_clear_integration_history();
         imu_update_bus_state();
         imu_update_drive_state();
         return;
     }
 
     if (!Imu_ReadRawGyroZ(&raw_gyro_z)) {
+        imu_handle_unusable_sample(true);
+        return;
+    }
+
+    gyro_z_dps = mpu6050_raw_gyro_to_dps(raw_gyro_z);
+    if (imu_abs_float(gyro_z_dps) >
+        g_appConfig.imu_max_abs_gyro_dps) {
+        if (g_imuRuntime.gyro_range_error_count < UINT32_MAX) {
+            g_imuRuntime.gyro_range_error_count++;
+        }
+        g_imuRuntime.last_error_code = IMU_ERROR_GYRO_RANGE;
+        imu_handle_unusable_sample(false);
         return;
     }
 
     g_imuRuntime.raw_gyro_z = raw_gyro_z;
-    g_imuRuntime.gyro_z_dps = mpu6050_raw_gyro_to_dps(raw_gyro_z);
-    corrected_gyro_z = g_imuRuntime.gyro_z_dps - g_imuRuntime.gyro_bias_dps;
+    g_imuRuntime.gyro_z_dps = gyro_z_dps;
+    corrected_gyro_z = gyro_z_dps - g_imuRuntime.gyro_bias_dps;
     if (imu_abs_float(corrected_gyro_z) < g_appConfig.gyro_deadband_dps) {
         corrected_gyro_z = 0.0f;
     }
     g_imuRuntime.corrected_gyro_z_dps = corrected_gyro_z;
-    if (g_imuRuntime.calibrated) {
-        g_imuRuntime.yaw_deg += corrected_gyro_z * dt_s;
+
+    g_imuRuntime.last_success_age_ms = 0U;
+    g_imuRuntime.consecutive_read_fail_count = 0U;
+    g_imuRuntime.stale = false;
+    if (!g_imuRuntime.dt_valid) {
+        g_imuRuntime.valid = false;
+        g_imuRuntime.last_error_code = IMU_ERROR_DT_RANGE;
+        imu_clear_integration_history();
+        return;
     }
-    g_imuRuntime.data_valid = true;
+
+    g_imuRuntime.short_gap_compensating = false;
+    if (g_imuRuntime.calibrated && g_integrationHistoryValid &&
+        (g_elapsedSinceValidSampleMs <=
+            g_appConfig.imu_short_gap_max_ms)) {
+        integration_dt_s =
+            (float)g_elapsedSinceValidSampleMs / 1000.0f;
+        g_imuRuntime.yaw_deg = Angle_Normalize180(
+            g_imuRuntime.yaw_deg +
+            0.5f * (g_previousValidCorrectedGyroZDps +
+                corrected_gyro_z) * integration_dt_s);
+        g_imuRuntime.short_gap_compensating = g_shortGapPending;
+    }
+
+    g_previousValidCorrectedGyroZDps = corrected_gyro_z;
+    g_elapsedSinceValidSampleMs = 0U;
+    g_integrationHistoryValid = g_imuRuntime.calibrated;
+    g_shortGapPending = false;
+    g_imuRuntime.valid = g_imuRuntime.calibrated;
+    g_imuRuntime.last_error_code = IMU_ERROR_NONE;
 }
 
 void Imu_ResetYaw(void)
 {
     g_imuRuntime.yaw_deg = 0.0f;
+    imu_clear_integration_history();
 }
 
 void Imu_SetYaw(float yaw_deg)
 {
-    g_imuRuntime.yaw_deg = yaw_deg;
+    g_imuRuntime.yaw_deg = Angle_Normalize180(yaw_deg);
+    imu_clear_integration_history();
 }
 
 float Imu_GetYaw(void)
@@ -549,7 +680,7 @@ float Imu_GetGyroBiasDps(void)
 bool Imu_IsReady(void)
 {
     return (g_imuRuntime.initialized && g_imuRuntime.calibrated &&
-        g_imuRuntime.data_valid);
+        g_imuRuntime.valid && !g_imuRuntime.stale);
 }
 
 const ImuRuntime *Imu_GetRuntime(void)

@@ -9,6 +9,7 @@ SYSCFG_SRCS += \
 ../empty.syscfg 
 
 C_SRCS += \
+../angle_utils.c \
 ../app.c \
 ../app_config.c \
 ../car_controller.c \
@@ -65,6 +66,7 @@ GEN_FILES += \
 ./ti_msp_dl_config.c 
 
 C_DEPS += \
+./angle_utils.d \
 ./app.d \
 ./app_config.d \
 ./car_controller.d \
@@ -116,6 +118,7 @@ GEN_OPTS += \
 ./device.opt 
 
 OBJS += \
+./angle_utils.o \
 ./app.o \
 ./app_config.o \
 ./car_controller.o \
@@ -169,6 +172,7 @@ GEN_MISC_FILES += \
 ./Event.dot 
 
 OBJS__QUOTED += \
+"angle_utils.o" \
 "app.o" \
 "app_config.o" \
 "car_controller.o" \
@@ -222,6 +226,7 @@ GEN_MISC_FILES__QUOTED += \
 "Event.dot" 
 
 C_DEPS__QUOTED += \
+"angle_utils.d" \
 "app.d" \
 "app_config.d" \
 "car_controller.d" \
@@ -275,6 +280,7 @@ GEN_FILES__QUOTED += \
 "ti_msp_dl_config.c" 
 
 C_SRCS__QUOTED += \
+"../angle_utils.c" \
 "../app.c" \
 "../app_config.c" \
 "../car_controller.c" \

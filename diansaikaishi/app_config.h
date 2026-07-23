@@ -28,6 +28,13 @@
 #define WHEEL_CONTROL_MAX_DECEL_CMPS2_DEFAULT     (120.0f)
 #define WHEEL_CONTROL_TARGET_TIMEOUT_MS_DEFAULT   (100U)
 
+/* P6.1 IMU timing/freshness limits for the real 20 ms control scheduler. */
+#define IMU_DT_MIN_MS_DEFAULT                     (5U)
+#define IMU_DT_MAX_MS_DEFAULT                     (60U)
+#define IMU_SHORT_GAP_MAX_MS_DEFAULT              (60U)
+#define IMU_STALE_TIMEOUT_MS_DEFAULT              (100U)
+#define IMU_MAX_ABS_GYRO_DPS_DEFAULT              (245.0f)
+
 /*
  * P5.1 conservative FOLLOW values. Commands remain normalized -1000..1000;
  * these are initial vehicle-test values and are intentionally independent of
@@ -83,6 +90,11 @@ typedef struct {
     uint32_t yaw_turn_timeout_ms;
 
     float gyro_deadband_dps;
+    uint16_t imu_dt_min_ms;
+    uint16_t imu_dt_max_ms;
+    uint16_t imu_short_gap_max_ms;
+    uint16_t imu_stale_timeout_ms;
+    float imu_max_abs_gyro_dps;
 
     int16_t heading_kp;
     int16_t heading_kd;

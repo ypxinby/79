@@ -1,5 +1,6 @@
 #include "car_controller.h"
 
+#include "angle_utils.h"
 #include "app_config.h"
 #include "app_features.h"
 #include "car_state.h"
@@ -74,17 +75,6 @@ static int16_t abs_i16(int16_t value)
 static float abs_float(float value)
 {
     return (value < 0.0f) ? -value : value;
-}
-
-static float normalize_yaw_error(float error_deg)
-{
-    while (error_deg > 180.0f) {
-        error_deg -= 360.0f;
-    }
-    while (error_deg < -180.0f) {
-        error_deg += 360.0f;
-    }
-    return error_deg;
 }
 
 static void update_sensor_runtime(void)
@@ -513,7 +503,7 @@ static void handle_turn_to_yaw(uint32_t elapsed_ms)
         return;
     }
 
-    error = normalize_yaw_error(g_appRuntime.yaw_turn_target_deg -
+    error = Angle_Normalize180(g_appRuntime.yaw_turn_target_deg -
         Imu_GetYaw());
     absError = abs_float(error);
     g_appRuntime.yaw_turn_error_deg = error;

@@ -606,34 +606,37 @@ static void print_imu_page(void)
     int16_t yawDeg = clamp_display_i16((int32_t)imu->yaw_deg);
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("IMU:");
-    if (imu->initialized) {
-        OLED_PrintString("OK");
-    } else {
-        OLED_PrintString("ERR");
-    }
-    OLED_PrintString(" C:");
-    OLED_PrintInt16((int16_t)imu->last_error_code);
-    OLED_PrintString(" b:");
-    OLED_PrintInt16((int16_t)imu->bus_state);
-
-    OLED_SetCursor(2, 0);
     OLED_PrintString("Y:");
     OLED_PrintInt16(yawDeg);
-    OLED_PrintString(" CAL:");
-    OLED_PrintInt16((int16_t)imu->calibrated);
-
-    OLED_SetCursor(4, 0);
-    OLED_PrintString("R:");
-    OLED_PrintInt16(imu->raw_gyro_z);
-    OLED_PrintString(" G:");
+    OLED_PrintString(" G10:");
     OLED_PrintInt16(gyroDpsX10);
 
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("DT:");
+    OLED_PrintInt16((int16_t)imu->sample_dt_ms);
+    OLED_PrintString(" V:");
+    OLED_PrintInt16(imu->valid ? 1 : 0);
+    OLED_PrintString(" S:");
+    OLED_PrintInt16(imu->stale ? 1 : 0);
+    OLED_PrintString(" A:");
+    OLED_PrintInt16(clamp_display_i16((int32_t)imu->last_success_age_ms));
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("RF:");
+    OLED_PrintInt16(clamp_display_i16((int32_t)imu->read_fail_count));
+    OLED_PrintString(" CF:");
+    OLED_PrintInt16(clamp_display_i16(
+        (int32_t)imu->consecutive_read_fail_count));
+    OLED_PrintString(" CP:");
+    OLED_PrintInt16(imu->short_gap_compensating ? 1 : 0);
+
     OLED_SetCursor(6, 0);
-    OLED_PrintString("BI:");
+    OLED_PrintString("B10:");
     OLED_PrintInt16(biasDpsX10);
-    OLED_PrintString(" ID:");
-    OLED_PrintInt16((int16_t)imu->last_who_am_i);
+    OLED_PrintString(" I:");
+    OLED_PrintInt16(imu->initialized ? 1 : 0);
+    OLED_PrintString(" C:");
+    OLED_PrintInt16(imu->calibrated ? 1 : 0);
 }
 
 static void print_heading_page(void)

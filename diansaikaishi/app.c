@@ -144,7 +144,7 @@ void App_Update_20ms(uint32_t elapsed_ms)
 #endif
     WatchdogMonitor_ApplyFaultIfNeeded(timestamp_ms);
 #if ENABLE_IMU
-    Imu_Update((float)elapsed_ms / 1000.0f);
+    Imu_Update(elapsed_ms);
 #endif
     App_UpdateHeadingObserver(elapsed_ms);
 

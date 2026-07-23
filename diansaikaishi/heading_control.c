@@ -1,5 +1,6 @@
 #include "heading_control.h"
 
+#include "angle_utils.h"
 #include "app_config.h"
 
 HeadingControlRuntime g_headingRuntime;
@@ -14,17 +15,6 @@ static int16_t clamp_i16_from_float(float value, int16_t minValue,
         return minValue;
     }
     return (int16_t)value;
-}
-
-static float normalize_heading_error(float error_deg)
-{
-    while (error_deg > 180.0f) {
-        error_deg -= 360.0f;
-    }
-    while (error_deg < -180.0f) {
-        error_deg += 360.0f;
-    }
-    return error_deg;
 }
 
 void HeadingControl_Init(void)
@@ -81,7 +71,7 @@ int16_t HeadingControl_Update(float current_yaw_deg, float gyro_z_dps,
     g_headingRuntime.last_heading_error_deg =
         g_headingRuntime.heading_error_deg;
     g_headingRuntime.heading_error_deg =
-        normalize_heading_error(g_headingRuntime.target_yaw_deg -
+        Angle_Normalize180(g_headingRuntime.target_yaw_deg -
             current_yaw_deg);
     g_headingRuntime.heading_derivative = -gyro_z_dps;
 
