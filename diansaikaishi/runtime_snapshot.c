@@ -87,6 +87,18 @@ void RuntimeSnapshot_Update(uint32_t timestamp_ms)
     g_snapshot.yaw_deg = imu->yaw_deg;
     g_snapshot.gyro_z_dps = imu->corrected_gyro_z_dps;
     g_snapshot.imu_gyro_bias_dps = imu->gyro_bias_dps;
+    g_snapshot.imu_raw_gyro_z_counts = imu->raw_gyro_z;
+    g_snapshot.imu_gyro_z_before_bias_dps =
+        imu->gyro_z_before_bias_dps;
+    g_snapshot.imu_gyro_z_after_bias_dps =
+        imu->gyro_z_after_bias_dps;
+    g_snapshot.imu_angle_increment_deg = imu->angle_increment_deg;
+    g_snapshot.imu_gyro_sensitivity_lsb_per_dps =
+        imu->gyro_sensitivity_lsb_per_dps;
+    g_snapshot.imu_gyro_config_readback = imu->gyro_config_readback;
+    g_snapshot.imu_gyro_fs_sel = imu->gyro_fs_sel;
+    g_snapshot.imu_gyro_full_scale_dps = imu->gyro_full_scale_dps;
+    g_snapshot.imu_yaw_axis_sign = imu->yaw_axis_sign;
     g_snapshot.imu_sample_dt_ms = imu->sample_dt_ms;
     g_snapshot.imu_sample_dt_s = imu->sample_dt_s;
     g_snapshot.imu_initialized = imu->initialized;
@@ -96,6 +108,9 @@ void RuntimeSnapshot_Update(uint32_t timestamp_ms)
     g_snapshot.imu_dt_valid = imu->dt_valid;
     g_snapshot.imu_short_gap_compensating =
         imu->short_gap_compensating;
+    g_snapshot.imu_integration_applied = imu->integration_applied;
+    g_snapshot.imu_cumulative_integrated_dt_ms =
+        imu->cumulative_integrated_dt_ms;
     g_snapshot.imu_last_success_age_ms = imu->last_success_age_ms;
     g_snapshot.imu_read_fail_count = imu->read_fail_count;
     g_snapshot.imu_consecutive_read_fail_count =

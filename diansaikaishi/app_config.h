@@ -33,7 +33,9 @@
 #define IMU_DT_MAX_MS_DEFAULT                     (60U)
 #define IMU_SHORT_GAP_MAX_MS_DEFAULT              (60U)
 #define IMU_STALE_TIMEOUT_MS_DEFAULT              (100U)
-#define IMU_MAX_ABS_GYRO_DPS_DEFAULT              (245.0f)
+#define IMU_MAX_ABS_GYRO_DPS_DEFAULT              (490.0f)
+/* Keep the installed MPU6050 Z-axis sign unchanged until control retest. */
+#define IMU_YAW_AXIS_SIGN_DEFAULT                 (1)
 
 /*
  * P5.1 conservative FOLLOW values. Commands remain normalized -1000..1000;
@@ -95,6 +97,7 @@ typedef struct {
     uint16_t imu_short_gap_max_ms;
     uint16_t imu_stale_timeout_ms;
     float imu_max_abs_gyro_dps;
+    int8_t imu_yaw_axis_sign;
 
     int16_t heading_kp;
     int16_t heading_kd;

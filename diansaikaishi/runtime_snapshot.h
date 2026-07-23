@@ -49,6 +49,15 @@ typedef struct {
     float yaw_deg;
     float gyro_z_dps;
     float imu_gyro_bias_dps;
+    int16_t imu_raw_gyro_z_counts;
+    float imu_gyro_z_before_bias_dps;
+    float imu_gyro_z_after_bias_dps;
+    float imu_angle_increment_deg;
+    float imu_gyro_sensitivity_lsb_per_dps;
+    uint8_t imu_gyro_config_readback;
+    uint8_t imu_gyro_fs_sel;
+    uint16_t imu_gyro_full_scale_dps;
+    int8_t imu_yaw_axis_sign;
     uint32_t imu_sample_dt_ms;
     float imu_sample_dt_s;
     bool imu_initialized;
@@ -57,6 +66,8 @@ typedef struct {
     bool imu_stale;
     bool imu_dt_valid;
     bool imu_short_gap_compensating;
+    bool imu_integration_applied;
+    uint32_t imu_cumulative_integrated_dt_ms;
     uint32_t imu_last_success_age_ms;
     uint32_t imu_read_fail_count;
     uint32_t imu_consecutive_read_fail_count;

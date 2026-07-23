@@ -70,6 +70,7 @@ void AppConfig_InitDefault(void)
     g_appConfig.imu_stale_timeout_ms = IMU_STALE_TIMEOUT_MS_DEFAULT;
     g_appConfig.imu_max_abs_gyro_dps =
         IMU_MAX_ABS_GYRO_DPS_DEFAULT;
+    g_appConfig.imu_yaw_axis_sign = IMU_YAW_AXIS_SIGN_DEFAULT;
 
     g_appConfig.heading_kp = 20;
     g_appConfig.heading_kd = 5;
@@ -238,9 +239,13 @@ void AppConfig_LimitAll(void)
             IMU_STALE_TIMEOUT_MS_DEFAULT;
     }
     if ((g_appConfig.imu_max_abs_gyro_dps <= 0.0f) ||
-        (g_appConfig.imu_max_abs_gyro_dps > 250.0f)) {
+        (g_appConfig.imu_max_abs_gyro_dps > 500.0f)) {
         g_appConfig.imu_max_abs_gyro_dps =
             IMU_MAX_ABS_GYRO_DPS_DEFAULT;
+    }
+    if ((g_appConfig.imu_yaw_axis_sign != -1) &&
+        (g_appConfig.imu_yaw_axis_sign != 1)) {
+        g_appConfig.imu_yaw_axis_sign = IMU_YAW_AXIS_SIGN_DEFAULT;
     }
     g_appConfig.heading_kp = clamp_i16(g_appConfig.heading_kp, 0, 1000);
     g_appConfig.heading_kd = clamp_i16(g_appConfig.heading_kd, 0, 1000);

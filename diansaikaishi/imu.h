@@ -6,10 +6,14 @@
 
 typedef struct {
     int16_t raw_gyro_z;
+    float gyro_z_before_bias_dps;
+    float gyro_z_after_bias_dps;
     float gyro_z_dps;
     float corrected_gyro_z_dps;
     float gyro_bias_dps;
     float yaw_deg;
+    float angle_increment_deg;
+    float gyro_sensitivity_lsb_per_dps;
 
     bool initialized;
     bool calibrated;
@@ -17,6 +21,7 @@ typedef struct {
     bool stale;
     bool dt_valid;
     bool short_gap_compensating;
+    bool integration_applied;
 
     uint32_t update_count;
     uint32_t sample_dt_ms;
@@ -26,12 +31,17 @@ typedef struct {
     uint32_t consecutive_read_fail_count;
     uint32_t read_error_count;
     uint32_t gyro_range_error_count;
+    uint32_t cumulative_integrated_dt_ms;
 
     uint8_t i2c_addr;
     uint8_t last_who_am_i;
+    uint8_t gyro_config_readback;
+    uint8_t gyro_fs_sel;
     uint8_t last_error_code;
     uint8_t bus_state;
     uint8_t drive_state;
+    uint16_t gyro_full_scale_dps;
+    int8_t yaw_axis_sign;
 } ImuRuntime;
 
 bool Imu_Init(void);

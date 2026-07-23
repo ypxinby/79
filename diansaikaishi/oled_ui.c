@@ -639,6 +639,47 @@ static void print_imu_page(void)
     OLED_PrintInt16(imu->calibrated ? 1 : 0);
 }
 
+static void print_imu_detail_page(void)
+{
+    const ImuRuntime *imu = Imu_GetRuntime();
+    int16_t sensitivityX10 = clamp_display_float_i16(
+        imu->gyro_sensitivity_lsb_per_dps * 10.0f);
+    int16_t beforeBiasX10 = clamp_display_float_i16(
+        imu->gyro_z_before_bias_dps * 10.0f);
+    int16_t afterBiasX10 = clamp_display_float_i16(
+        imu->gyro_z_after_bias_dps * 10.0f);
+    int16_t incrementX100 = clamp_display_float_i16(
+        imu->angle_increment_deg * 100.0f);
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("C:");
+    OLED_PrintInt16((int16_t)imu->gyro_config_readback);
+    OLED_PrintString(" F:");
+    OLED_PrintInt16((int16_t)imu->gyro_fs_sel);
+    OLED_PrintString(" S10:");
+    OLED_PrintInt16(sensitivityX10);
+    OLED_PrintString(" X:");
+    OLED_PrintInt16((int16_t)imu->yaw_axis_sign);
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("R:");
+    OLED_PrintInt16(imu->raw_gyro_z);
+    OLED_PrintString(" B10:");
+    OLED_PrintInt16(beforeBiasX10);
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("A10:");
+    OLED_PrintInt16(afterBiasX10);
+    OLED_PrintString(" D100:");
+    OLED_PrintInt16(incrementX100);
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("IA:");
+    OLED_PrintInt16(imu->integration_applied ? 1 : 0);
+    OLED_PrintString(" T:");
+    print_uint64_decimal((uint64_t)imu->cumulative_integrated_dt_ms);
+}
+
 static void print_heading_page(void)
 {
     const ImuRuntime *imu = Imu_GetRuntime();
@@ -1246,6 +1287,9 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
             break;
         case OLED_PAGE_IMU:
             print_imu_page();
+            break;
+        case OLED_PAGE_IMU_DETAIL:
+            print_imu_detail_page();
             break;
         case OLED_PAGE_HEADING:
             print_heading_page();
