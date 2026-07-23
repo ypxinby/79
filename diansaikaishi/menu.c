@@ -41,6 +41,8 @@ static void menu_next_main_page(void)
     } else if (g_oledPage == OLED_PAGE_IMU_COUNTERS) {
         g_oledPage = OLED_PAGE_HEADING;
     } else if (g_oledPage == OLED_PAGE_HEADING) {
+        g_oledPage = OLED_PAGE_HEADING_DETAIL;
+    } else if (g_oledPage == OLED_PAGE_HEADING_DETAIL) {
         g_oledPage = OLED_PAGE_OBSTACLE;
     } else if (g_oledPage == OLED_PAGE_OBSTACLE) {
         g_oledPage = OLED_PAGE_ENCODER;

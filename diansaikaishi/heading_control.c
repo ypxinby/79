@@ -28,9 +28,11 @@ void HeadingControl_Reset(void)
     g_headingRuntime.heading_error_deg = 0.0f;
     g_headingRuntime.last_heading_error_deg = 0.0f;
     g_headingRuntime.heading_derivative = 0.0f;
+    g_headingRuntime.update_dt_s = 0.0f;
     g_headingRuntime.correction = 0;
     g_headingRuntime.enabled = false;
     g_headingRuntime.target_locked = false;
+    g_headingRuntime.dt_valid = false;
 }
 
 void HeadingControl_Enable(bool enable)
@@ -48,7 +50,7 @@ void HeadingControl_LockCurrentYaw(float current_yaw_deg)
 
 void HeadingControl_SetTargetYaw(float target_yaw_deg)
 {
-    g_headingRuntime.target_yaw_deg = target_yaw_deg;
+    g_headingRuntime.target_yaw_deg = Angle_Normalize180(target_yaw_deg);
     g_headingRuntime.heading_error_deg = 0.0f;
     g_headingRuntime.last_heading_error_deg = 0.0f;
     g_headingRuntime.heading_derivative = 0.0f;
@@ -61,9 +63,11 @@ int16_t HeadingControl_Update(float current_yaw_deg, float gyro_z_dps,
 {
     float output;
 
-    (void)dt_s;
+    g_headingRuntime.update_dt_s = dt_s;
+    g_headingRuntime.dt_valid = (dt_s > 0.0f) && (dt_s <= 0.100f);
 
-    if (!g_headingRuntime.enabled || !g_headingRuntime.target_locked) {
+    if (!g_headingRuntime.enabled || !g_headingRuntime.target_locked ||
+        !g_headingRuntime.dt_valid) {
         g_headingRuntime.correction = 0;
         return 0;
     }

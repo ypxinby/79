@@ -84,6 +84,12 @@ static bool motion_action_check_timeout(void)
         return false;
     }
 
+    /* TURN_TO_YAW owns the same timeout in CarController so it can latch
+     * zero output and a precise controller-side timeout result first. */
+    if (action->type == MOTION_ACTION_TURN_TO_YAW) {
+        return false;
+    }
+
     if (g_motionActionRuntime.elapsed_ms < action->timeout_ms) {
         return false;
     }
@@ -104,7 +110,6 @@ static bool motion_action_check_timeout(void)
             break;
         case MOTION_ACTION_TURN_LEFT_90:
         case MOTION_ACTION_TURN_RIGHT_90:
-        case MOTION_ACTION_TURN_TO_YAW:
             motion_action_set_result(MOTION_RESULT_TIMEOUT,
                 MOTION_ERROR_TURN_TIMEOUT);
             break;
@@ -379,6 +384,7 @@ MotionActionResult MotionAction_Update_20ms(uint32_t elapsed_ms)
                 CarController_GetFeedback();
 
             if (!Imu_IsReady()) {
+                motion_action_stop_car();
                 motion_action_set_result(MOTION_RESULT_FAILED,
                     MOTION_ERROR_IMU_NOT_READY);
                 break;
@@ -412,6 +418,7 @@ MotionActionResult MotionAction_Update_20ms(uint32_t elapsed_ms)
                 CarController_GetFeedback();
 
             if (!Imu_IsReady()) {
+                motion_action_stop_car();
                 motion_action_set_result(MOTION_RESULT_FAILED,
                     MOTION_ERROR_IMU_NOT_READY);
                 break;

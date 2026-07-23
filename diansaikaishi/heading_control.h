@@ -9,11 +9,13 @@ typedef struct {
     float heading_error_deg;
     float last_heading_error_deg;
     float heading_derivative;
+    float update_dt_s;
 
     int16_t correction;
 
     bool enabled;
     bool target_locked;
+    bool dt_valid;
 } HeadingControlRuntime;
 
 void HeadingControl_Init(void);

@@ -284,7 +284,8 @@ void MissionManager_Update_20ms(uint32_t elapsed_ms)
 
     if ((result == MOTION_RESULT_FAILED) ||
         (result == MOTION_RESULT_TIMEOUT)) {
-        if (g_missionRuntime.current_retry_count < action->max_retries) {
+        if ((CarState_Get() != CAR_STATE_ERROR) &&
+            (g_missionRuntime.current_retry_count < action->max_retries)) {
             g_missionRuntime.current_retry_count++;
             g_missionRuntime.action_elapsed_ms = 0U;
             (void)MotionAction_Start(action,

@@ -62,7 +62,18 @@ void AppConfig_InitDefault(void)
     g_appConfig.lost_recover_max_ms = 1400;
     g_appConfig.turn_min_ms = 160;
     g_appConfig.turn_max_ms = 1400;
-    g_appConfig.yaw_turn_timeout_ms = 2500U;
+    g_appConfig.yaw_turn_timeout_ms = YAW_TURN_TIMEOUT_MS_DEFAULT;
+    g_appConfig.yaw_turn_slow_threshold_deg =
+        YAW_TURN_SLOW_THRESHOLD_DEG_DEFAULT;
+    g_appConfig.yaw_turn_done_tolerance_deg =
+        YAW_TURN_DONE_TOLERANCE_DEG_DEFAULT;
+    g_appConfig.yaw_turn_settle_exit_deg =
+        YAW_TURN_SETTLE_EXIT_DEG_DEFAULT;
+    g_appConfig.yaw_turn_settle_gyro_dps =
+        YAW_TURN_SETTLE_GYRO_DPS_DEFAULT;
+    g_appConfig.yaw_turn_settle_ms = YAW_TURN_SETTLE_MS_DEFAULT;
+    g_appConfig.yaw_turn_min_slow_command =
+        YAW_TURN_MIN_SLOW_COMMAND_DEFAULT;
     g_appConfig.gyro_deadband_dps = 1.5f;
     g_appConfig.imu_dt_min_ms = IMU_DT_MIN_MS_DEFAULT;
     g_appConfig.imu_dt_max_ms = IMU_DT_MAX_MS_DEFAULT;
@@ -218,6 +229,35 @@ void AppConfig_LimitAll(void)
     if (g_appConfig.yaw_turn_timeout_ms > 10000U) {
         g_appConfig.yaw_turn_timeout_ms = 10000U;
     }
+    if ((g_appConfig.yaw_turn_slow_threshold_deg <= 0.0f) ||
+        (g_appConfig.yaw_turn_slow_threshold_deg > 90.0f)) {
+        g_appConfig.yaw_turn_slow_threshold_deg =
+            YAW_TURN_SLOW_THRESHOLD_DEG_DEFAULT;
+    }
+    if ((g_appConfig.yaw_turn_done_tolerance_deg <= 0.0f) ||
+        (g_appConfig.yaw_turn_done_tolerance_deg >=
+            g_appConfig.yaw_turn_slow_threshold_deg)) {
+        g_appConfig.yaw_turn_done_tolerance_deg =
+            YAW_TURN_DONE_TOLERANCE_DEG_DEFAULT;
+    }
+    if ((g_appConfig.yaw_turn_settle_exit_deg <
+            g_appConfig.yaw_turn_done_tolerance_deg) ||
+        (g_appConfig.yaw_turn_settle_exit_deg >=
+            g_appConfig.yaw_turn_slow_threshold_deg)) {
+        g_appConfig.yaw_turn_settle_exit_deg =
+            YAW_TURN_SETTLE_EXIT_DEG_DEFAULT;
+    }
+    if ((g_appConfig.yaw_turn_settle_gyro_dps <= 0.0f) ||
+        (g_appConfig.yaw_turn_settle_gyro_dps > 100.0f)) {
+        g_appConfig.yaw_turn_settle_gyro_dps =
+            YAW_TURN_SETTLE_GYRO_DPS_DEFAULT;
+    }
+    if ((g_appConfig.yaw_turn_settle_ms == 0U) ||
+        (g_appConfig.yaw_turn_settle_ms > 2000U)) {
+        g_appConfig.yaw_turn_settle_ms = YAW_TURN_SETTLE_MS_DEFAULT;
+    }
+    g_appConfig.yaw_turn_min_slow_command = clamp_i16(
+        g_appConfig.yaw_turn_min_slow_command, 0, 1000);
     if ((g_appConfig.imu_dt_min_ms == 0U) ||
         (g_appConfig.imu_dt_min_ms > 20U)) {
         g_appConfig.imu_dt_min_ms = IMU_DT_MIN_MS_DEFAULT;

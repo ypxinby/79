@@ -41,6 +41,15 @@
 /* Normalize installed MPU6050 Z-axis to the project's yaw convention. */
 #define IMU_YAW_AXIS_SIGN_DEFAULT                 (-1)
 
+/* P6.2 existing two-speed yaw turn values, centralized for vehicle tuning. */
+#define YAW_TURN_TIMEOUT_MS_DEFAULT               (4000U)
+#define YAW_TURN_SLOW_THRESHOLD_DEG_DEFAULT       (12.0f)
+#define YAW_TURN_DONE_TOLERANCE_DEG_DEFAULT       (5.0f)
+#define YAW_TURN_SETTLE_EXIT_DEG_DEFAULT           (7.0f)
+#define YAW_TURN_SETTLE_GYRO_DPS_DEFAULT           (5.0f)
+#define YAW_TURN_SETTLE_MS_DEFAULT                 (100U)
+#define YAW_TURN_MIN_SLOW_COMMAND_DEFAULT          (60)
+
 /*
  * P5.1 conservative FOLLOW values. Commands remain normalized -1000..1000;
  * these are initial vehicle-test values and are intentionally independent of
@@ -94,6 +103,12 @@ typedef struct {
     uint16_t turn_min_ms;
     uint16_t turn_max_ms;
     uint32_t yaw_turn_timeout_ms;
+    float yaw_turn_slow_threshold_deg;
+    float yaw_turn_done_tolerance_deg;
+    float yaw_turn_settle_exit_deg;
+    float yaw_turn_settle_gyro_dps;
+    uint16_t yaw_turn_settle_ms;
+    int16_t yaw_turn_min_slow_command;
 
     float gyro_deadband_dps;
     uint16_t imu_dt_min_ms;

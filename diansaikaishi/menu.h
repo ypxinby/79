@@ -6,7 +6,7 @@
 #include "key.h"
 
 typedef enum {
-    /* Main: STATUS -> LINE -> IMU -> IMU2 -> IMU3 -> HEAD -> OBS -> ENC -> MCTRL -> MCTRL2. */
+    /* Main: STATUS -> LINE -> IMU -> IMU2 -> IMU3 -> HEAD -> HEAD2 -> OBS -> ENC -> MCTRL -> MCTRL2. */
     OLED_PAGE_STATUS = 0,
     OLED_PAGE_PARAM,
     OLED_PAGE_SENSOR,
@@ -14,6 +14,7 @@ typedef enum {
     OLED_PAGE_IMU_DETAIL,
     OLED_PAGE_IMU_COUNTERS,
     OLED_PAGE_HEADING,
+    OLED_PAGE_HEADING_DETAIL,
     OLED_PAGE_OBSTACLE,
     OLED_PAGE_ENCODER,
     OLED_PAGE_MOTOR_CONTROL,

@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "motion_types.h"
 #include "track_sensor.h"
 
 typedef enum {
@@ -33,6 +34,14 @@ typedef enum {
     CAR_CONTROLLER_ERROR_YAW_TURN_TIMEOUT,
     CAR_CONTROLLER_ERROR_INVALID_MODE
 } CarControllerErrorCode;
+
+typedef enum {
+    HEADING_ACTION_MODE_IDLE = 0,
+    HEADING_ACTION_MODE_HOLD,
+    HEADING_ACTION_MODE_TURN_FAST,
+    HEADING_ACTION_MODE_TURN_SLOW,
+    HEADING_ACTION_MODE_TURN_SETTLE
+} HeadingActionMode;
 
 typedef struct {
     uint8_t current_lap;
@@ -65,6 +74,9 @@ typedef struct {
     float yaw_turn_error_deg;
     uint32_t yaw_turn_timeout_ms;
     float drive_heading_target_yaw_deg;
+    HeadingActionMode heading_action_mode;
+    MotionActionResult heading_action_result;
+    CarControllerErrorCode heading_action_error_code;
 } AppRuntime;
 
 typedef struct {
