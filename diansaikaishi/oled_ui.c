@@ -680,6 +680,37 @@ static void print_imu_detail_page(void)
     print_uint64_decimal((uint64_t)imu->cumulative_integrated_dt_ms);
 }
 
+static void print_imu_counters_page(void)
+{
+    const ImuRuntime *imu = Imu_GetRuntime();
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("U:");
+    print_uint64_decimal((uint64_t)imu->update_count);
+    OLED_PrintString(" OK:");
+    print_uint64_decimal((uint64_t)imu->successful_read_count);
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("IC:");
+    print_uint64_decimal((uint64_t)imu->integration_count);
+    OLED_PrintString(" IS:");
+    print_uint64_decimal((uint64_t)imu->integration_skip_count);
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("HR:");
+    print_uint64_decimal((uint64_t)imu->history_rebuild_count);
+    OLED_PrintString(" YR:");
+    print_uint64_decimal((uint64_t)imu->yaw_reset_count);
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("DI:");
+    print_uint64_decimal((uint64_t)imu->dt_invalid_skip_count);
+    OLED_PrintString(" RF:");
+    print_uint64_decimal((uint64_t)imu->read_fail_skip_count);
+    OLED_PrintString(" GI:");
+    print_uint64_decimal((uint64_t)imu->gyro_invalid_skip_count);
+}
+
 static void print_heading_page(void)
 {
     const ImuRuntime *imu = Imu_GetRuntime();
@@ -1290,6 +1321,9 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
             break;
         case OLED_PAGE_IMU_DETAIL:
             print_imu_detail_page();
+            break;
+        case OLED_PAGE_IMU_COUNTERS:
+            print_imu_counters_page();
             break;
         case OLED_PAGE_HEADING:
             print_heading_page();

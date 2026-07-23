@@ -109,8 +109,22 @@ void RuntimeSnapshot_Update(uint32_t timestamp_ms)
     g_snapshot.imu_short_gap_compensating =
         imu->short_gap_compensating;
     g_snapshot.imu_integration_applied = imu->integration_applied;
+    g_snapshot.imu_integration_history_valid =
+        imu->integration_history_valid;
+    g_snapshot.imu_update_count = imu->update_count;
+    g_snapshot.imu_successful_read_count = imu->successful_read_count;
+    g_snapshot.imu_integration_count = imu->integration_count;
+    g_snapshot.imu_integration_skip_count = imu->integration_skip_count;
+    g_snapshot.imu_history_rebuild_count = imu->history_rebuild_count;
+    g_snapshot.imu_dt_invalid_skip_count = imu->dt_invalid_skip_count;
+    g_snapshot.imu_read_fail_skip_count = imu->read_fail_skip_count;
+    g_snapshot.imu_gyro_invalid_skip_count = imu->gyro_invalid_skip_count;
+    g_snapshot.imu_yaw_reset_count = imu->yaw_reset_count;
+    g_snapshot.imu_cumulative_elapsed_ms = imu->cumulative_elapsed_ms;
     g_snapshot.imu_cumulative_integrated_dt_ms =
         imu->cumulative_integrated_dt_ms;
+    g_snapshot.imu_cumulative_angle_increment_deg =
+        imu->cumulative_angle_increment_deg;
     g_snapshot.imu_last_success_age_ms = imu->last_success_age_ms;
     g_snapshot.imu_read_fail_count = imu->read_fail_count;
     g_snapshot.imu_consecutive_read_fail_count =

@@ -28,9 +28,13 @@
 #define WHEEL_CONTROL_MAX_DECEL_CMPS2_DEFAULT     (120.0f)
 #define WHEEL_CONTROL_TARGET_TIMEOUT_MS_DEFAULT   (100U)
 
-/* P6.1 IMU timing/freshness limits for the real 20 ms control scheduler. */
+/*
+ * P6.1 IMU timing/freshness limits for the real 20 ms control scheduler.
+ * The dt ceiling matches APP_CONTROL_DT_MAX_MS; short-gap compensation keeps
+ * its separate 60 ms bound and must not reject a successful long control tick.
+ */
 #define IMU_DT_MIN_MS_DEFAULT                     (5U)
-#define IMU_DT_MAX_MS_DEFAULT                     (60U)
+#define IMU_DT_MAX_MS_DEFAULT                     (100U)
 #define IMU_SHORT_GAP_MAX_MS_DEFAULT              (60U)
 #define IMU_STALE_TIMEOUT_MS_DEFAULT              (100U)
 #define IMU_MAX_ABS_GYRO_DPS_DEFAULT              (490.0f)

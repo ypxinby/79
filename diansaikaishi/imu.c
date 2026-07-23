@@ -386,11 +386,19 @@ static uint32_t imu_add_elapsed_u32(uint32_t value, uint32_t elapsed_ms)
     return value + elapsed_ms;
 }
 
+static void imu_increment_u32(uint32_t *value)
+{
+    if (*value < UINT32_MAX) {
+        (*value)++;
+    }
+}
+
 static void imu_clear_integration_history(void)
 {
     g_previousValidCorrectedGyroZDps = 0.0f;
     g_elapsedSinceValidSampleMs = 0U;
     g_integrationHistoryValid = false;
+    g_imuRuntime.integration_history_valid = false;
     g_shortGapPending = false;
     g_imuRuntime.short_gap_compensating = false;
     g_imuRuntime.angle_increment_deg = 0.0f;
@@ -452,7 +460,16 @@ static void imu_reset_runtime(void)
     g_imuRuntime.dt_valid = false;
     g_imuRuntime.short_gap_compensating = false;
     g_imuRuntime.integration_applied = false;
+    g_imuRuntime.integration_history_valid = false;
     g_imuRuntime.update_count = 0;
+    g_imuRuntime.successful_read_count = 0U;
+    g_imuRuntime.integration_count = 0U;
+    g_imuRuntime.integration_skip_count = 0U;
+    g_imuRuntime.history_rebuild_count = 0U;
+    g_imuRuntime.dt_invalid_skip_count = 0U;
+    g_imuRuntime.read_fail_skip_count = 0U;
+    g_imuRuntime.gyro_invalid_skip_count = 0U;
+    g_imuRuntime.yaw_reset_count = 0U;
     g_imuRuntime.sample_dt_ms = 0U;
     g_imuRuntime.sample_dt_s = 0.0f;
     g_imuRuntime.last_success_age_ms = 0U;
@@ -460,7 +477,9 @@ static void imu_reset_runtime(void)
     g_imuRuntime.consecutive_read_fail_count = 0U;
     g_imuRuntime.read_error_count = 0;
     g_imuRuntime.gyro_range_error_count = 0U;
+    g_imuRuntime.cumulative_elapsed_ms = 0U;
     g_imuRuntime.cumulative_integrated_dt_ms = 0U;
+    g_imuRuntime.cumulative_angle_increment_deg = 0.0f;
     g_imuRuntime.i2c_addr = MPU6050_I2C_ADDR_AD0_LOW;
     g_imuRuntime.last_who_am_i = 0;
     g_imuRuntime.gyro_config_readback = 0xFFU;
@@ -639,7 +658,9 @@ void Imu_Update(uint32_t elapsed_ms)
     float integration_dt_s;
     float angle_increment_deg;
 
-    g_imuRuntime.update_count++;
+    imu_increment_u32(&g_imuRuntime.update_count);
+    g_imuRuntime.cumulative_elapsed_ms = imu_add_elapsed_u32(
+        g_imuRuntime.cumulative_elapsed_ms, elapsed_ms);
     g_imuRuntime.sample_dt_ms = elapsed_ms;
     g_imuRuntime.sample_dt_s = (float)elapsed_ms / 1000.0f;
     g_imuRuntime.angle_increment_deg = 0.0f;
@@ -655,6 +676,7 @@ void Imu_Update(uint32_t elapsed_ms)
     }
 
     if (!g_imuRuntime.initialized) {
+        imu_increment_u32(&g_imuRuntime.integration_skip_count);
         g_imuRuntime.valid = false;
         g_imuRuntime.stale = true;
         imu_clear_integration_history();
@@ -664,9 +686,12 @@ void Imu_Update(uint32_t elapsed_ms)
     }
 
     if (!Imu_ReadRawGyroZ(&raw_gyro_z)) {
+        imu_increment_u32(&g_imuRuntime.integration_skip_count);
+        imu_increment_u32(&g_imuRuntime.read_fail_skip_count);
         imu_handle_unusable_sample(true);
         return;
     }
+    imu_increment_u32(&g_imuRuntime.successful_read_count);
 
     gyro_z_dps = mpu6050_raw_gyro_to_dps(raw_gyro_z);
     g_imuRuntime.raw_gyro_z = raw_gyro_z;
@@ -676,6 +701,8 @@ void Imu_Update(uint32_t elapsed_ms)
     g_imuRuntime.gyro_z_after_bias_dps = corrected_gyro_z;
     if (imu_abs_float(gyro_z_dps) >
         g_appConfig.imu_max_abs_gyro_dps) {
+        imu_increment_u32(&g_imuRuntime.integration_skip_count);
+        imu_increment_u32(&g_imuRuntime.gyro_invalid_skip_count);
         if (g_imuRuntime.gyro_range_error_count < UINT32_MAX) {
             g_imuRuntime.gyro_range_error_count++;
         }
@@ -694,6 +721,8 @@ void Imu_Update(uint32_t elapsed_ms)
     g_imuRuntime.consecutive_read_fail_count = 0U;
     g_imuRuntime.stale = false;
     if (!g_imuRuntime.dt_valid) {
+        imu_increment_u32(&g_imuRuntime.integration_skip_count);
+        imu_increment_u32(&g_imuRuntime.dt_invalid_skip_count);
         g_imuRuntime.valid = false;
         g_imuRuntime.last_error_code = IMU_ERROR_DT_RANGE;
         imu_clear_integration_history();
@@ -701,9 +730,14 @@ void Imu_Update(uint32_t elapsed_ms)
     }
 
     g_imuRuntime.short_gap_compensating = false;
+    /*
+     * A successful sample may legitimately arrive after a 61..100 ms control
+     * tick. Apply the short-gap bound only when an I2C miss is being bridged.
+     */
     if (g_imuRuntime.calibrated && g_integrationHistoryValid &&
-        (g_elapsedSinceValidSampleMs <=
-            g_appConfig.imu_short_gap_max_ms)) {
+        (!g_shortGapPending ||
+            (g_elapsedSinceValidSampleMs <=
+                g_appConfig.imu_short_gap_max_ms))) {
         integration_dt_s =
             (float)g_elapsedSinceValidSampleMs / 1000.0f;
         angle_increment_deg =
@@ -713,15 +747,24 @@ void Imu_Update(uint32_t elapsed_ms)
             g_imuRuntime.yaw_deg + angle_increment_deg);
         g_imuRuntime.angle_increment_deg = angle_increment_deg;
         g_imuRuntime.integration_applied = true;
+        imu_increment_u32(&g_imuRuntime.integration_count);
         g_imuRuntime.cumulative_integrated_dt_ms = imu_add_elapsed_u32(
             g_imuRuntime.cumulative_integrated_dt_ms,
             g_elapsedSinceValidSampleMs);
+        g_imuRuntime.cumulative_angle_increment_deg += angle_increment_deg;
         g_imuRuntime.short_gap_compensating = g_shortGapPending;
+    } else {
+        imu_increment_u32(&g_imuRuntime.integration_skip_count);
+        if (g_imuRuntime.calibrated) {
+            imu_increment_u32(&g_imuRuntime.history_rebuild_count);
+        }
     }
 
     g_previousValidCorrectedGyroZDps = corrected_gyro_z;
     g_elapsedSinceValidSampleMs = 0U;
     g_integrationHistoryValid = g_imuRuntime.calibrated;
+    g_imuRuntime.integration_history_valid =
+        g_integrationHistoryValid;
     g_shortGapPending = false;
     g_imuRuntime.valid = g_imuRuntime.calibrated;
     g_imuRuntime.last_error_code = IMU_ERROR_NONE;
@@ -730,14 +773,20 @@ void Imu_Update(uint32_t elapsed_ms)
 void Imu_ResetYaw(void)
 {
     g_imuRuntime.yaw_deg = 0.0f;
+    g_imuRuntime.cumulative_elapsed_ms = 0U;
     g_imuRuntime.cumulative_integrated_dt_ms = 0U;
+    g_imuRuntime.cumulative_angle_increment_deg = 0.0f;
+    imu_increment_u32(&g_imuRuntime.yaw_reset_count);
     imu_clear_integration_history();
 }
 
 void Imu_SetYaw(float yaw_deg)
 {
     g_imuRuntime.yaw_deg = Angle_Normalize180(yaw_deg);
+    g_imuRuntime.cumulative_elapsed_ms = 0U;
     g_imuRuntime.cumulative_integrated_dt_ms = 0U;
+    g_imuRuntime.cumulative_angle_increment_deg = 0.0f;
+    imu_increment_u32(&g_imuRuntime.yaw_reset_count);
     imu_clear_integration_history();
 }
 

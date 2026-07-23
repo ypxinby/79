@@ -226,8 +226,7 @@ void AppConfig_LimitAll(void)
         (g_appConfig.imu_dt_max_ms > 100U)) {
         g_appConfig.imu_dt_max_ms = IMU_DT_MAX_MS_DEFAULT;
     }
-    if ((g_appConfig.imu_short_gap_max_ms <
-            g_appConfig.imu_dt_max_ms) ||
+    if ((g_appConfig.imu_short_gap_max_ms == 0U) ||
         (g_appConfig.imu_short_gap_max_ms > 500U)) {
         g_appConfig.imu_short_gap_max_ms =
             IMU_SHORT_GAP_MAX_MS_DEFAULT;

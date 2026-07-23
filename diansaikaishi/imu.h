@@ -22,8 +22,17 @@ typedef struct {
     bool dt_valid;
     bool short_gap_compensating;
     bool integration_applied;
+    bool integration_history_valid;
 
     uint32_t update_count;
+    uint32_t successful_read_count;
+    uint32_t integration_count;
+    uint32_t integration_skip_count;
+    uint32_t history_rebuild_count;
+    uint32_t dt_invalid_skip_count;
+    uint32_t read_fail_skip_count;
+    uint32_t gyro_invalid_skip_count;
+    uint32_t yaw_reset_count;
     uint32_t sample_dt_ms;
     float sample_dt_s;
     uint32_t last_success_age_ms;
@@ -31,7 +40,9 @@ typedef struct {
     uint32_t consecutive_read_fail_count;
     uint32_t read_error_count;
     uint32_t gyro_range_error_count;
+    uint32_t cumulative_elapsed_ms;
     uint32_t cumulative_integrated_dt_ms;
+    float cumulative_angle_increment_deg;
 
     uint8_t i2c_addr;
     uint8_t last_who_am_i;
