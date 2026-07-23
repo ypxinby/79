@@ -519,10 +519,12 @@ static void print_sensor_page(uint8_t raw, uint8_t blackCount, int16_t error)
     }
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("P1>7:");
+    OLED_PrintString("P1:");
     print_track_pattern_s1_to_s7(line->sensor_pattern);
     OLED_PrintString(" N:");
     OLED_PrintInt16((int16_t)line->active_count);
+    OLED_PrintString(" B:");
+    OLED_PrintInt16(line->base_command);
 
     OLED_SetCursor(2, 0);
     OLED_PrintString("R:");

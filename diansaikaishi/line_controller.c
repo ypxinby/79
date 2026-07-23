@@ -45,6 +45,9 @@ static int16_t round_clamped_float(float value, int16_t min_value,
 static bool config_is_valid(void)
 {
     return
+        (g_appConfig.line_control_v2_base_command >= 0) &&
+        (g_appConfig.line_control_v2_base_command <=
+            LINE_NORMALIZED_COMMAND_MAX) &&
         (g_appConfig.line_control_v2_error_filter_alpha > 0.0f) &&
         (g_appConfig.line_control_v2_error_filter_alpha <= 1.0f) &&
         (g_appConfig.line_control_v2_derivative_filter_alpha > 0.0f) &&

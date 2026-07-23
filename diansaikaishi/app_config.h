@@ -33,6 +33,7 @@
  * these are initial vehicle-test values and are intentionally independent of
  * the validated legacy track_kp/track_kd settings.
  */
+#define LINE_CONTROL_V2_BASE_COMMAND_DEFAULT             (220)
 #define LINE_CONTROL_V2_ERROR_FILTER_ALPHA_DEFAULT       (0.35f)
 #define LINE_CONTROL_V2_DERIV_FILTER_ALPHA_DEFAULT       (0.20f)
 #define LINE_CONTROL_V2_KP_DEFAULT                       (0.35f)
@@ -125,6 +126,7 @@ typedef struct {
     float wheel_control_max_decel_cmps2;
     uint32_t wheel_control_target_timeout_ms;
 
+    int16_t line_control_v2_base_command;
     float line_control_v2_error_filter_alpha;
     float line_control_v2_derivative_filter_alpha;
     float line_control_v2_kp;

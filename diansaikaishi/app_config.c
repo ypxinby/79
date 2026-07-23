@@ -129,7 +129,9 @@ void AppConfig_InitDefault(void)
     g_appConfig.wheel_control_target_timeout_ms =
         WHEEL_CONTROL_TARGET_TIMEOUT_MS_DEFAULT;
 
-    /* P5.1 uses fixed base_speed and a simple filtered PD outer loop. */
+    /* P5.1 uses its own fixed normalized base command and filtered PD loop. */
+    g_appConfig.line_control_v2_base_command =
+        LINE_CONTROL_V2_BASE_COMMAND_DEFAULT;
     g_appConfig.line_control_v2_error_filter_alpha =
         LINE_CONTROL_V2_ERROR_FILTER_ALPHA_DEFAULT;
     g_appConfig.line_control_v2_derivative_filter_alpha =
@@ -254,6 +256,8 @@ void AppConfig_LimitAll(void)
         g_appConfig.avoid_reacquire_timeout_ms = 15000U;
     }
 
+    g_appConfig.line_control_v2_base_command = clamp_i16(
+        g_appConfig.line_control_v2_base_command, 0, 1000);
     if ((g_appConfig.line_control_v2_error_filter_alpha <= 0.0f) ||
         (g_appConfig.line_control_v2_error_filter_alpha > 1.0f)) {
         g_appConfig.line_control_v2_error_filter_alpha =

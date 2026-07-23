@@ -297,7 +297,8 @@ static void handle_follow_line(uint32_t elapsed_ms)
 
 #if FEATURE_LINE_CONTROL_V2
     LineController_Update(elapsed_ms, g_appRuntime.sensor_raw,
-        g_appConfig.base_speed, &leftCommand, &rightCommand);
+        g_appConfig.line_control_v2_base_command,
+        &leftCommand, &rightCommand);
 #endif
 
     if (TrackSensor_IsLineLost(g_appRuntime.sensor_raw)) {
