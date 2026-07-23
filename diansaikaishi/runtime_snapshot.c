@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "imu.h"
+#include "line_controller.h"
 #include "motor_control.h"
 #include "motion_action.h"
 #include "obstacle_safety.h"
@@ -35,6 +36,7 @@ void RuntimeSnapshot_Update(uint32_t timestamp_ms)
     const volatile WheelSpeedEstimatorRuntime *wheel =
         WheelSpeedEstimator_GetRuntime();
     const MotorControlRuntime *motorControl = MotorControl_GetRuntime();
+    const LineControllerRuntime *lineControl = LineController_GetRuntime();
     SchedulerStats scheduler;
 
     SchedulerMonitor_GetStats(&scheduler);
@@ -48,6 +50,33 @@ void RuntimeSnapshot_Update(uint32_t timestamp_ms)
     g_snapshot.run_mode = CarController_GetRunMode();
     g_snapshot.track_raw = g_appRuntime.sensor_raw;
     g_snapshot.track_error = g_appRuntime.line_error;
+    g_snapshot.line_control_v2_enabled = lineControl->enabled;
+    g_snapshot.line_control_v2_config_valid = lineControl->config_valid;
+    g_snapshot.line_control_v2_dt_valid = lineControl->dt_valid;
+    g_snapshot.line_control_sensor_pattern = lineControl->sensor_pattern;
+    g_snapshot.line_control_active_count = lineControl->active_count;
+    g_snapshot.line_control_raw_error = lineControl->raw_error;
+    g_snapshot.line_control_filtered_error = lineControl->filtered_error;
+    g_snapshot.line_control_derivative = lineControl->filtered_derivative;
+    g_snapshot.line_control_correction_raw = lineControl->correction_raw;
+    g_snapshot.line_control_correction = lineControl->correction;
+    g_snapshot.line_control_left_command =
+        lineControl->left_target_command;
+    g_snapshot.line_control_right_command =
+        lineControl->right_target_command;
+    g_snapshot.line_control_left_low_speed_zeroed =
+        lineControl->left_low_speed_zeroed;
+    g_snapshot.line_control_right_low_speed_zeroed =
+        lineControl->right_low_speed_zeroed;
+    g_snapshot.line_control_last_turn_direction =
+        lineControl->last_turn_direction;
+    g_snapshot.line_control_direction_valid = lineControl->direction_valid;
+    g_snapshot.line_control_last_valid_pattern =
+        lineControl->last_valid_pattern;
+    g_snapshot.line_control_last_valid_error =
+        lineControl->last_valid_error;
+    g_snapshot.line_control_direction_update_count =
+        lineControl->direction_update_count;
     g_snapshot.yaw_deg = Imu_GetYaw();
     g_snapshot.gyro_z_dps = Imu_GetCorrectedGyroZDps();
     g_snapshot.obstacle_state = obstacle->state;

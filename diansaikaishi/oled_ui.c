@@ -9,6 +9,7 @@
 #include "gimbal_tracker.h"
 #include "heading_control.h"
 #include "imu.h"
+#include "line_controller.h"
 #include "menu.h"
 #include "gimbal_vision_adapter.h"
 #include "gimbal_vision_pitch_tracker.h"
@@ -64,6 +65,15 @@ static int16_t clamp_control_term_i16(float value)
         return -999;
     }
     return (int16_t)value;
+}
+
+static void print_track_pattern_s1_to_s7(uint8_t pattern)
+{
+    uint8_t sensor;
+
+    for (sensor = 0U; sensor < TRACK_SENSOR_COUNT; sensor++) {
+        OLED_PrintChar((pattern & (uint8_t)(1U << sensor)) ? '1' : '0');
+    }
 }
 
 static void print_uint64_decimal(uint64_t value)
@@ -494,6 +504,48 @@ static void print_param_page(uint8_t keyEvent)
 
 static void print_sensor_page(uint8_t raw, uint8_t blackCount, int16_t error)
 {
+#if FEATURE_LINE_CONTROL_V2
+    const LineControllerRuntime *line = LineController_GetRuntime();
+    char direction = 'U';
+
+    (void)raw;
+    (void)blackCount;
+    (void)error;
+
+    if (line->last_turn_direction == LINE_TURN_DIRECTION_LEFT) {
+        direction = 'L';
+    } else if (line->last_turn_direction == LINE_TURN_DIRECTION_RIGHT) {
+        direction = 'R';
+    }
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("P1>7:");
+    print_track_pattern_s1_to_s7(line->sensor_pattern);
+    OLED_PrintString(" N:");
+    OLED_PrintInt16((int16_t)line->active_count);
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("R:");
+    OLED_PrintInt16(line->raw_error);
+    OLED_PrintString(" F:");
+    OLED_PrintInt16(clamp_display_float_i16(line->filtered_error));
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("D:");
+    OLED_PrintInt16(clamp_display_float_i16(line->filtered_derivative));
+    OLED_PrintString(" C:");
+    OLED_PrintInt16(line->correction);
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("L:");
+    OLED_PrintInt16(line->left_target_command);
+    OLED_PrintString(" R:");
+    OLED_PrintInt16(line->right_target_command);
+    OLED_PrintString(" T:");
+    OLED_PrintChar(direction);
+    OLED_PrintString(" V:");
+    OLED_PrintInt16(line->direction_valid ? 1 : 0);
+#else
     (void)error;
 
     OLED_SetCursor(0, 0);
@@ -522,6 +574,7 @@ static void print_sensor_page(uint8_t raw, uint8_t blackCount, int16_t error)
     OLED_PrintBinary7((uint8_t)(raw & TRACK_RAW_VALID_MASK));
     OLED_PrintString(" C:");
     OLED_PrintInt16((int16_t)blackCount);
+#endif
 }
 
 static void print_imu_page(void)

@@ -26,8 +26,10 @@
 /* Set to 0 to restore the validated P4A PI/feedforward behavior. */
 #define FEATURE_MOTOR_CONTROL_FAST_SETTLING (1)
 /* Minimal closed-loop test: select 10/20/30 cm/s and start with K2 short. */
-#define FEATURE_WHEEL_SPEED_TEST    (1)
+#define FEATURE_WHEEL_SPEED_TEST    (0)
 #define WHEEL_SPEED_TEST_TARGET_CMPS (30)
+/* P5.1 simple FOLLOW outer loop; set to 0 for the validated legacy path. */
+#define FEATURE_LINE_CONTROL_V2     (1)
 
 #if FEATURE_WHEEL_SPEED_CONTROL && !FEATURE_WHEEL_SPEED_ESTIMATOR
 #error FEATURE_WHEEL_SPEED_CONTROL requires FEATURE_WHEEL_SPEED_ESTIMATOR
@@ -35,6 +37,10 @@
 
 #if FEATURE_WHEEL_SPEED_TEST && !FEATURE_WHEEL_SPEED_CONTROL
 #error FEATURE_WHEEL_SPEED_TEST requires FEATURE_WHEEL_SPEED_CONTROL
+#endif
+
+#if FEATURE_LINE_CONTROL_V2 && !FEATURE_WHEEL_SPEED_CONTROL
+#error FEATURE_LINE_CONTROL_V2 requires FEATURE_WHEEL_SPEED_CONTROL
 #endif
 
 #if FEATURE_WHEEL_SPEED_TEST && \

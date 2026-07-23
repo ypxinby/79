@@ -128,6 +128,22 @@ void AppConfig_InitDefault(void)
         WHEEL_CONTROL_MAX_DECEL_CMPS2_DEFAULT;
     g_appConfig.wheel_control_target_timeout_ms =
         WHEEL_CONTROL_TARGET_TIMEOUT_MS_DEFAULT;
+
+    /* P5.1 uses fixed base_speed and a simple filtered PD outer loop. */
+    g_appConfig.line_control_v2_error_filter_alpha =
+        LINE_CONTROL_V2_ERROR_FILTER_ALPHA_DEFAULT;
+    g_appConfig.line_control_v2_derivative_filter_alpha =
+        LINE_CONTROL_V2_DERIV_FILTER_ALPHA_DEFAULT;
+    g_appConfig.line_control_v2_kp = LINE_CONTROL_V2_KP_DEFAULT;
+    g_appConfig.line_control_v2_kd = LINE_CONTROL_V2_KD_DEFAULT;
+    g_appConfig.line_control_v2_max_correction =
+        LINE_CONTROL_V2_MAX_CORRECTION_DEFAULT;
+    g_appConfig.line_control_v2_min_running_command =
+        LINE_CONTROL_V2_MIN_RUNNING_COMMAND_DEFAULT;
+    g_appConfig.line_control_v2_min_dt_ms =
+        LINE_CONTROL_V2_MIN_DT_MS_DEFAULT;
+    g_appConfig.line_control_v2_max_dt_ms =
+        LINE_CONTROL_V2_MAX_DT_MS_DEFAULT;
 }
 
 void AppConfig_LimitAll(void)
@@ -236,6 +252,38 @@ void AppConfig_LimitAll(void)
     }
     if (g_appConfig.avoid_reacquire_timeout_ms > 15000U) {
         g_appConfig.avoid_reacquire_timeout_ms = 15000U;
+    }
+
+    if ((g_appConfig.line_control_v2_error_filter_alpha <= 0.0f) ||
+        (g_appConfig.line_control_v2_error_filter_alpha > 1.0f)) {
+        g_appConfig.line_control_v2_error_filter_alpha =
+            LINE_CONTROL_V2_ERROR_FILTER_ALPHA_DEFAULT;
+    }
+    if ((g_appConfig.line_control_v2_derivative_filter_alpha <= 0.0f) ||
+        (g_appConfig.line_control_v2_derivative_filter_alpha > 1.0f)) {
+        g_appConfig.line_control_v2_derivative_filter_alpha =
+            LINE_CONTROL_V2_DERIV_FILTER_ALPHA_DEFAULT;
+    }
+    if ((g_appConfig.line_control_v2_kp < 0.0f) ||
+        (g_appConfig.line_control_v2_kp > 10.0f)) {
+        g_appConfig.line_control_v2_kp = LINE_CONTROL_V2_KP_DEFAULT;
+    }
+    if ((g_appConfig.line_control_v2_kd < 0.0f) ||
+        (g_appConfig.line_control_v2_kd > 1.0f)) {
+        g_appConfig.line_control_v2_kd = LINE_CONTROL_V2_KD_DEFAULT;
+    }
+    g_appConfig.line_control_v2_max_correction = clamp_i16(
+        g_appConfig.line_control_v2_max_correction, 0, 1000);
+    g_appConfig.line_control_v2_min_running_command = clamp_i16(
+        g_appConfig.line_control_v2_min_running_command, 0, 1000);
+    if (g_appConfig.line_control_v2_min_dt_ms == 0U) {
+        g_appConfig.line_control_v2_min_dt_ms =
+            LINE_CONTROL_V2_MIN_DT_MS_DEFAULT;
+    }
+    if (g_appConfig.line_control_v2_max_dt_ms <
+        g_appConfig.line_control_v2_min_dt_ms) {
+        g_appConfig.line_control_v2_max_dt_ms =
+            g_appConfig.line_control_v2_min_dt_ms;
     }
 }
 

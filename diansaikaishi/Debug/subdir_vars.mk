@@ -29,6 +29,7 @@ C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/m0p/startup_system_files/ticlan
 ../heading_control.c \
 ../imu.c \
 ../key.c \
+../line_controller.c \
 ../menu.c \
 ../mission_library.c \
 ../mission_manager.c \
@@ -84,6 +85,7 @@ C_DEPS += \
 ./heading_control.d \
 ./imu.d \
 ./key.d \
+./line_controller.d \
 ./menu.d \
 ./mission_library.d \
 ./mission_manager.d \
@@ -134,6 +136,7 @@ OBJS += \
 ./heading_control.o \
 ./imu.o \
 ./key.o \
+./line_controller.o \
 ./menu.o \
 ./mission_library.o \
 ./mission_manager.o \
@@ -186,6 +189,7 @@ OBJS__QUOTED += \
 "heading_control.o" \
 "imu.o" \
 "key.o" \
+"line_controller.o" \
 "menu.o" \
 "mission_library.o" \
 "mission_manager.o" \
@@ -238,6 +242,7 @@ C_DEPS__QUOTED += \
 "heading_control.d" \
 "imu.d" \
 "key.d" \
+"line_controller.d" \
 "menu.d" \
 "mission_library.d" \
 "mission_manager.d" \
@@ -290,6 +295,7 @@ C_SRCS__QUOTED += \
 "../heading_control.c" \
 "../imu.c" \
 "../key.c" \
+"../line_controller.c" \
 "../menu.c" \
 "../mission_library.c" \
 "../mission_manager.c" \

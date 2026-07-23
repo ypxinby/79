@@ -7,6 +7,7 @@
 #include "fault.h"
 #include "heading_control.h"
 #include "imu.h"
+#include "line_controller.h"
 #include "motor.h"
 #include "motor_control.h"
 #include "scheduler_monitor.h"
@@ -93,6 +94,7 @@ static void update_sensor_runtime(void)
         TrackSensor_CountBlack(g_appRuntime.sensor_raw);
     g_appRuntime.line_error =
         TrackSensor_GetErrorFromRaw(g_appRuntime.sensor_raw);
+    LineController_ObserveSensors(g_appRuntime.sensor_raw);
 }
 
 static void update_feedback_from_runtime(void)
@@ -275,6 +277,9 @@ static void handle_seek_line(uint32_t elapsed_ms)
     update_recover_direction_from_error(g_appRuntime.line_error);
     g_appRuntime.lost_count = 0;
     g_appRuntime.run_mode = TRACK_MODE_FOLLOW_LINE;
+#if FEATURE_LINE_CONTROL_V2
+    LineController_ResetControlState();
+#endif
     reset_heading_control_runtime();
 }
 
@@ -282,8 +287,18 @@ static void handle_follow_line(uint32_t elapsed_ms)
 {
     TrackTurnType turn;
     int16_t error;
+#if FEATURE_LINE_CONTROL_V2
+    int16_t leftCommand = 0;
+    int16_t rightCommand = 0;
+#else
     int16_t derivative;
     int32_t correction;
+#endif
+
+#if FEATURE_LINE_CONTROL_V2
+    LineController_Update(elapsed_ms, g_appRuntime.sensor_raw,
+        g_appConfig.base_speed, &leftCommand, &rightCommand);
+#endif
 
     if (TrackSensor_IsLineLost(g_appRuntime.sensor_raw)) {
         g_appRuntime.correction = 0;
@@ -314,6 +329,9 @@ static void handle_follow_line(uint32_t elapsed_ms)
         g_appRuntime.recover_direction = RECOVER_DIRECTION_LEFT;
         g_appRuntime.run_mode = TRACK_MODE_TURN_LEFT_90;
         g_appRuntime.correction = 0;
+#if FEATURE_LINE_CONTROL_V2
+        LineController_ResetControlState();
+#endif
         reset_heading_control_runtime();
         return;
     }
@@ -322,10 +340,24 @@ static void handle_follow_line(uint32_t elapsed_ms)
         g_appRuntime.recover_direction = RECOVER_DIRECTION_RIGHT;
         g_appRuntime.run_mode = TRACK_MODE_TURN_RIGHT_90;
         g_appRuntime.correction = 0;
+#if FEATURE_LINE_CONTROL_V2
+        LineController_ResetControlState();
+#endif
         reset_heading_control_runtime();
         return;
     }
 
+#if FEATURE_LINE_CONTROL_V2
+    {
+        const LineControllerRuntime *line = LineController_GetRuntime();
+
+        g_appRuntime.correction = line->correction;
+        g_appRuntime.heading_correction = 0;
+        set_output_speed(leftCommand, rightCommand);
+        g_appRuntime.last_error = error;
+        return;
+    }
+#else
     derivative = (int16_t)(error - g_appRuntime.last_error);
 
     correction =
@@ -354,6 +386,7 @@ static void handle_follow_line(uint32_t elapsed_ms)
         (int16_t)((int32_t)g_appConfig.base_speed -
             g_appRuntime.correction));
     g_appRuntime.last_error = error;
+#endif
 }
 
 static void handle_lost_recover(uint32_t elapsed_ms)
@@ -365,6 +398,9 @@ static void handle_lost_recover(uint32_t elapsed_ms)
         g_appRuntime.last_valid_error = g_appRuntime.line_error;
         update_recover_direction_from_error(g_appRuntime.line_error);
         g_appRuntime.run_mode = TRACK_MODE_FOLLOW_LINE;
+#if FEATURE_LINE_CONTROL_V2
+        LineController_ResetControlState();
+#endif
         reset_heading_control_runtime();
         return;
     }
@@ -413,6 +449,9 @@ static void handle_turn_90(uint8_t turnLeft, uint32_t elapsed_ms)
             g_appRuntime.run_mode = TRACK_MODE_FOLLOW_LINE;
             g_appRuntime.turn_elapsed_ms = 0;
             g_carControllerFeedback.turn_completed = true;
+#if FEATURE_LINE_CONTROL_V2
+            LineController_ResetControlState();
+#endif
             reset_heading_control_runtime();
             return;
         }
@@ -562,6 +601,7 @@ static void handle_drive_heading(uint32_t elapsed_ms)
 
 void CarController_Init(void)
 {
+    LineController_Init();
     CarController_ResetRuntime();
 }
 
@@ -595,6 +635,7 @@ void CarController_ResetRuntime(void)
     g_appRuntime.drive_heading_target_yaw_deg = 0.0f;
     g_followTurnPolicy = CAR_TURN_POLICY_AUTO;
     g_safetyHold = false;
+    LineController_Reset();
     update_feedback_from_runtime();
     reset_heading_control_runtime();
     stop_output();
@@ -615,6 +656,7 @@ void CarController_ResetTransientState(void)
     g_appRuntime.yaw_turn_error_deg = 0.0f;
     g_appRuntime.yaw_turn_timeout_ms = 0U;
     g_appRuntime.drive_heading_target_yaw_deg = 0.0f;
+    LineController_Reset();
     update_feedback_from_runtime();
     reset_heading_control_runtime();
 }
@@ -625,6 +667,7 @@ void CarController_Stop(void)
     g_appRuntime.left_speed = 0;
     g_appRuntime.right_speed = 0;
     g_appRuntime.correction = 0;
+    LineController_ResetControlState();
     reset_heading_control_runtime();
 }
 
@@ -748,6 +791,7 @@ void CarController_SetSafetyHold(bool enable)
         g_appRuntime.last_valid_error = g_appRuntime.line_error;
         g_appRuntime.lost_count = 0U;
         g_appRuntime.lost_elapsed_ms = 0U;
+        LineController_ResetControlState();
         reset_heading_control_runtime();
     }
 
@@ -757,6 +801,7 @@ void CarController_SetSafetyHold(bool enable)
         g_appRuntime.left_speed = 0;
         g_appRuntime.right_speed = 0;
         g_appRuntime.correction = 0;
+        LineController_ResetControlState();
         reset_heading_control_runtime();
     }
 }
@@ -777,6 +822,7 @@ void CarController_Update_20ms(uint32_t elapsed_ms)
         g_appRuntime.left_speed = 0;
         g_appRuntime.right_speed = 0;
         g_appRuntime.correction = 0;
+        LineController_ResetControlState();
         update_feedback_from_runtime();
         reset_heading_control_runtime();
         return;
@@ -786,6 +832,7 @@ void CarController_Update_20ms(uint32_t elapsed_ms)
         g_appRuntime.left_speed = 0;
         g_appRuntime.right_speed = 0;
         g_appRuntime.correction = 0;
+        LineController_ResetControlState();
         update_feedback_from_runtime();
         reset_heading_control_runtime();
         return;

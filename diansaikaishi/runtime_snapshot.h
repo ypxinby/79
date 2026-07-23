@@ -7,6 +7,7 @@
 #include "car_controller.h"
 #include "car_state.h"
 #include "fault.h"
+#include "line_controller.h"
 #include "mission_manager.h"
 #include "motion_types.h"
 #include "obstacle_avoidance.h"
@@ -22,6 +23,25 @@ typedef struct {
     TrackRunMode run_mode;
     uint8_t track_raw;
     int16_t track_error;
+    bool line_control_v2_enabled;
+    bool line_control_v2_config_valid;
+    bool line_control_v2_dt_valid;
+    uint8_t line_control_sensor_pattern;
+    uint8_t line_control_active_count;
+    int16_t line_control_raw_error;
+    float line_control_filtered_error;
+    float line_control_derivative;
+    float line_control_correction_raw;
+    int16_t line_control_correction;
+    int16_t line_control_left_command;
+    int16_t line_control_right_command;
+    bool line_control_left_low_speed_zeroed;
+    bool line_control_right_low_speed_zeroed;
+    LineTurnDirection line_control_last_turn_direction;
+    bool line_control_direction_valid;
+    uint8_t line_control_last_valid_pattern;
+    int16_t line_control_last_valid_error;
+    uint32_t line_control_direction_update_count;
     float yaw_deg;
     float gyro_z_dps;
     ObstacleState obstacle_state;

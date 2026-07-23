@@ -18,6 +18,7 @@
 "./heading_control.o"
 "./imu.o"
 "./key.o"
+"./line_controller.o"
 "./menu.o"
 "./mission_library.o"
 "./mission_manager.o"

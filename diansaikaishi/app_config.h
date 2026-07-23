@@ -28,6 +28,20 @@
 #define WHEEL_CONTROL_MAX_DECEL_CMPS2_DEFAULT     (120.0f)
 #define WHEEL_CONTROL_TARGET_TIMEOUT_MS_DEFAULT   (100U)
 
+/*
+ * P5.1 conservative FOLLOW values. Commands remain normalized -1000..1000;
+ * these are initial vehicle-test values and are intentionally independent of
+ * the validated legacy track_kp/track_kd settings.
+ */
+#define LINE_CONTROL_V2_ERROR_FILTER_ALPHA_DEFAULT       (0.35f)
+#define LINE_CONTROL_V2_DERIV_FILTER_ALPHA_DEFAULT       (0.20f)
+#define LINE_CONTROL_V2_KP_DEFAULT                       (0.35f)
+#define LINE_CONTROL_V2_KD_DEFAULT                       (0.010f)
+#define LINE_CONTROL_V2_MAX_CORRECTION_DEFAULT           (120)
+#define LINE_CONTROL_V2_MIN_RUNNING_COMMAND_DEFAULT      (50)
+#define LINE_CONTROL_V2_MIN_DT_MS_DEFAULT                 (5U)
+#define LINE_CONTROL_V2_MAX_DT_MS_DEFAULT                 (100U)
+
 typedef struct {
     uint8_t target_laps;
     uint8_t min_target_laps;
@@ -110,6 +124,15 @@ typedef struct {
     float wheel_control_max_accel_cmps2;
     float wheel_control_max_decel_cmps2;
     uint32_t wheel_control_target_timeout_ms;
+
+    float line_control_v2_error_filter_alpha;
+    float line_control_v2_derivative_filter_alpha;
+    float line_control_v2_kp;
+    float line_control_v2_kd;
+    int16_t line_control_v2_max_correction;
+    int16_t line_control_v2_min_running_command;
+    uint16_t line_control_v2_min_dt_ms;
+    uint16_t line_control_v2_max_dt_ms;
 } AppConfig;
 
 extern AppConfig g_appConfig;
