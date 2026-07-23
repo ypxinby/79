@@ -38,8 +38,8 @@
 #define IMU_SHORT_GAP_MAX_MS_DEFAULT              (60U)
 #define IMU_STALE_TIMEOUT_MS_DEFAULT              (100U)
 #define IMU_MAX_ABS_GYRO_DPS_DEFAULT              (490.0f)
-/* Keep the installed MPU6050 Z-axis sign unchanged until control retest. */
-#define IMU_YAW_AXIS_SIGN_DEFAULT                 (1)
+/* Normalize installed MPU6050 Z-axis to the project's yaw convention. */
+#define IMU_YAW_AXIS_SIGN_DEFAULT                 (-1)
 
 /*
  * P5.1 conservative FOLLOW values. Commands remain normalized -1000..1000;

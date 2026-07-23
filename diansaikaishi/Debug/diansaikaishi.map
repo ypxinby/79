@@ -1,7 +1,7 @@
 ******************************************************************************
             TI ARM Clang Linker PC v4.0.4                      
 ******************************************************************************
->> Linked Fri Jul 24 00:54:58 2026
+>> Linked Fri Jul 24 01:02:24 2026
 
 OUTPUT FILE NAME:   <diansaikaishi.out>
 ENTRY POINT SYMBOL: "_c_int00_noargs"  address: 000104f9
@@ -53,27 +53,27 @@ section   page    origin      length       input sections
                   00006720    000003dc     imu.o (.text.Imu_Update)
                   00006afc    000003b0     vision_receiver.o (.text.VisionReceiver_Process)
                   00006eac    00000388     gimbal_vision_yaw_tracker.o (.text.GimbalVisionYawTracker_Update10ms)
-                  00007234    00000378     imu.o (.text.Imu_Init)
-                  000075ac    00000370     gimbal.o (.text.gimbal_update_feedback)
-                  0000791c    00000340     obstacle_avoidance.o (.text.ObstacleAvoidance_Update_20ms)
-                  00007c5c    00000310     vision_tuning_console.o (.text.append_scaled)
-                  00007f6c    000002f0     imu.o (.text.mpu6050_read_regs)
-                  0000825c    000002a8     gimbal_tracker.o (.text.update_feedback)
-                  00008504    00000298     gimbal.o (.text.Gimbal_YawSetWrappedTargetDeg)
-                  0000879c    00000294     gimbal.o (.text.Gimbal_YawUpdate5ms)
-                  00008a30    00000290     gimbal.o (.text.Gimbal_PitchSetTrackingSpeedDegS)
-                  00008cc0    0000028c     motor_control.o (.text.MotorControl_Update)
-                  00008f4c    00000254     oled.o (.text.OLED_Clear)
-                  000091a0    00000238     gimbal.o (.text.gimbal_pitch_update_feedback)
-                  000093d8    00000234     motion_action.o (.text.MotionAction_Update_20ms)
-                  0000960c    00000230     imu.o (.text.Imu_CalibrateGyroBias)
-                  0000983c    00000228     gimbal_vision_pitch_tracker.o (.text.GimbalVisionPitchTracker_Update10ms)
-                  00009a64    00000204     motor.o (.text.Motor_SetSpeed)
-                  00009c68    000001f4     vision_protocol.o (.text.VisionProtocol_ParseV1TargetFrame)
-                  00009e5c    000001e8     motor_control.o (.text.config_is_valid)
-                  0000a044    000001cc     car_controller.o (.text.handle_turn_to_yaw)
-                  0000a210    000001cc     imu.o (.text.imu_i2c_write_byte)
-                  0000a3dc    000001bc     app_config.o (.text.AppConfig_InitDefault)
+                  00007234    00000374     imu.o (.text.Imu_Init)
+                  000075a8    00000370     gimbal.o (.text.gimbal_update_feedback)
+                  00007918    00000340     obstacle_avoidance.o (.text.ObstacleAvoidance_Update_20ms)
+                  00007c58    00000310     vision_tuning_console.o (.text.append_scaled)
+                  00007f68    000002f0     imu.o (.text.mpu6050_read_regs)
+                  00008258    000002a8     gimbal_tracker.o (.text.update_feedback)
+                  00008500    00000298     gimbal.o (.text.Gimbal_YawSetWrappedTargetDeg)
+                  00008798    00000294     gimbal.o (.text.Gimbal_YawUpdate5ms)
+                  00008a2c    00000290     gimbal.o (.text.Gimbal_PitchSetTrackingSpeedDegS)
+                  00008cbc    0000028c     motor_control.o (.text.MotorControl_Update)
+                  00008f48    00000254     oled.o (.text.OLED_Clear)
+                  0000919c    00000238     gimbal.o (.text.gimbal_pitch_update_feedback)
+                  000093d4    00000234     motion_action.o (.text.MotionAction_Update_20ms)
+                  00009608    00000230     imu.o (.text.Imu_CalibrateGyroBias)
+                  00009838    00000228     gimbal_vision_pitch_tracker.o (.text.GimbalVisionPitchTracker_Update10ms)
+                  00009a60    00000204     motor.o (.text.Motor_SetSpeed)
+                  00009c64    000001f4     vision_protocol.o (.text.VisionProtocol_ParseV1TargetFrame)
+                  00009e58    000001e8     motor_control.o (.text.config_is_valid)
+                  0000a040    000001cc     car_controller.o (.text.handle_turn_to_yaw)
+                  0000a20c    000001cc     imu.o (.text.imu_i2c_write_byte)
+                  0000a3d8    000001c0     app_config.o (.text.AppConfig_InitDefault)
                   0000a598    000001bc     gimbal.o (.text.Gimbal_PitchUpdate5ms)
                   0000a754    000001b8     oled.o (.text.oled_i2c_write_byte)
                   0000a90c    000001a0     ultrasonic.o (.text.Ultrasonic_Tick100us)
@@ -888,7 +888,7 @@ MODULE SUMMARY
        oled_ui.o                       12084   1018      1      
        vision_tuning_console.o         9616    102       613    
        gimbal.o                        5884    0         241    
-       imu.o                           4252    0         142    
+       imu.o                           4248    0         142    
        car_controller.o                3828    64        80     
        motor_control.o                 2768    0         125    
        oled.o                          2210    401       1      
@@ -896,7 +896,7 @@ MODULE SUMMARY
        line_controller.o               2112    0         64     
        vision_receiver.o               1112    0         689    
        gimbal_vision_yaw_tracker.o     1732    0         48     
-       app_config.o                    1544    0         220    
+       app_config.o                    1548    0         220    
        runtime_snapshot.o              1060    0         416    
        wheel_speed_estimator.o         1296    0         94     
        mission_manager.o               1300    0         32     
@@ -1028,7 +1028,7 @@ address   name
 0000e3cb  ADC1_IRQHandler                           
 0000e3cb  AES_IRQHandler                            
 0000dc1d  Angle_Normalize180                        
-0000a3dd  AppConfig_InitDefault                     
+0000a3d9  AppConfig_InitDefault                     
 0000564d  AppConfig_LimitAll                        
 0000ebad  App_Init                                  
 0000c609  App_Update_20ms                           
@@ -1096,13 +1096,13 @@ address   name
 0000e07d  GimbalVisionAdapter_Update                
 00010569  GimbalVisionPitchTracker_GetFeedback      
 0000fc45  GimbalVisionPitchTracker_Init             
-0000983d  GimbalVisionPitchTracker_Update10ms       
+00009839  GimbalVisionPitchTracker_Update10ms       
 000101a9  GimbalVisionYawTracker_GetFeedback        
 0000f255  GimbalVisionYawTracker_Init               
 00006ead  GimbalVisionYawTracker_Update10ms         
 0000b0b1  Gimbal_Init                               
 000101d9  Gimbal_PitchGetFeedback                   
-00008a31  Gimbal_PitchSetTrackingSpeedDegS          
+00008a2d  Gimbal_PitchSetTrackingSpeedDegS          
 0000cf2d  Gimbal_PitchStopHold                      
 00010c81  Gimbal_PitchStopTrackingHold              
 0000ac41  Gimbal_PitchTick100us                     
@@ -1112,9 +1112,9 @@ address   name
 0000e871  Gimbal_YawDisableWorldLock                
 0000bf35  Gimbal_YawEnableWorldLock                 
 00010ae5  Gimbal_YawGetFeedback                     
-00008505  Gimbal_YawSetWrappedTargetDeg             
+00008501  Gimbal_YawSetWrappedTargetDeg             
 0000e8fd  Gimbal_YawStopHold                        
-0000879d  Gimbal_YawUpdate5ms                       
+00008799  Gimbal_YawUpdate5ms                       
 00010d27  HOSTexit                                  
 0000e3cb  HardFault_Handler                         
 000109e9  HeadingControl_Enable                     
@@ -1125,7 +1125,7 @@ address   name
 0000de59  HeadingControl_Update                     
 0000e3cb  I2C0_IRQHandler                           
 0000e3cb  I2C1_IRQHandler                           
-0000960d  Imu_CalibrateGyroBias                     
+00009609  Imu_CalibrateGyroBias                     
 00010b9d  Imu_GetCorrectedGyroZDps                  
 00010c91  Imu_GetRuntime                            
 00010ba9  Imu_GetYaw                                
@@ -1175,18 +1175,18 @@ address   name
 00010705  MotionAction_Init                         
 0000faf1  MotionAction_ReapplyControllerTarget      
 0000c05d  MotionAction_Start                        
-000093d9  MotionAction_Update_20ms                  
+000093d5  MotionAction_Update_20ms                  
 00010cb9  MotorControl_GetRuntime                   
 000105b1  MotorControl_Init                         
 000105d5  MotorControl_Reset                        
 0000cb3d  MotorControl_SetNormalizedTarget          
 0000f97d  MotorControl_Stop                         
-00008cc1  MotorControl_Update                       
+00008cbd  MotorControl_Update                       
 0000eb29  Motor_Init                                
-00009a65  Motor_SetSpeed                            
+00009a61  Motor_SetSpeed                            
 0000edb5  Motor_Stop                                
 0000e3cb  NMI_Handler                               
-00008f4d  OLED_Clear                                
+00008f49  OLED_Clear                                
 0000d9b1  OLED_Init                                 
 0000da85  OLED_PrintChar                            
 0000bb99  OLED_PrintInt16                           
@@ -1198,7 +1198,7 @@ address   name
 00010be5  ObstacleAvoidance_IsActive                
 00010bf1  ObstacleAvoidance_IsFailed                
 00010b05  ObstacleAvoidance_IsResumeGraceActive     
-0000791d  ObstacleAvoidance_Update_20ms             
+00007919  ObstacleAvoidance_Update_20ms             
 00010cc9  ObstacleMonitor_GetFeedback               
 00010815  ObstacleMonitor_Init                      
 0000e469  ObstacleMonitor_Update_20ms               
@@ -1257,7 +1257,7 @@ address   name
 0001084d  VisionPitchTuning_ParamName               
 000102c9  VisionPitchTuning_RestoreDefault          
 0000eeb1  VisionPitchTuning_Set                     
-00009c69  VisionProtocol_ParseV1TargetFrame         
+00009c65  VisionProtocol_ParseV1TargetFrame         
 00010ce9  VisionReceiver_GetObservation             
 00010745  VisionReceiver_GetProtocolErrorCount      
 00010cf1  VisionReceiver_GetStatus                  
@@ -1428,18 +1428,18 @@ address   name
 00006afd  VisionReceiver_Process                    
 00006ead  GimbalVisionYawTracker_Update10ms         
 00007235  Imu_Init                                  
-0000791d  ObstacleAvoidance_Update_20ms             
-00008505  Gimbal_YawSetWrappedTargetDeg             
-0000879d  Gimbal_YawUpdate5ms                       
-00008a31  Gimbal_PitchSetTrackingSpeedDegS          
-00008cc1  MotorControl_Update                       
-00008f4d  OLED_Clear                                
-000093d9  MotionAction_Update_20ms                  
-0000960d  Imu_CalibrateGyroBias                     
-0000983d  GimbalVisionPitchTracker_Update10ms       
-00009a65  Motor_SetSpeed                            
-00009c69  VisionProtocol_ParseV1TargetFrame         
-0000a3dd  AppConfig_InitDefault                     
+00007919  ObstacleAvoidance_Update_20ms             
+00008501  Gimbal_YawSetWrappedTargetDeg             
+00008799  Gimbal_YawUpdate5ms                       
+00008a2d  Gimbal_PitchSetTrackingSpeedDegS          
+00008cbd  MotorControl_Update                       
+00008f49  OLED_Clear                                
+000093d5  MotionAction_Update_20ms                  
+00009609  Imu_CalibrateGyroBias                     
+00009839  GimbalVisionPitchTracker_Update10ms       
+00009a61  Motor_SetSpeed                            
+00009c65  VisionProtocol_ParseV1TargetFrame         
+0000a3d9  AppConfig_InitDefault                     
 0000a599  Gimbal_PitchUpdate5ms                     
 0000a90d  Ultrasonic_Tick100us                      
 0000aaad  GimbalStepper_Tick100us                   
