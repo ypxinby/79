@@ -333,9 +333,9 @@ static void set_yaw_turn_output(float error, int16_t speed)
 #endif
 
     if (turnLeft) {
-        set_output_speed(0, speed);
+        set_output_speed((int16_t)-speed, speed);
     } else {
-        set_output_speed(speed, 0);
+        set_output_speed(speed, (int16_t)-speed);
     }
 }
 
