@@ -48,6 +48,9 @@ void RuntimeSnapshot_Update(uint32_t timestamp_ms)
     g_snapshot.action_type = (action->action != (const MotionAction *)0) ?
         action->action->type : MOTION_ACTION_STOP;
     g_snapshot.action_result = action->result;
+    g_snapshot.action_error_code = action->error_code;
+    g_snapshot.action_imu_wait_elapsed_ms = action->imu_wait_elapsed_ms;
+    g_snapshot.action_waiting_for_imu = action->waiting_for_imu;
     g_snapshot.run_mode = CarController_GetRunMode();
     g_snapshot.track_raw = g_appRuntime.sensor_raw;
     g_snapshot.track_error = g_appRuntime.line_error;
@@ -140,6 +143,8 @@ void RuntimeSnapshot_Update(uint32_t timestamp_ms)
     g_snapshot.fault_context = fault->context;
     g_snapshot.turn_to_yaw_elapsed_ms = g_appRuntime.turn_elapsed_ms;
     g_snapshot.turn_to_yaw_error_deg = g_appRuntime.yaw_turn_error_deg;
+    g_snapshot.heading_imu_invalid_elapsed_ms =
+        g_appRuntime.heading_imu_invalid_elapsed_ms;
     g_snapshot.app_missed_count = scheduler.app_20ms_missed_count;
     g_snapshot.app_drop_count = scheduler.app_20ms_drop_count;
     g_snapshot.app_overrun_count = scheduler.app_20ms_overrun_count;

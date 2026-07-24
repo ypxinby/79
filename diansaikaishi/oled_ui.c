@@ -232,6 +232,13 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
         OLED_PrintInt16((int16_t)fault->detail);
         OLED_PrintString(" S:");
         OLED_PrintInt16((int16_t)fault->context);
+    } else if (mission->status == MISSION_STATUS_ERROR) {
+        OLED_PrintString("ME:");
+        OLED_PrintInt16((int16_t)mission->last_error_code);
+        OLED_PrintString(" AE:");
+        OLED_PrintInt16((int16_t)action->error_code);
+        OLED_PrintString(" IM:");
+        OLED_PrintInt16(Imu_IsReady() ? 1 : 0);
     } else {
         OLED_PrintString("U:");
         if (ultrasonic->measurement_valid) {
@@ -742,6 +749,7 @@ static void print_heading_page(void)
 {
     const ImuRuntime *imu = Imu_GetRuntime();
     const HeadingControlRuntime *heading = HeadingControl_GetRuntime();
+    const MotionActionRuntime *action = MotionAction_GetRuntime();
     int16_t yawDeg = clamp_display_i16((int32_t)imu->yaw_deg);
     int16_t targetDeg =
         clamp_display_i16((int32_t)heading_display_target_yaw());
@@ -752,6 +760,9 @@ static void print_heading_page(void)
                 heading->heading_error_deg) * 10.0f));
     int16_t gyroX10 = clamp_display_i16(
         (int32_t)(imu->corrected_gyro_z_dps * 10.0f));
+    uint16_t imuWaitMs = action->waiting_for_imu ?
+        action->imu_wait_elapsed_ms :
+        g_appRuntime.heading_imu_invalid_elapsed_ms;
 
     OLED_SetCursor(0, 0);
     OLED_PrintString("Y:");
@@ -772,10 +783,10 @@ static void print_heading_page(void)
     OLED_PrintInt16(g_appRuntime.right_speed);
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("C:");
-    OLED_PrintInt16(g_appRuntime.heading_correction);
-    OLED_PrintString(" A:");
+    OLED_PrintString("A:");
     print_uint64_decimal((uint64_t)heading_display_action_elapsed_ms());
+    OLED_PrintString(" I:");
+    OLED_PrintInt16((int16_t)imuWaitMs);
 }
 
 #if FEATURE_GIMBAL_OLED_TEST

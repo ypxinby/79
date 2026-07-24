@@ -13,7 +13,8 @@ typedef enum {
     TRACK_MODE_TURN_RIGHT_90,
     TRACK_MODE_TURN_TO_YAW,
     TRACK_MODE_DRIVE_HEADING,
-    TRACK_MODE_LOST_RECOVER
+    TRACK_MODE_LOST_RECOVER,
+    TRACK_MODE_IDLE
 } TrackRunMode;
 
 typedef enum {
@@ -52,6 +53,7 @@ typedef struct {
     uint16_t yaw_turn_stable_ms;
     uint16_t heading_straight_elapsed_ms;
     uint16_t drive_heading_duration_ms;
+    uint16_t heading_imu_invalid_elapsed_ms;
     uint16_t lap_cooldown_ms;
 
     float yaw_turn_target_deg;

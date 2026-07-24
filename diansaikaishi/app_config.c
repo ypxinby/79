@@ -72,6 +72,8 @@ void AppConfig_InitDefault(void)
     g_appConfig.yaw_turn_settle_ms = YAW_TURN_SETTLE_MS_DEFAULT;
     g_appConfig.yaw_turn_min_slow_command =
         YAW_TURN_MIN_SLOW_COMMAND_DEFAULT;
+    g_appConfig.heading_imu_invalid_grace_ms =
+        HEADING_IMU_INVALID_GRACE_MS_DEFAULT;
     g_appConfig.gyro_deadband_dps = 1.5f;
     g_appConfig.imu_dt_min_ms = IMU_DT_MIN_MS_DEFAULT;
     g_appConfig.imu_dt_max_ms = IMU_DT_MAX_MS_DEFAULT;
@@ -244,6 +246,11 @@ void AppConfig_LimitAll(void)
     }
     g_appConfig.yaw_turn_min_slow_command = clamp_i16(
         g_appConfig.yaw_turn_min_slow_command, 0, 1000);
+    if ((g_appConfig.heading_imu_invalid_grace_ms < 20U) ||
+        (g_appConfig.heading_imu_invalid_grace_ms > 1000U)) {
+        g_appConfig.heading_imu_invalid_grace_ms =
+            HEADING_IMU_INVALID_GRACE_MS_DEFAULT;
+    }
     if ((g_appConfig.imu_dt_min_ms == 0U) ||
         (g_appConfig.imu_dt_min_ms > 20U)) {
         g_appConfig.imu_dt_min_ms = IMU_DT_MIN_MS_DEFAULT;

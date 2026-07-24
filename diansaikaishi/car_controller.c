@@ -285,11 +285,42 @@ static void handle_follow_line(uint32_t elapsed_ms)
 #endif
 }
 
+static bool heading_imu_wait_or_fail(uint32_t elapsed_ms)
+{
+    if (Imu_IsReady()) {
+        g_appRuntime.heading_imu_invalid_elapsed_ms = 0U;
+        return false;
+    }
+
+    stop_output();
+    g_appRuntime.left_speed = 0;
+    g_appRuntime.right_speed = 0;
+    g_appRuntime.correction = 0;
+    g_appRuntime.heading_correction = 0;
+    g_appRuntime.heading_imu_invalid_elapsed_ms = add_elapsed_u16(
+        g_appRuntime.heading_imu_invalid_elapsed_ms, elapsed_ms);
+
+    if (g_appRuntime.heading_imu_invalid_elapsed_ms <
+        g_appConfig.heading_imu_invalid_grace_ms) {
+        return true;
+    }
+
+    g_carControllerFeedback.operation_failed = true;
+    g_carControllerFeedback.error_code =
+        CAR_CONTROLLER_ERROR_IMU_NOT_READY;
+    Fault_Raise(FAULT_CODE_TURN_YAW_IMU_NOT_READY,
+        g_appRuntime.heading_imu_invalid_elapsed_ms,
+        (uint16_t)g_appRuntime.run_mode, SystemTime_GetMs());
+    CarState_Set(CAR_STATE_ERROR);
+    return true;
+}
+
 static void reset_heading_action_runtime(void)
 {
     g_appRuntime.turn_elapsed_ms = 0U;
     g_appRuntime.yaw_turn_stable_ms = 0U;
     g_appRuntime.heading_straight_elapsed_ms = 0U;
+    g_appRuntime.heading_imu_invalid_elapsed_ms = 0U;
     reset_heading_control_runtime();
 }
 
@@ -403,16 +434,7 @@ static void handle_turn_to_yaw(uint32_t elapsed_ms)
     g_appRuntime.turn_elapsed_ms = add_elapsed_u32(
         g_appRuntime.turn_elapsed_ms, elapsed_ms);
 
-    if (!Imu_IsReady()) {
-        stop_output();
-        g_appRuntime.left_speed = 0;
-        g_appRuntime.right_speed = 0;
-        g_carControllerFeedback.operation_failed = true;
-        g_carControllerFeedback.error_code =
-            CAR_CONTROLLER_ERROR_IMU_NOT_READY;
-        Fault_Raise(FAULT_CODE_TURN_YAW_IMU_NOT_READY, 0U, 0U,
-            SystemTime_GetMs());
-        CarState_Set(CAR_STATE_ERROR);
+    if (heading_imu_wait_or_fail(elapsed_ms)) {
         return;
     }
 
@@ -481,16 +503,7 @@ static void handle_drive_heading(uint32_t elapsed_ms)
 {
     int16_t correction;
 
-    if (!Imu_IsReady()) {
-        stop_output();
-        g_appRuntime.left_speed = 0;
-        g_appRuntime.right_speed = 0;
-        g_appRuntime.correction = 0;
-        g_carControllerFeedback.operation_failed = true;
-        g_carControllerFeedback.error_code =
-            CAR_CONTROLLER_ERROR_IMU_NOT_READY;
-        reset_heading_control_runtime();
-        CarState_Set(CAR_STATE_ERROR);
+    if (heading_imu_wait_or_fail(elapsed_ms)) {
         return;
     }
 
@@ -533,7 +546,7 @@ void CarController_ResetRuntime(void)
     g_appRuntime.current_lap = 0;
     g_appRuntime.sensor_raw = 0;
     g_appRuntime.black_count = 0;
-    g_appRuntime.run_mode = TRACK_MODE_SEEK_LINE;
+    g_appRuntime.run_mode = TRACK_MODE_IDLE;
     g_appRuntime.has_seen_line = 0;
     g_appRuntime.line_error = 0;
     g_appRuntime.last_error = 0;
@@ -549,6 +562,7 @@ void CarController_ResetRuntime(void)
     g_appRuntime.yaw_turn_stable_ms = 0;
     g_appRuntime.heading_straight_elapsed_ms = 0;
     g_appRuntime.drive_heading_duration_ms = 0;
+    g_appRuntime.heading_imu_invalid_elapsed_ms = 0;
     g_appRuntime.lap_cooldown_ms = 0;
     g_appRuntime.yaw_turn_target_deg = 0.0f;
     g_appRuntime.yaw_turn_error_deg = 0.0f;
@@ -574,6 +588,7 @@ void CarController_ResetTransientState(void)
     g_appRuntime.yaw_turn_stable_ms = 0;
     g_appRuntime.heading_straight_elapsed_ms = 0;
     g_appRuntime.drive_heading_duration_ms = 0;
+    g_appRuntime.heading_imu_invalid_elapsed_ms = 0;
     g_appRuntime.yaw_turn_error_deg = 0.0f;
     g_appRuntime.yaw_turn_timeout_ms = 0U;
     g_appRuntime.drive_heading_target_yaw_deg = 0.0f;
@@ -590,6 +605,7 @@ void CarController_Stop(void)
     g_appRuntime.correction = 0;
     LineController_ResetControlState();
     reset_heading_action_runtime();
+    g_appRuntime.run_mode = TRACK_MODE_IDLE;
 }
 
 void CarController_StartSeekLine(void)
@@ -750,6 +766,12 @@ void CarController_Update_20ms(uint32_t elapsed_ms)
     }
 
     switch (g_appRuntime.run_mode) {
+        case TRACK_MODE_IDLE:
+            stop_output();
+            g_appRuntime.left_speed = 0;
+            g_appRuntime.right_speed = 0;
+            g_appRuntime.correction = 0;
+            break;
         case TRACK_MODE_SEEK_LINE:
             handle_seek_line(elapsed_ms);
             break;
@@ -802,6 +824,8 @@ const CarControllerFeedback *CarController_GetFeedback(void)
 const char *CarController_RunModeToString(TrackRunMode mode)
 {
     switch (mode) {
+        case TRACK_MODE_IDLE:
+            return "IDLE";
         case TRACK_MODE_SEEK_LINE:
             return "SEEK";
         case TRACK_MODE_FOLLOW_LINE:

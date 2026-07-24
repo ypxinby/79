@@ -20,6 +20,9 @@ typedef struct {
     uint16_t action_index;
     MotionActionType action_type;
     MotionActionResult action_result;
+    uint16_t action_error_code;
+    uint16_t action_imu_wait_elapsed_ms;
+    bool action_waiting_for_imu;
     TrackRunMode run_mode;
     uint8_t track_raw;
     int16_t track_error;
@@ -93,6 +96,7 @@ typedef struct {
     uint16_t fault_context;
     uint32_t turn_to_yaw_elapsed_ms;
     float turn_to_yaw_error_deg;
+    uint16_t heading_imu_invalid_elapsed_ms;
     uint32_t app_missed_count;
     uint32_t app_drop_count;
     uint32_t app_overrun_count;

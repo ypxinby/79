@@ -48,6 +48,8 @@
 #define YAW_TURN_SETTLE_GYRO_DPS_DEFAULT           (5.0f)
 #define YAW_TURN_SETTLE_MS_DEFAULT                 (100U)
 #define YAW_TURN_MIN_SLOW_COMMAND_DEFAULT          (60)
+/* Keep navigation stopped through brief IMU validity dropouts. */
+#define HEADING_IMU_INVALID_GRACE_MS_DEFAULT       (200U)
 
 /*
  * P5.1 conservative FOLLOW values. Commands remain normalized -1000..1000;
@@ -107,6 +109,7 @@ typedef struct {
     float yaw_turn_settle_gyro_dps;
     uint16_t yaw_turn_settle_ms;
     int16_t yaw_turn_min_slow_command;
+    uint16_t heading_imu_invalid_grace_ms;
 
     float gyro_deadband_dps;
     uint16_t imu_dt_min_ms;

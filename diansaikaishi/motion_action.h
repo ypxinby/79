@@ -10,8 +10,11 @@ typedef struct {
     const MotionAction *action;
     MotionActionResult result;
     uint32_t elapsed_ms;
+    uint16_t imu_wait_elapsed_ms;
     uint16_t error_code;
     bool started;
+    bool controller_started;
+    bool waiting_for_imu;
 } MotionActionRuntime;
 
 void MotionAction_Init(void);
