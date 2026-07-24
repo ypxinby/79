@@ -122,8 +122,6 @@ static const char *motion_action_type_to_string(MotionActionType type)
             return "YAW";
         case MOTION_ACTION_DRIVE_HEADING_TIME:
             return "HEAD";
-        case MOTION_ACTION_REACQUIRE_LINE:
-            return "REQ";
         case MOTION_ACTION_WAIT:
             return "WAIT";
         case MOTION_ACTION_STOP:
@@ -711,59 +709,6 @@ static void print_imu_counters_page(void)
     print_uint64_decimal((uint64_t)imu->gyro_invalid_skip_count);
 }
 
-static const char *heading_action_mode_to_string(HeadingActionMode mode)
-{
-    switch (mode) {
-        case HEADING_ACTION_MODE_HOLD:
-            return "HOLD";
-        case HEADING_ACTION_MODE_TURN_FAST:
-            return "FAST";
-        case HEADING_ACTION_MODE_TURN_SLOW:
-            return "SLOW";
-        case HEADING_ACTION_MODE_TURN_SETTLE:
-            return "SET";
-        case HEADING_ACTION_MODE_IDLE:
-        default:
-            return "IDLE";
-    }
-}
-
-static const char *heading_action_result_to_string(void)
-{
-    const MotionActionRuntime *action = MotionAction_GetRuntime();
-
-    if ((action->action != (const MotionAction *)0) &&
-        ((action->action->type == MOTION_ACTION_TURN_TO_YAW) ||
-            (action->action->type == MOTION_ACTION_DRIVE_HEADING_TIME))) {
-        if (action->result == MOTION_RESULT_TIMEOUT) {
-            return "TIME";
-        }
-        if ((action->result == MOTION_RESULT_FAILED) &&
-            (action->error_code == (uint16_t)MOTION_ERROR_IMU_NOT_READY)) {
-            return "IMU";
-        }
-        if (action->result == MOTION_RESULT_SUCCESS) {
-            return "DONE";
-        }
-    }
-
-    if (g_appRuntime.heading_action_result == MOTION_RESULT_RUNNING) {
-        return "RUN";
-    }
-    if (g_appRuntime.heading_action_result == MOTION_RESULT_SUCCESS) {
-        return "DONE";
-    }
-    if (g_appRuntime.heading_action_result == MOTION_RESULT_TIMEOUT) {
-        return "TIME";
-    }
-    if ((g_appRuntime.heading_action_result == MOTION_RESULT_FAILED) &&
-        (g_appRuntime.heading_action_error_code ==
-            CAR_CONTROLLER_ERROR_IMU_NOT_READY)) {
-        return "IMU";
-    }
-    return "IDLE";
-}
-
 static float heading_display_target_yaw(void)
 {
     if (g_appRuntime.run_mode == TRACK_MODE_TURN_TO_YAW) {
@@ -793,21 +738,6 @@ static uint32_t heading_display_action_elapsed_ms(void)
     return 0U;
 }
 
-static uint32_t heading_display_timeout_ms(void)
-{
-    const MotionActionRuntime *action = MotionAction_GetRuntime();
-
-    if ((action->action != (const MotionAction *)0) &&
-        ((action->action->type == MOTION_ACTION_TURN_TO_YAW) ||
-            (action->action->type == MOTION_ACTION_DRIVE_HEADING_TIME))) {
-        return action->action->timeout_ms;
-    }
-    if (g_appRuntime.run_mode == TRACK_MODE_TURN_TO_YAW) {
-        return g_appRuntime.yaw_turn_timeout_ms;
-    }
-    return 0U;
-}
-
 static void print_heading_page(void)
 {
     const ImuRuntime *imu = Imu_GetRuntime();
@@ -828,9 +758,6 @@ static void print_heading_page(void)
     OLED_PrintInt16(yawDeg);
     OLED_PrintString(" T:");
     OLED_PrintInt16(targetDeg);
-    OLED_PrintString(" ");
-    OLED_PrintString(heading_action_mode_to_string(
-        g_appRuntime.heading_action_mode));
 
     OLED_SetCursor(2, 0);
     OLED_PrintString("E10:");
@@ -845,40 +772,10 @@ static void print_heading_page(void)
     OLED_PrintInt16(g_appRuntime.right_speed);
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("S:");
-    print_uint64_decimal((uint64_t)g_appRuntime.yaw_turn_stable_ms);
+    OLED_PrintString("C:");
+    OLED_PrintInt16(g_appRuntime.heading_correction);
     OLED_PrintString(" A:");
     print_uint64_decimal((uint64_t)heading_display_action_elapsed_ms());
-}
-
-static void print_heading_detail_page(void)
-{
-    const ImuRuntime *imu = Imu_GetRuntime();
-    const HeadingControlRuntime *heading = HeadingControl_GetRuntime();
-
-    OLED_SetCursor(0, 0);
-    OLED_PrintString("HEAD2 R:");
-    OLED_PrintString(heading_action_result_to_string());
-
-    OLED_SetCursor(2, 0);
-    OLED_PrintString("TO:");
-    print_uint64_decimal((uint64_t)heading_display_timeout_ms());
-    OLED_PrintString(" C:");
-    OLED_PrintInt16(g_appRuntime.heading_correction);
-
-    OLED_SetCursor(4, 0);
-    OLED_PrintString("DT:");
-    OLED_PrintInt16((int16_t)imu->sample_dt_ms);
-    OLED_PrintString(" DV:");
-    OLED_PrintInt16(heading->dt_valid ? 1 : 0);
-    OLED_PrintString(" IV:");
-    OLED_PrintInt16(Imu_IsReady() ? 1 : 0);
-
-    OLED_SetCursor(6, 0);
-    OLED_PrintString("ER:");
-    OLED_PrintInt16((int16_t)g_appRuntime.heading_action_error_code);
-    OLED_PrintString(" LK:");
-    OLED_PrintInt16(heading->target_locked ? 1 : 0);
 }
 
 #if FEATURE_GIMBAL_OLED_TEST
@@ -1463,9 +1360,6 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
             break;
         case OLED_PAGE_HEADING:
             print_heading_page();
-            break;
-        case OLED_PAGE_HEADING_DETAIL:
-            print_heading_detail_page();
             break;
         case OLED_PAGE_OBSTACLE:
             print_obstacle_page();

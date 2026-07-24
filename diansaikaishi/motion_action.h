@@ -11,15 +11,11 @@ typedef struct {
     MotionActionResult result;
     uint32_t elapsed_ms;
     uint16_t error_code;
-    uint16_t reacquire_settle_ms;
-    uint8_t reacquire_center_count;
-    uint8_t reacquire_phase;
     bool started;
 } MotionActionRuntime;
 
 void MotionAction_Init(void);
-bool MotionAction_Start(const MotionAction *action,
-    float mission_start_yaw_deg);
+bool MotionAction_Start(const MotionAction *action);
 MotionActionResult MotionAction_Update_20ms(uint32_t elapsed_ms);
 void MotionAction_Cancel(void);
 bool MotionAction_ReapplyControllerTarget(void);

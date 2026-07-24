@@ -12,7 +12,6 @@ typedef enum {
     MOTION_ACTION_TURN_RIGHT_90,
     MOTION_ACTION_TURN_TO_YAW,
     MOTION_ACTION_DRIVE_HEADING_TIME,
-    MOTION_ACTION_REACQUIRE_LINE,
     MOTION_ACTION_WAIT,
     MOTION_ACTION_STOP
 } MotionActionType;
@@ -54,13 +53,6 @@ typedef enum {
 } BypassDirection;
 
 typedef enum {
-    YAW_REFERENCE_CURRENT = 0,
-    YAW_REFERENCE_MISSION_START,
-    YAW_REFERENCE_ABSOLUTE,
-    YAW_REFERENCE_SECOND_SEEK_CONFIG
-} YawReferenceType;
-
-typedef enum {
     MOTION_ERROR_NONE = 0,
     MOTION_ERROR_SEEK_TIMEOUT,
     MOTION_ERROR_FOLLOW_TIMEOUT,
@@ -72,18 +64,12 @@ typedef enum {
 } MotionErrorCode;
 
 typedef struct {
-    YawReferenceType reference;
-    float angle_deg;
-} MotionYawTarget;
-
-typedef struct {
     MotionActionType type;
     uint32_t timeout_ms;
     uint8_t max_retries;
 
     union {
         struct {
-            MotionYawTarget yaw;
             int16_t speed_override;
         } seek_line;
 
@@ -108,6 +94,7 @@ typedef struct {
         } turn_to_yaw;
 
         struct {
+            float target_yaw_deg;
             uint32_t duration_ms;
             int16_t speed_override;
         } drive_heading_time;

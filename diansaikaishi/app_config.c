@@ -67,8 +67,6 @@ void AppConfig_InitDefault(void)
         YAW_TURN_SLOW_THRESHOLD_DEG_DEFAULT;
     g_appConfig.yaw_turn_done_tolerance_deg =
         YAW_TURN_DONE_TOLERANCE_DEG_DEFAULT;
-    g_appConfig.yaw_turn_settle_exit_deg =
-        YAW_TURN_SETTLE_EXIT_DEG_DEFAULT;
     g_appConfig.yaw_turn_settle_gyro_dps =
         YAW_TURN_SETTLE_GYRO_DPS_DEFAULT;
     g_appConfig.yaw_turn_settle_ms = YAW_TURN_SETTLE_MS_DEFAULT;
@@ -87,11 +85,6 @@ void AppConfig_InitDefault(void)
     g_appConfig.heading_kd = 5;
     g_appConfig.heading_scale = 10;
     g_appConfig.heading_max_correction = 30;
-    g_appConfig.heading_enable_error = 50;
-    g_appConfig.heading_enable_derivative = 100;
-    g_appConfig.heading_lock_delay_ms = 100;
-    g_appConfig.seek_heading_offset_deg = -1;
-    g_appConfig.second_seek_angle_deg = 215;
 
     g_appConfig.servo_angle_deg = 90;
     g_appConfig.min_servo_angle_deg = 35;
@@ -240,13 +233,6 @@ void AppConfig_LimitAll(void)
         g_appConfig.yaw_turn_done_tolerance_deg =
             YAW_TURN_DONE_TOLERANCE_DEG_DEFAULT;
     }
-    if ((g_appConfig.yaw_turn_settle_exit_deg <
-            g_appConfig.yaw_turn_done_tolerance_deg) ||
-        (g_appConfig.yaw_turn_settle_exit_deg >=
-            g_appConfig.yaw_turn_slow_threshold_deg)) {
-        g_appConfig.yaw_turn_settle_exit_deg =
-            YAW_TURN_SETTLE_EXIT_DEG_DEFAULT;
-    }
     if ((g_appConfig.yaw_turn_settle_gyro_dps <= 0.0f) ||
         (g_appConfig.yaw_turn_settle_gyro_dps > 100.0f)) {
         g_appConfig.yaw_turn_settle_gyro_dps =
@@ -292,17 +278,6 @@ void AppConfig_LimitAll(void)
         clamp_i16(g_appConfig.heading_scale, 1, 1000);
     g_appConfig.heading_max_correction =
         clamp_i16(g_appConfig.heading_max_correction, 0, 200);
-    g_appConfig.heading_enable_error =
-        clamp_i16(g_appConfig.heading_enable_error, 0, 300);
-    g_appConfig.heading_enable_derivative =
-        clamp_i16(g_appConfig.heading_enable_derivative, 0, 300);
-    if (g_appConfig.heading_lock_delay_ms > 2000U) {
-        g_appConfig.heading_lock_delay_ms = 2000U;
-    }
-    g_appConfig.seek_heading_offset_deg =
-        clamp_i16(g_appConfig.seek_heading_offset_deg, -45, 45);
-    g_appConfig.second_seek_angle_deg =
-        clamp_i16(g_appConfig.second_seek_angle_deg, 120, 220);
     g_appConfig.servo_angle_deg =
         clamp_i16(g_appConfig.servo_angle_deg,
             g_appConfig.min_servo_angle_deg,

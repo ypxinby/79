@@ -21,7 +21,6 @@ typedef struct {
 void HeadingControl_Init(void);
 void HeadingControl_Reset(void);
 void HeadingControl_Enable(bool enable);
-void HeadingControl_LockCurrentYaw(float current_yaw_deg);
 void HeadingControl_SetTargetYaw(float target_yaw_deg);
 int16_t HeadingControl_Update(float current_yaw_deg, float gyro_z_dps,
     float dt_s);

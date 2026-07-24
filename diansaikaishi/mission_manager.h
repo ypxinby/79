@@ -25,7 +25,6 @@ typedef struct {
     uint32_t mission_elapsed_ms;
     uint32_t action_elapsed_ms;
 
-    float mission_start_yaw;
 
     MotionActionResult last_action_result;
     uint16_t last_error_code;

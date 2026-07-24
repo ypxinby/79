@@ -4,7 +4,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "motion_types.h"
 #include "track_sensor.h"
 
 typedef enum {
@@ -16,11 +15,6 @@ typedef enum {
     TRACK_MODE_DRIVE_HEADING,
     TRACK_MODE_LOST_RECOVER
 } TrackRunMode;
-
-typedef enum {
-    SEEK_HEADING_CURRENT = 0,
-    SEEK_HEADING_TARGET
-} SeekHeadingMode;
 
 typedef enum {
     CAR_TURN_POLICY_AUTO = 0,
@@ -35,14 +29,6 @@ typedef enum {
     CAR_CONTROLLER_ERROR_INVALID_MODE
 } CarControllerErrorCode;
 
-typedef enum {
-    HEADING_ACTION_MODE_IDLE = 0,
-    HEADING_ACTION_MODE_HOLD,
-    HEADING_ACTION_MODE_TURN_FAST,
-    HEADING_ACTION_MODE_TURN_SLOW,
-    HEADING_ACTION_MODE_TURN_SETTLE
-} HeadingActionMode;
-
 typedef struct {
     uint8_t current_lap;
     uint8_t sensor_raw;
@@ -53,8 +39,6 @@ typedef struct {
     int16_t line_error;
     int16_t last_error;
     int16_t last_valid_error;
-    SeekHeadingMode seek_heading_mode;
-    float seek_target_yaw_deg;
     int8_t recover_direction;
     int16_t correction;
     int16_t heading_correction;
@@ -74,9 +58,6 @@ typedef struct {
     float yaw_turn_error_deg;
     uint32_t yaw_turn_timeout_ms;
     float drive_heading_target_yaw_deg;
-    HeadingActionMode heading_action_mode;
-    MotionActionResult heading_action_result;
-    CarControllerErrorCode heading_action_error_code;
 } AppRuntime;
 
 typedef struct {
@@ -102,15 +83,14 @@ void CarController_ResetRuntime(void);
 void CarController_ResetTransientState(void);
 void CarController_Update_20ms(uint32_t elapsed_ms);
 void CarController_Stop(void);
-void CarController_StartSeekLine(float target_yaw_deg);
+void CarController_StartSeekLine(void);
 void CarController_StartFollowLine(CarTurnHandlingPolicy turn_policy);
 void CarController_StartTurnLeft90(void);
 void CarController_StartTurnRight90(void);
 void CarController_StartTurnToYawRelative(float angle_deg,
     uint32_t timeout_ms);
-void CarController_StartDriveHeading(uint32_t duration_ms);
-void CarController_UseCurrentHeadingForSeek(void);
-void CarController_SetSeekTargetYaw(float target_yaw_deg);
+void CarController_StartDriveHeading(float target_yaw_deg,
+    uint32_t duration_ms);
 void CarController_SetSafetyHold(bool enable);
 bool CarController_IsSafetyHoldActive(void);
 TrackRunMode CarController_GetRunMode(void);

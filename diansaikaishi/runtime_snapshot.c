@@ -2,8 +2,6 @@
 
 #include <string.h>
 
-#include "angle_utils.h"
-#include "heading_control.h"
 #include "imu.h"
 #include "line_controller.h"
 #include "motor_control.h"
@@ -36,7 +34,6 @@ void RuntimeSnapshot_Update(uint32_t timestamp_ms)
         VisionTuningConsole_GetStatus();
     const WatchdogMonitorStatus *watchdog = WatchdogMonitor_GetStatus();
     const ImuRuntime *imu = Imu_GetRuntime();
-    const HeadingControlRuntime *heading = HeadingControl_GetRuntime();
     const volatile WheelSpeedEstimatorRuntime *wheel =
         WheelSpeedEstimator_GetRuntime();
     const MotorControlRuntime *motorControl = MotorControl_GetRuntime();
@@ -143,49 +140,6 @@ void RuntimeSnapshot_Update(uint32_t timestamp_ms)
     g_snapshot.fault_context = fault->context;
     g_snapshot.turn_to_yaw_elapsed_ms = g_appRuntime.turn_elapsed_ms;
     g_snapshot.turn_to_yaw_error_deg = g_appRuntime.yaw_turn_error_deg;
-    if (g_appRuntime.run_mode == TRACK_MODE_TURN_TO_YAW) {
-        g_snapshot.heading_target_yaw_deg =
-            g_appRuntime.yaw_turn_target_deg;
-        g_snapshot.heading_action_elapsed_ms =
-            g_appRuntime.turn_elapsed_ms;
-        g_snapshot.heading_action_timeout_ms =
-            g_appRuntime.yaw_turn_timeout_ms;
-    } else if (g_appRuntime.run_mode == TRACK_MODE_DRIVE_HEADING) {
-        g_snapshot.heading_target_yaw_deg =
-            g_appRuntime.drive_heading_target_yaw_deg;
-        g_snapshot.heading_action_elapsed_ms =
-            g_appRuntime.heading_straight_elapsed_ms;
-        g_snapshot.heading_action_timeout_ms =
-            (action->action != (const MotionAction *)0) ?
-            action->action->timeout_ms : 0U;
-    } else {
-        g_snapshot.heading_target_yaw_deg = heading->target_yaw_deg;
-        g_snapshot.heading_action_elapsed_ms = 0U;
-        g_snapshot.heading_action_timeout_ms = 0U;
-    }
-    if ((action->action != (const MotionAction *)0) &&
-        ((action->action->type == MOTION_ACTION_TURN_TO_YAW) ||
-            (action->action->type == MOTION_ACTION_DRIVE_HEADING_TIME))) {
-        g_snapshot.heading_action_elapsed_ms = action->elapsed_ms;
-        g_snapshot.heading_action_timeout_ms = action->action->timeout_ms;
-    }
-    g_snapshot.heading_error_deg =
-        Angle_Normalize180(g_snapshot.heading_target_yaw_deg -
-            imu->yaw_deg);
-    g_snapshot.heading_gyro_feedback_dps =
-        imu->corrected_gyro_z_dps;
-    g_snapshot.heading_update_dt_s = heading->update_dt_s;
-    g_snapshot.heading_dt_valid = heading->dt_valid;
-    g_snapshot.heading_action_mode = g_appRuntime.heading_action_mode;
-    g_snapshot.heading_action_result =
-        g_appRuntime.heading_action_result;
-    g_snapshot.heading_action_error_code =
-        g_appRuntime.heading_action_error_code;
-    g_snapshot.heading_left_command = g_appRuntime.left_speed;
-    g_snapshot.heading_right_command = g_appRuntime.right_speed;
-    g_snapshot.heading_correction = g_appRuntime.heading_correction;
-    g_snapshot.heading_settle_elapsed_ms =
-        g_appRuntime.yaw_turn_stable_ms;
     g_snapshot.app_missed_count = scheduler.app_20ms_missed_count;
     g_snapshot.app_drop_count = scheduler.app_20ms_drop_count;
     g_snapshot.app_overrun_count = scheduler.app_20ms_overrun_count;

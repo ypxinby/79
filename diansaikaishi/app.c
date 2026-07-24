@@ -40,28 +40,6 @@ volatile uint8_t g_paramItemDebug;
 volatile uint8_t g_trackModeDebug;
 volatile uint8_t g_trackTurnDebug;
 
-static void App_UpdateHeadingObserver(uint32_t elapsed_ms)
-{
-#if ENABLE_IMU && ENABLE_HEADING_OBSERVER && !ENABLE_HEADING_CONTROL
-    const HeadingControlRuntime *heading = HeadingControl_GetRuntime();
-
-    if (!Imu_IsReady()) {
-        HeadingControl_Enable(false);
-        return;
-    }
-
-    if (!heading->target_locked) {
-        HeadingControl_LockCurrentYaw(Imu_GetYaw());
-        HeadingControl_Enable(true);
-    }
-
-    (void)HeadingControl_Update(Imu_GetYaw(), Imu_GetCorrectedGyroZDps(),
-        (float)elapsed_ms / 1000.0f);
-#else
-    (void)elapsed_ms;
-#endif
-}
-
 #if FEATURE_WHEEL_SPEED_TEST
 static void App_UpdateWheelSpeedTest(uint32_t elapsed_ms)
 {
@@ -146,7 +124,6 @@ void App_Update_20ms(uint32_t elapsed_ms)
 #if ENABLE_IMU
     Imu_Update(elapsed_ms);
 #endif
-    App_UpdateHeadingObserver(elapsed_ms);
 
     Ultrasonic_Update_20ms();
     ObstacleMonitor_Update_20ms();

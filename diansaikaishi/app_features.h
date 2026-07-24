@@ -51,7 +51,6 @@
 #endif
 
 #define ENABLE_IMU                 (1)
-#define ENABLE_HEADING_OBSERVER    (1)
 #define ENABLE_HEADING_CONTROL     (1)
 #define ENABLE_IMU_ANGLE_TURN      (0)
 

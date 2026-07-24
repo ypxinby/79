@@ -45,7 +45,6 @@
 #define YAW_TURN_TIMEOUT_MS_DEFAULT               (4000U)
 #define YAW_TURN_SLOW_THRESHOLD_DEG_DEFAULT       (12.0f)
 #define YAW_TURN_DONE_TOLERANCE_DEG_DEFAULT       (5.0f)
-#define YAW_TURN_SETTLE_EXIT_DEG_DEFAULT           (7.0f)
 #define YAW_TURN_SETTLE_GYRO_DPS_DEFAULT           (5.0f)
 #define YAW_TURN_SETTLE_MS_DEFAULT                 (100U)
 #define YAW_TURN_MIN_SLOW_COMMAND_DEFAULT          (60)
@@ -105,7 +104,6 @@ typedef struct {
     uint32_t yaw_turn_timeout_ms;
     float yaw_turn_slow_threshold_deg;
     float yaw_turn_done_tolerance_deg;
-    float yaw_turn_settle_exit_deg;
     float yaw_turn_settle_gyro_dps;
     uint16_t yaw_turn_settle_ms;
     int16_t yaw_turn_min_slow_command;
@@ -122,11 +120,6 @@ typedef struct {
     int16_t heading_kd;
     int16_t heading_scale;
     int16_t heading_max_correction;
-    int16_t heading_enable_error;
-    int16_t heading_enable_derivative;
-    uint16_t heading_lock_delay_ms;
-    int16_t seek_heading_offset_deg;
-    int16_t second_seek_angle_deg;
 
     int16_t servo_angle_deg;
     int16_t min_servo_angle_deg;

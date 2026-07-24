@@ -17,7 +17,7 @@
 #define MISSION_ID_TEST_SEEK_STOP       (5U)
 #define MISSION_ID_TEST_YAW             (6U)
 #define MISSION_ID_TEST_HEAD            (7U)
-#define MISSION_ID_TEST_REACQUIRE       (8U)
+#define MISSION_ID_TEST_OBSTACLE_FIXED  (8U)
 #define MISSION_ID_TEST_STOP_ONLY       (9U)
 
 /* 10~99: competition map missions. */
@@ -42,44 +42,12 @@
         } \
     }
 
-#define ACTION_SEEK_CURRENT_YAW(yaw_deg, timeout) \
+#define ACTION_SEEK_LINE(timeout) \
     { \
         .type = MOTION_ACTION_SEEK_LINE, \
         .timeout_ms = (uint32_t)(timeout), \
         .max_retries = 1U, \
         .params.seek_line = { \
-            .yaw = { \
-                .reference = YAW_REFERENCE_CURRENT, \
-                .angle_deg = (float)(yaw_deg) \
-            }, \
-            .speed_override = MOTION_USE_GLOBAL_SPEED \
-        } \
-    }
-
-#define ACTION_SEEK_MISSION_YAW(yaw_deg, timeout) \
-    { \
-        .type = MOTION_ACTION_SEEK_LINE, \
-        .timeout_ms = (uint32_t)(timeout), \
-        .max_retries = 1U, \
-        .params.seek_line = { \
-            .yaw = { \
-                .reference = YAW_REFERENCE_MISSION_START, \
-                .angle_deg = (float)(yaw_deg) \
-            }, \
-            .speed_override = MOTION_USE_GLOBAL_SPEED \
-        } \
-    }
-
-#define ACTION_SEEK_SECOND_CONFIG(timeout) \
-    { \
-        .type = MOTION_ACTION_SEEK_LINE, \
-        .timeout_ms = (uint32_t)(timeout), \
-        .max_retries = 1U, \
-        .params.seek_line = { \
-            .yaw = { \
-                .reference = YAW_REFERENCE_SECOND_SEEK_CONFIG, \
-                .angle_deg = 0.0f \
-            }, \
             .speed_override = MOTION_USE_GLOBAL_SPEED \
         } \
     }
@@ -309,22 +277,16 @@
         } \
     }
 
-#define ACTION_DRIVE_HEADING_TIME(duration, timeout) \
+#define ACTION_DRIVE_HEADING_YAW(target_yaw, duration, timeout) \
     { \
         .type = MOTION_ACTION_DRIVE_HEADING_TIME, \
         .timeout_ms = (uint32_t)(timeout), \
         .max_retries = 1U, \
         .params.drive_heading_time = { \
+            .target_yaw_deg = (float)(target_yaw), \
             .duration_ms = (uint32_t)(duration), \
             .speed_override = MOTION_USE_GLOBAL_SPEED \
         } \
-    }
-
-#define ACTION_REACQUIRE_LINE(timeout) \
-    { \
-        .type = MOTION_ACTION_REACQUIRE_LINE, \
-        .timeout_ms = (uint32_t)(timeout), \
-        .max_retries = 1U \
     }
 
 typedef struct {

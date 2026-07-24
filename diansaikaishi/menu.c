@@ -41,8 +41,6 @@ static void menu_next_main_page(void)
     } else if (g_oledPage == OLED_PAGE_IMU_COUNTERS) {
         g_oledPage = OLED_PAGE_HEADING;
     } else if (g_oledPage == OLED_PAGE_HEADING) {
-        g_oledPage = OLED_PAGE_HEADING_DETAIL;
-    } else if (g_oledPage == OLED_PAGE_HEADING_DETAIL) {
         g_oledPage = OLED_PAGE_OBSTACLE;
     } else if (g_oledPage == OLED_PAGE_OBSTACLE) {
         g_oledPage = OLED_PAGE_ENCODER;
@@ -143,12 +141,6 @@ static void menu_adjust_param(int8_t direction, uint8_t fast)
             break;
         case PARAM_BASE_SPEED:
             g_appConfig.base_speed += (int16_t)(direction * 10);
-            break;
-        case PARAM_SEEK_HEADING_OFFSET:
-            g_appConfig.seek_heading_offset_deg += direction;
-            break;
-        case PARAM_SECOND_SEEK_ANGLE:
-            g_appConfig.second_seek_angle_deg += (int16_t)(direction * 5);
             break;
         case PARAM_KP:
             g_appConfig.track_kp += direction;
@@ -512,10 +504,6 @@ const char *Menu_ParamItemToString(ParamItem item)
             return "TASK";
         case PARAM_BASE_SPEED:
             return "SPD";
-        case PARAM_SEEK_HEADING_OFFSET:
-            return "YAW";
-        case PARAM_SECOND_SEEK_ANGLE:
-            return "REV";
         case PARAM_KP:
             return "KP";
         case PARAM_KD:
@@ -538,10 +526,6 @@ int16_t Menu_GetParamValue(ParamItem item)
             return (int16_t)(MissionManager_GetSelectedMissionIndex() + 1U);
         case PARAM_BASE_SPEED:
             return g_appConfig.base_speed;
-        case PARAM_SEEK_HEADING_OFFSET:
-            return g_appConfig.seek_heading_offset_deg;
-        case PARAM_SECOND_SEEK_ANGLE:
-            return g_appConfig.second_seek_angle_deg;
         case PARAM_KP:
             return g_appConfig.track_kp;
         case PARAM_KD:

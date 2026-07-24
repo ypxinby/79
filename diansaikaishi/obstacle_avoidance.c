@@ -226,6 +226,7 @@ void ObstacleAvoidance_Update_20ms(uint32_t elapsed_ms)
         case AVOID_STATE_DRIVE_OUT:
             if (!g_stateStarted) {
                 CarController_StartDriveHeading(
+                    Imu_GetYaw(),
                     g_appConfig.avoid_drive_out_ms);
                 g_stateStarted = true;
                 break;
@@ -257,7 +258,7 @@ void ObstacleAvoidance_Update_20ms(uint32_t elapsed_ms)
             }
             if (!g_stateStarted) {
                 g_avoidFeedback.center_count = 0U;
-                CarController_StartSeekLine(Imu_GetYaw());
+                CarController_StartSeekLine();
                 g_stateStarted = true;
                 break;
             }

@@ -1,22 +1,12 @@
 #include "motion_action.h"
 
-#include "app_config.h"
 #include "car_controller.h"
 #include "car_state.h"
 #include "emergency_stop.h"
 #include "imu.h"
 #include "watchdog_monitor.h"
 
-#define REACQUIRE_CENTER_CONFIRM_COUNT  (3U)
-#define REACQUIRE_SETTLE_MS             (300U)
-
-typedef enum {
-    REACQUIRE_PHASE_SEARCH = 0,
-    REACQUIRE_PHASE_SETTLE
-} ReacquirePhase;
-
 static MotionActionRuntime g_motionActionRuntime;
-static float g_motionActionStartYawDeg;
 
 static void motion_action_set_result(MotionActionResult result,
     MotionErrorCode error_code)
@@ -49,33 +39,6 @@ static bool motion_action_car_is_error(void)
     return CarState_Get() == CAR_STATE_ERROR;
 }
 
-static float motion_action_resolve_yaw_target(const MotionYawTarget *target,
-    float mission_start_yaw_deg)
-{
-    float resolved_yaw;
-
-    switch (target->reference) {
-        case YAW_REFERENCE_CURRENT:
-            resolved_yaw = g_motionActionStartYawDeg + target->angle_deg;
-            break;
-        case YAW_REFERENCE_MISSION_START:
-            resolved_yaw = mission_start_yaw_deg + target->angle_deg;
-            break;
-        case YAW_REFERENCE_SECOND_SEEK_CONFIG:
-            resolved_yaw =
-                mission_start_yaw_deg +
-                (float)g_appConfig.second_seek_angle_deg +
-                target->angle_deg;
-            break;
-        case YAW_REFERENCE_ABSOLUTE:
-        default:
-            resolved_yaw = target->angle_deg;
-            break;
-    }
-
-    return resolved_yaw + (float)g_appConfig.seek_heading_offset_deg;
-}
-
 static bool motion_action_check_timeout(void)
 {
     const MotionAction *action = g_motionActionRuntime.action;
@@ -100,7 +63,6 @@ static bool motion_action_check_timeout(void)
                 MOTION_ERROR_SEEK_TIMEOUT);
             break;
         case MOTION_ACTION_FOLLOW_LINE:
-        case MOTION_ACTION_REACQUIRE_LINE:
             motion_action_set_result(MOTION_RESULT_TIMEOUT,
                 MOTION_ERROR_FOLLOW_TIMEOUT);
             break;
@@ -132,15 +94,10 @@ void MotionAction_Init(void)
     g_motionActionRuntime.result = MOTION_RESULT_IDLE;
     g_motionActionRuntime.elapsed_ms = 0U;
     g_motionActionRuntime.error_code = (uint16_t)MOTION_ERROR_NONE;
-    g_motionActionRuntime.reacquire_settle_ms = 0U;
-    g_motionActionRuntime.reacquire_center_count = 0U;
-    g_motionActionRuntime.reacquire_phase = (uint8_t)REACQUIRE_PHASE_SEARCH;
     g_motionActionRuntime.started = false;
-    g_motionActionStartYawDeg = 0.0f;
 }
 
-bool MotionAction_Start(const MotionAction *action,
-    float mission_start_yaw_deg)
+bool MotionAction_Start(const MotionAction *action)
 {
     MotionAction_Init();
 
@@ -159,14 +116,10 @@ bool MotionAction_Start(const MotionAction *action,
 
     g_motionActionRuntime.action = action;
     g_motionActionRuntime.started = true;
-    g_motionActionStartYawDeg = Imu_GetYaw();
 
     switch (action->type) {
         case MOTION_ACTION_SEEK_LINE:
-            CarController_StartSeekLine(
-                motion_action_resolve_yaw_target(
-                    &action->params.seek_line.yaw,
-                    mission_start_yaw_deg));
+            CarController_StartSeekLine();
             motion_action_set_result(MOTION_RESULT_RUNNING,
                 MOTION_ERROR_NONE);
             return true;
@@ -213,23 +166,8 @@ bool MotionAction_Start(const MotionAction *action,
                 return false;
             }
             CarController_StartDriveHeading(
+                action->params.drive_heading_time.target_yaw_deg,
                 action->params.drive_heading_time.duration_ms);
-            motion_action_set_result(MOTION_RESULT_RUNNING,
-                MOTION_ERROR_NONE);
-            return true;
-
-        case MOTION_ACTION_REACQUIRE_LINE:
-            if (!Imu_IsReady()) {
-                motion_action_stop_car();
-                motion_action_set_result(MOTION_RESULT_FAILED,
-                    MOTION_ERROR_IMU_NOT_READY);
-                return false;
-            }
-            g_motionActionRuntime.reacquire_phase =
-                (uint8_t)REACQUIRE_PHASE_SEARCH;
-            g_motionActionRuntime.reacquire_center_count = 0U;
-            g_motionActionRuntime.reacquire_settle_ms = 0U;
-            CarController_StartSeekLine(Imu_GetYaw());
             motion_action_set_result(MOTION_RESULT_RUNNING,
                 MOTION_ERROR_NONE);
             return true;
@@ -429,72 +367,6 @@ MotionActionResult MotionAction_Update_20ms(uint32_t elapsed_ms)
                 break;
             }
             if (feedback->turn_completed) {
-                motion_action_set_result(MOTION_RESULT_SUCCESS,
-                    MOTION_ERROR_NONE);
-            }
-            break;
-        }
-
-        case MOTION_ACTION_REACQUIRE_LINE:
-        {
-            const CarControllerFeedback *feedback =
-                CarController_GetFeedback();
-
-            if (!Imu_IsReady()) {
-                motion_action_set_result(MOTION_RESULT_FAILED,
-                    MOTION_ERROR_IMU_NOT_READY);
-                break;
-            }
-            if (motion_action_car_is_error() || feedback->operation_failed) {
-                motion_action_set_result(MOTION_RESULT_FAILED,
-                    MOTION_ERROR_LINE_LOST);
-                break;
-            }
-
-            if (g_motionActionRuntime.reacquire_phase ==
-                (uint8_t)REACQUIRE_PHASE_SEARCH) {
-                if (feedback->center_detected) {
-                    if (g_motionActionRuntime.reacquire_center_count <
-                        UINT8_MAX) {
-                        g_motionActionRuntime.reacquire_center_count++;
-                    }
-                } else {
-                    g_motionActionRuntime.reacquire_center_count = 0U;
-                }
-
-                if (g_motionActionRuntime.reacquire_center_count >=
-                    REACQUIRE_CENTER_CONFIRM_COUNT) {
-                    g_motionActionRuntime.reacquire_phase =
-                        (uint8_t)REACQUIRE_PHASE_SETTLE;
-                    g_motionActionRuntime.reacquire_center_count = 0U;
-                    g_motionActionRuntime.reacquire_settle_ms = 0U;
-                    CarController_StartFollowLine(CAR_TURN_POLICY_IGNORE);
-                }
-                break;
-            }
-
-            if (feedback->line_lost) {
-                motion_action_set_result(MOTION_RESULT_FAILED,
-                    MOTION_ERROR_LINE_LOST);
-                break;
-            }
-            if (elapsed_ms >= UINT16_MAX) {
-                g_motionActionRuntime.reacquire_settle_ms = UINT16_MAX;
-            } else if (g_motionActionRuntime.reacquire_settle_ms >
-                (uint16_t)(UINT16_MAX - (uint16_t)elapsed_ms)) {
-                g_motionActionRuntime.reacquire_settle_ms = UINT16_MAX;
-            } else {
-                g_motionActionRuntime.reacquire_settle_ms = (uint16_t)(
-                    g_motionActionRuntime.reacquire_settle_ms +
-                    (uint16_t)elapsed_ms);
-            }
-            if (feedback->center_detected &&
-                (g_motionActionRuntime.reacquire_center_count < UINT8_MAX)) {
-                g_motionActionRuntime.reacquire_center_count++;
-            }
-            if ((g_motionActionRuntime.reacquire_settle_ms >=
-                    REACQUIRE_SETTLE_MS) &&
-                (g_motionActionRuntime.reacquire_center_count > 0U)) {
                 motion_action_set_result(MOTION_RESULT_SUCCESS,
                     MOTION_ERROR_NONE);
             }

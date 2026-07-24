@@ -3,7 +3,6 @@
 #include "car_controller.h"
 #include "car_state.h"
 #include "emergency_stop.h"
-#include "imu.h"
 #include "motion_action.h"
 #include "watchdog_monitor.h"
 
@@ -20,7 +19,6 @@ static void mission_reset_runtime_counters(void)
     g_missionRuntime.current_retry_count = 0U;
     g_missionRuntime.mission_elapsed_ms = 0U;
     g_missionRuntime.action_elapsed_ms = 0U;
-    g_missionRuntime.mission_start_yaw = Imu_GetYaw();
     g_missionRuntime.last_action_result = MOTION_RESULT_IDLE;
     g_missionRuntime.external_hold = false;
 }
@@ -251,7 +249,7 @@ void MissionManager_Update_20ms(uint32_t elapsed_ms)
 
     action_runtime = MotionAction_GetRuntime();
     if ((action_runtime->action != action) || !action_runtime->started) {
-        if (!MotionAction_Start(action, g_missionRuntime.mission_start_yaw)) {
+        if (!MotionAction_Start(action)) {
             action_runtime = MotionAction_GetRuntime();
             mission_finish_error(action_runtime->error_code);
             return;
@@ -288,8 +286,7 @@ void MissionManager_Update_20ms(uint32_t elapsed_ms)
             (g_missionRuntime.current_retry_count < action->max_retries)) {
             g_missionRuntime.current_retry_count++;
             g_missionRuntime.action_elapsed_ms = 0U;
-            (void)MotionAction_Start(action,
-                g_missionRuntime.mission_start_yaw);
+            (void)MotionAction_Start(action);
             return;
         }
 
