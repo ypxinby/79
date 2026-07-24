@@ -30,6 +30,8 @@
 #define WHEEL_SPEED_TEST_TARGET_CMPS (30)
 /* P5.1 simple FOLLOW outer loop; set to 0 for the validated legacy path. */
 #define FEATURE_LINE_CONTROL_V2     (1)
+/* Keep the normal K1 page loop compact. Set to 1 to restore P1-P6 detail pages. */
+#define FEATURE_OLED_LEGACY_DIAG_PAGES (0)
 
 #if FEATURE_WHEEL_SPEED_CONTROL && !FEATURE_WHEEL_SPEED_ESTIMATOR
 #error FEATURE_WHEEL_SPEED_CONTROL requires FEATURE_WHEEL_SPEED_ESTIMATOR

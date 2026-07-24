@@ -30,6 +30,7 @@ static void menu_enter_param_page(ParamItem item, uint8_t select_item)
 
 static void menu_next_main_page(void)
 {
+#if FEATURE_OLED_LEGACY_DIAG_PAGES
     if (g_oledPage == OLED_PAGE_STATUS) {
         g_oledPage = OLED_PAGE_SENSOR;
     } else if (g_oledPage == OLED_PAGE_SENSOR) {
@@ -51,6 +52,19 @@ static void menu_next_main_page(void)
     } else {
         g_oledPage = OLED_PAGE_STATUS;
     }
+#else
+    if (g_oledPage == OLED_PAGE_STATUS) {
+        g_oledPage = OLED_PAGE_MOTOR_CONTROL;
+    } else if (g_oledPage == OLED_PAGE_MOTOR_CONTROL) {
+        g_oledPage = OLED_PAGE_SENSOR;
+    } else if (g_oledPage == OLED_PAGE_SENSOR) {
+        g_oledPage = OLED_PAGE_HEADING;
+    } else if (g_oledPage == OLED_PAGE_HEADING) {
+        g_oledPage = OLED_PAGE_OBSTACLE;
+    } else {
+        g_oledPage = OLED_PAGE_STATUS;
+    }
+#endif
 }
 
 #if FEATURE_GIMBAL_OLED_TEST

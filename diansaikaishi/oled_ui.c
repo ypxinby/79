@@ -381,30 +381,32 @@ static void print_motor_control_page(void)
         WheelSpeedEstimator_GetRuntime();
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("LT:");
-    OLED_PrintInt16(clamp_display_float_i16(
-        control->left.ramped_target_speed_cmps));
-    OLED_PrintString(" RT:");
-    OLED_PrintInt16(clamp_display_float_i16(
-        control->right.ramped_target_speed_cmps));
+    OLED_PrintString("C:");
+    OLED_PrintInt16(g_appRuntime.left_speed);
+    OLED_PrintChar('/');
+    OLED_PrintInt16(g_appRuntime.right_speed);
 
     OLED_SetCursor(2, 0);
-    OLED_PrintString("LM:");
-    OLED_PrintInt16(clamp_display_float_i16(wheel->left_speed_cmps));
-    OLED_PrintString(" RM:");
-    OLED_PrintInt16(clamp_display_float_i16(wheel->right_speed_cmps));
+    OLED_PrintString("T10:");
+    OLED_PrintInt16(clamp_display_float_i16(
+        control->left.ramped_target_speed_cmps * 10.0f));
+    OLED_PrintChar('/');
+    OLED_PrintInt16(clamp_display_float_i16(
+        control->right.ramped_target_speed_cmps * 10.0f));
 
     OLED_SetCursor(4, 0);
-    OLED_PrintString("LO:");
-    OLED_PrintInt16(control->left.output_command);
-    OLED_PrintString(" RO:");
-    OLED_PrintInt16(control->right.output_command);
+    OLED_PrintString("M10:");
+    OLED_PrintInt16(clamp_display_float_i16(
+        wheel->left_speed_cmps * 10.0f));
+    OLED_PrintChar('/');
+    OLED_PrintInt16(clamp_display_float_i16(
+        wheel->right_speed_cmps * 10.0f));
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("V:");
-    OLED_PrintInt16(control->valid ? 1 : 0);
-    OLED_PrintString(" S:");
-    OLED_PrintInt16(wheel->stale ? 1 : 0);
+    OLED_PrintString("O:");
+    OLED_PrintInt16(control->left.output_command);
+    OLED_PrintChar('/');
+    OLED_PrintInt16(control->right.output_command);
     OLED_PrintString(" E:");
     print_uint64_decimal((uint64_t)control->error_flags);
 }

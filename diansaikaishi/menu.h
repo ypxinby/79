@@ -6,7 +6,8 @@
 #include "key.h"
 
 typedef enum {
-    /* Main: STATUS -> LINE -> IMU -> IMU2 -> IMU3 -> HEAD -> OBS -> ENC -> MCTRL -> MCTRL2. */
+    /* Compact main loop: HOME -> DRIVE -> LINE -> HEAD -> OBS.
+     * FEATURE_OLED_LEGACY_DIAG_PAGES restores the historical detail loop. */
     OLED_PAGE_STATUS = 0,
     OLED_PAGE_PARAM,
     OLED_PAGE_SENSOR,
