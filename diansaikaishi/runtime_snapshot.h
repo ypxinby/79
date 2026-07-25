@@ -97,6 +97,13 @@ typedef struct {
     uint32_t turn_to_yaw_elapsed_ms;
     float turn_to_yaw_error_deg;
     uint16_t heading_imu_invalid_elapsed_ms;
+    DriveDistanceState drive_distance_state;
+    float drive_distance_start_center_cm;
+    float drive_distance_target_cm;
+    float drive_distance_travelled_cm;
+    float drive_distance_remaining_cm;
+    int16_t drive_distance_command;
+    uint16_t drive_distance_settle_elapsed_ms;
     uint32_t app_missed_count;
     uint32_t app_drop_count;
     uint32_t app_overrun_count;

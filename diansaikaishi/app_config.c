@@ -88,6 +88,17 @@ void AppConfig_InitDefault(void)
     g_appConfig.heading_scale = 10;
     g_appConfig.heading_max_correction = 30;
 
+    g_appConfig.drive_distance_slow_zone_cm =
+        DRIVE_DISTANCE_SLOW_ZONE_CM_DEFAULT;
+    g_appConfig.drive_distance_tolerance_cm =
+        DRIVE_DISTANCE_TOLERANCE_CM_DEFAULT;
+    g_appConfig.drive_distance_slow_command =
+        DRIVE_DISTANCE_SLOW_COMMAND_DEFAULT;
+    g_appConfig.drive_distance_settle_speed_cmps =
+        DRIVE_DISTANCE_SETTLE_SPEED_CMPS_DEFAULT;
+    g_appConfig.drive_distance_settle_ms =
+        DRIVE_DISTANCE_SETTLE_MS_DEFAULT;
+
     g_appConfig.servo_angle_deg = 90;
     g_appConfig.min_servo_angle_deg = 35;
     g_appConfig.max_servo_angle_deg = 145;
@@ -285,6 +296,35 @@ void AppConfig_LimitAll(void)
         clamp_i16(g_appConfig.heading_scale, 1, 1000);
     g_appConfig.heading_max_correction =
         clamp_i16(g_appConfig.heading_max_correction, 0, 200);
+    if ((g_appConfig.drive_distance_slow_zone_cm !=
+            g_appConfig.drive_distance_slow_zone_cm) ||
+        (g_appConfig.drive_distance_slow_zone_cm <= 0.0f) ||
+        (g_appConfig.drive_distance_slow_zone_cm > 100.0f)) {
+        g_appConfig.drive_distance_slow_zone_cm =
+            DRIVE_DISTANCE_SLOW_ZONE_CM_DEFAULT;
+    }
+    if ((g_appConfig.drive_distance_tolerance_cm !=
+            g_appConfig.drive_distance_tolerance_cm) ||
+        (g_appConfig.drive_distance_tolerance_cm <= 0.0f) ||
+        (g_appConfig.drive_distance_tolerance_cm >=
+            g_appConfig.drive_distance_slow_zone_cm)) {
+        g_appConfig.drive_distance_tolerance_cm =
+            DRIVE_DISTANCE_TOLERANCE_CM_DEFAULT;
+    }
+    g_appConfig.drive_distance_slow_command = clamp_i16(
+        g_appConfig.drive_distance_slow_command, 1, 1000);
+    if ((g_appConfig.drive_distance_settle_speed_cmps !=
+            g_appConfig.drive_distance_settle_speed_cmps) ||
+        (g_appConfig.drive_distance_settle_speed_cmps < 0.0f) ||
+        (g_appConfig.drive_distance_settle_speed_cmps > 20.0f)) {
+        g_appConfig.drive_distance_settle_speed_cmps =
+            DRIVE_DISTANCE_SETTLE_SPEED_CMPS_DEFAULT;
+    }
+    if ((g_appConfig.drive_distance_settle_ms == 0U) ||
+        (g_appConfig.drive_distance_settle_ms > 2000U)) {
+        g_appConfig.drive_distance_settle_ms =
+            DRIVE_DISTANCE_SETTLE_MS_DEFAULT;
+    }
     g_appConfig.servo_angle_deg =
         clamp_i16(g_appConfig.servo_angle_deg,
             g_appConfig.min_servo_angle_deg,

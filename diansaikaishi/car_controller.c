@@ -14,6 +14,7 @@
 #include "scheduler_monitor.h"
 #include "track_sensor.h"
 #include "watchdog_monitor.h"
+#include "wheel_speed_estimator.h"
 
 #ifndef TRACK_REVERSE_CORRECTION
 #define TRACK_REVERSE_CORRECTION    (0)
@@ -91,6 +92,8 @@ static void update_feedback_from_runtime(void)
         TrackSensor_IsCenterDetected(g_appRuntime.sensor_raw);
     g_carControllerFeedback.detected_turn = TRACK_TURN_NONE;
     g_carControllerFeedback.turn_completed = false;
+    g_carControllerFeedback.distance_completed =
+        g_appRuntime.drive_distance_state == DRIVE_DISTANCE_STATE_DONE;
     g_carControllerFeedback.operation_failed = false;
     g_carControllerFeedback.error_code = CAR_CONTROLLER_ERROR_NONE;
 }
@@ -166,6 +169,31 @@ static void handle_seek_line(uint32_t elapsed_ms)
     LineController_ResetControlState();
 #endif
     reset_heading_control_runtime();
+}
+
+static void reset_drive_distance_runtime(void)
+{
+    g_appRuntime.drive_distance_state = DRIVE_DISTANCE_STATE_IDLE;
+    g_appRuntime.drive_distance_start_center_cm = 0.0f;
+    g_appRuntime.drive_distance_target_cm = 0.0f;
+    g_appRuntime.drive_distance_travelled_cm = 0.0f;
+    g_appRuntime.drive_distance_remaining_cm = 0.0f;
+    g_appRuntime.drive_distance_command = 0;
+    g_appRuntime.drive_distance_settle_elapsed_ms = 0U;
+}
+
+static bool abort_active_drive_distance(void)
+{
+    if ((g_appRuntime.run_mode != TRACK_MODE_DRIVE_DISTANCE) ||
+        ((g_appRuntime.drive_distance_state != DRIVE_DISTANCE_STATE_DRIVE) &&
+         (g_appRuntime.drive_distance_state != DRIVE_DISTANCE_STATE_SLOW) &&
+         (g_appRuntime.drive_distance_state != DRIVE_DISTANCE_STATE_SETTLE))) {
+        return false;
+    }
+
+    g_appRuntime.drive_distance_state = DRIVE_DISTANCE_STATE_ABORTED;
+    g_appRuntime.drive_distance_settle_elapsed_ms = 0U;
+    return true;
 }
 
 static void handle_follow_line(uint32_t elapsed_ms)
@@ -535,6 +563,87 @@ static void handle_drive_heading(uint32_t elapsed_ms)
         (int16_t)((int32_t)g_appConfig.search_speed - correction));
 }
 
+static void handle_drive_distance(uint32_t elapsed_ms)
+{
+    const volatile WheelSpeedEstimatorRuntime *wheel =
+        WheelSpeedEstimator_GetRuntime();
+    int16_t command;
+    float leftSpeedAbs;
+    float rightSpeedAbs;
+
+    g_appRuntime.correction = 0;
+    g_appRuntime.heading_correction = 0;
+    reset_heading_control_runtime();
+
+    if ((g_appRuntime.drive_distance_state == DRIVE_DISTANCE_STATE_ERROR) ||
+        !wheel->valid || wheel->stale || (wheel->error_flags != 0U)) {
+        stop_output();
+        g_appRuntime.left_speed = 0;
+        g_appRuntime.right_speed = 0;
+        g_appRuntime.drive_distance_state = DRIVE_DISTANCE_STATE_ERROR;
+        g_carControllerFeedback.operation_failed = true;
+        g_carControllerFeedback.error_code =
+            CAR_CONTROLLER_ERROR_ENCODER_NOT_READY;
+        return;
+    }
+
+    g_appRuntime.drive_distance_travelled_cm =
+        wheel->center_distance_cm -
+        g_appRuntime.drive_distance_start_center_cm;
+    g_appRuntime.drive_distance_remaining_cm =
+        g_appRuntime.drive_distance_target_cm -
+        g_appRuntime.drive_distance_travelled_cm;
+
+    if (g_appRuntime.drive_distance_state == DRIVE_DISTANCE_STATE_DONE) {
+        stop_output();
+        g_appRuntime.left_speed = 0;
+        g_appRuntime.right_speed = 0;
+        g_carControllerFeedback.distance_completed = true;
+        return;
+    }
+
+    if ((g_appRuntime.drive_distance_state == DRIVE_DISTANCE_STATE_SETTLE) ||
+        (g_appRuntime.drive_distance_remaining_cm <=
+            g_appConfig.drive_distance_tolerance_cm)) {
+        g_appRuntime.drive_distance_state = DRIVE_DISTANCE_STATE_SETTLE;
+        stop_output();
+        g_appRuntime.left_speed = 0;
+        g_appRuntime.right_speed = 0;
+
+        leftSpeedAbs = abs_float(wheel->left_speed_cmps);
+        rightSpeedAbs = abs_float(wheel->right_speed_cmps);
+        if ((leftSpeedAbs <=
+                g_appConfig.drive_distance_settle_speed_cmps) &&
+            (rightSpeedAbs <=
+                g_appConfig.drive_distance_settle_speed_cmps)) {
+            g_appRuntime.drive_distance_settle_elapsed_ms = add_elapsed_u16(
+                g_appRuntime.drive_distance_settle_elapsed_ms, elapsed_ms);
+        } else {
+            g_appRuntime.drive_distance_settle_elapsed_ms = 0U;
+        }
+
+        if (g_appRuntime.drive_distance_settle_elapsed_ms >=
+            g_appConfig.drive_distance_settle_ms) {
+            g_appRuntime.drive_distance_state = DRIVE_DISTANCE_STATE_DONE;
+            g_carControllerFeedback.distance_completed = true;
+        }
+        return;
+    }
+
+    command = g_appRuntime.drive_distance_command;
+    if (g_appRuntime.drive_distance_remaining_cm <=
+        g_appConfig.drive_distance_slow_zone_cm) {
+        g_appRuntime.drive_distance_state = DRIVE_DISTANCE_STATE_SLOW;
+        if (command > g_appConfig.drive_distance_slow_command) {
+            command = g_appConfig.drive_distance_slow_command;
+        }
+    } else {
+        g_appRuntime.drive_distance_state = DRIVE_DISTANCE_STATE_DRIVE;
+    }
+
+    set_output_speed(command, command);
+}
+
 void CarController_Init(void)
 {
     LineController_Init();
@@ -568,6 +677,7 @@ void CarController_ResetRuntime(void)
     g_appRuntime.yaw_turn_error_deg = 0.0f;
     g_appRuntime.yaw_turn_timeout_ms = 0U;
     g_appRuntime.drive_heading_target_yaw_deg = 0.0f;
+    reset_drive_distance_runtime();
     g_followTurnPolicy = CAR_TURN_POLICY_AUTO;
     g_safetyHold = false;
     LineController_Reset();
@@ -592,6 +702,7 @@ void CarController_ResetTransientState(void)
     g_appRuntime.yaw_turn_error_deg = 0.0f;
     g_appRuntime.yaw_turn_timeout_ms = 0U;
     g_appRuntime.drive_heading_target_yaw_deg = 0.0f;
+    reset_drive_distance_runtime();
     LineController_Reset();
     update_feedback_from_runtime();
     reset_heading_control_runtime();
@@ -599,6 +710,7 @@ void CarController_ResetTransientState(void)
 
 void CarController_Stop(void)
 {
+    (void)abort_active_drive_distance();
     stop_output();
     g_appRuntime.left_speed = 0;
     g_appRuntime.right_speed = 0;
@@ -704,6 +816,38 @@ void CarController_StartDriveHeading(float target_yaw_deg,
     CarState_Set(CAR_STATE_RUNNING);
 }
 
+void CarController_StartDriveDistance(float distance_cm,
+    int16_t normalized_command)
+{
+    const volatile WheelSpeedEstimatorRuntime *wheel;
+
+    if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
+        stop_output();
+        return;
+    }
+
+    stop_output();
+    CarController_ResetTransientState();
+    g_followTurnPolicy = CAR_TURN_POLICY_IGNORE;
+    g_appRuntime.drive_distance_target_cm = distance_cm;
+    g_appRuntime.drive_distance_remaining_cm = distance_cm;
+    g_appRuntime.drive_distance_command = clamp_i16(normalized_command,
+        1, MOTOR_MAX_DUTY);
+    g_appRuntime.run_mode = TRACK_MODE_DRIVE_DISTANCE;
+
+    wheel = WheelSpeedEstimator_GetRuntime();
+    if (!(distance_cm > 0.0f) || (normalized_command <= 0) ||
+        !wheel->valid || wheel->stale || (wheel->error_flags != 0U)) {
+        g_appRuntime.drive_distance_state = DRIVE_DISTANCE_STATE_ERROR;
+    } else {
+        g_appRuntime.drive_distance_start_center_cm =
+            wheel->center_distance_cm;
+        g_appRuntime.drive_distance_state = DRIVE_DISTANCE_STATE_DRIVE;
+    }
+
+    CarState_Set(CAR_STATE_RUNNING);
+}
+
 void CarController_SetSafetyHold(bool enable)
 {
     if (!enable && (EmergencyStop_IsActive() ||
@@ -745,6 +889,9 @@ void CarController_Update_20ms(uint32_t elapsed_ms)
 
     if ((CarState_Get() != CAR_STATE_RUNNING) ||
         EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
+        if (abort_active_drive_distance()) {
+            g_appRuntime.run_mode = TRACK_MODE_IDLE;
+        }
         stop_output();
         g_appRuntime.left_speed = 0;
         g_appRuntime.right_speed = 0;
@@ -793,6 +940,9 @@ void CarController_Update_20ms(uint32_t elapsed_ms)
         case TRACK_MODE_DRIVE_HEADING:
             handle_drive_heading(elapsed_ms);
             break;
+        case TRACK_MODE_DRIVE_DISTANCE:
+            handle_drive_distance(elapsed_ms);
+            break;
         default:
             stop_output();
             g_appRuntime.left_speed = 0;
@@ -838,6 +988,8 @@ const char *CarController_RunModeToString(TrackRunMode mode)
             return "YAW";
         case TRACK_MODE_DRIVE_HEADING:
             return "HEAD";
+        case TRACK_MODE_DRIVE_DISTANCE:
+            return "DIST";
         case TRACK_MODE_LOST_RECOVER:
             return "LOST";
         default:

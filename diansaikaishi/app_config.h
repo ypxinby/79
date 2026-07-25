@@ -52,6 +52,16 @@
 #define HEADING_IMU_INVALID_GRACE_MS_DEFAULT       (200U)
 
 /*
+ * P6.3A encoder-distance test values. The action command is supplied by the
+ * mission; these values only define the simple approach and settle behavior.
+ */
+#define DRIVE_DISTANCE_SLOW_ZONE_CM_DEFAULT        (5.0f)
+#define DRIVE_DISTANCE_TOLERANCE_CM_DEFAULT        (0.8f)
+#define DRIVE_DISTANCE_SLOW_COMMAND_DEFAULT        (130)
+#define DRIVE_DISTANCE_SETTLE_SPEED_CMPS_DEFAULT   (2.0f)
+#define DRIVE_DISTANCE_SETTLE_MS_DEFAULT           (200U)
+
+/*
  * P5.1 conservative FOLLOW values. Commands remain normalized -1000..1000;
  * these are initial vehicle-test values and are intentionally independent of
  * the validated legacy track_kp/track_kd settings.
@@ -123,6 +133,12 @@ typedef struct {
     int16_t heading_kd;
     int16_t heading_scale;
     int16_t heading_max_correction;
+
+    float drive_distance_slow_zone_cm;
+    float drive_distance_tolerance_cm;
+    int16_t drive_distance_slow_command;
+    float drive_distance_settle_speed_cmps;
+    uint16_t drive_distance_settle_ms;
 
     int16_t servo_angle_deg;
     int16_t min_servo_angle_deg;

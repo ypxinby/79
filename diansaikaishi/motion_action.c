@@ -141,6 +141,10 @@ static bool motion_action_check_timeout(void)
             motion_action_set_result(MOTION_RESULT_TIMEOUT,
                 MOTION_ERROR_FOLLOW_TIMEOUT);
             break;
+        case MOTION_ACTION_DRIVE_DISTANCE:
+            motion_action_set_result(MOTION_RESULT_TIMEOUT,
+                MOTION_ERROR_DISTANCE_TIMEOUT);
+            break;
         case MOTION_ACTION_TURN_LEFT_90:
         case MOTION_ACTION_TURN_RIGHT_90:
             motion_action_set_result(MOTION_RESULT_TIMEOUT,
@@ -191,6 +195,17 @@ bool MotionAction_Start(const MotionAction *action)
     g_motionActionRuntime.action = action;
     g_motionActionRuntime.started = true;
 
+    if ((action->type == MOTION_ACTION_DRIVE_DISTANCE) &&
+        (!(action->params.drive_distance.distance_cm > 0.0f) ||
+         (action->params.drive_distance.normalized_command <= 0) ||
+         (action->params.drive_distance.normalized_command >
+            MOTION_NORMALIZED_COMMAND_MAX))) {
+        motion_action_set_result(MOTION_RESULT_FAILED,
+            MOTION_ERROR_INVALID_ACTION);
+        motion_action_stop_car();
+        return false;
+    }
+
     switch (action->type) {
         case MOTION_ACTION_SEEK_LINE:
             CarController_StartSeekLine();
@@ -238,6 +253,14 @@ bool MotionAction_Start(const MotionAction *action)
                 motion_action_stop_car();
                 g_motionActionRuntime.waiting_for_imu = true;
             }
+            return true;
+
+        case MOTION_ACTION_DRIVE_DISTANCE:
+            CarController_StartDriveDistance(
+                action->params.drive_distance.distance_cm,
+                action->params.drive_distance.normalized_command);
+            motion_action_set_result(MOTION_RESULT_RUNNING,
+                MOTION_ERROR_NONE);
             return true;
 
         case MOTION_ACTION_STOP:
@@ -430,6 +453,26 @@ MotionActionResult MotionAction_Update_20ms(uint32_t elapsed_ms)
                 break;
             }
             if (feedback->turn_completed) {
+                motion_action_set_result(MOTION_RESULT_SUCCESS,
+                    MOTION_ERROR_NONE);
+            }
+            break;
+        }
+
+        case MOTION_ACTION_DRIVE_DISTANCE:
+        {
+            const CarControllerFeedback *feedback =
+                CarController_GetFeedback();
+
+            if (motion_action_car_is_error() || feedback->operation_failed) {
+                motion_action_set_result(MOTION_RESULT_FAILED,
+                    (feedback->error_code ==
+                        CAR_CONTROLLER_ERROR_ENCODER_NOT_READY) ?
+                        MOTION_ERROR_ENCODER_NOT_READY :
+                        MOTION_ERROR_INVALID_ACTION);
+                break;
+            }
+            if (feedback->distance_completed) {
                 motion_action_set_result(MOTION_RESULT_SUCCESS,
                     MOTION_ERROR_NONE);
             }

@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #define MOTION_USE_GLOBAL_SPEED     ((int16_t)-1)
+#define MOTION_NORMALIZED_COMMAND_MAX ((int16_t)1000)
 
 typedef enum {
     MOTION_ACTION_SEEK_LINE = 0,
@@ -13,7 +14,8 @@ typedef enum {
     MOTION_ACTION_TURN_TO_YAW,
     MOTION_ACTION_DRIVE_HEADING_TIME,
     MOTION_ACTION_WAIT,
-    MOTION_ACTION_STOP
+    MOTION_ACTION_STOP,
+    MOTION_ACTION_DRIVE_DISTANCE
 } MotionActionType;
 
 typedef enum {
@@ -60,7 +62,9 @@ typedef enum {
     MOTION_ERROR_LINE_LOST,
     MOTION_ERROR_IMU_NOT_READY,
     MOTION_ERROR_INVALID_ACTION,
-    MOTION_ERROR_INVALID_MISSION
+    MOTION_ERROR_INVALID_MISSION,
+    MOTION_ERROR_ENCODER_NOT_READY,
+    MOTION_ERROR_DISTANCE_TIMEOUT
 } MotionErrorCode;
 
 typedef struct {
@@ -98,6 +102,11 @@ typedef struct {
             uint32_t duration_ms;
             int16_t speed_override;
         } drive_heading_time;
+
+        struct {
+            float distance_cm;
+            int16_t normalized_command;
+        } drive_distance;
 
         struct {
             uint32_t wait_ms;

@@ -22,6 +22,7 @@
 #include "obstacle_scanner.h"
 #include "obstacle_safety.h"
 #include "oled.h"
+#include "runtime_snapshot.h"
 #include "track_sensor.h"
 #include "ultrasonic.h"
 #include "vision_receiver.h"
@@ -122,6 +123,8 @@ static const char *motion_action_type_to_string(MotionActionType type)
             return "YAW";
         case MOTION_ACTION_DRIVE_HEADING_TIME:
             return "HEAD";
+        case MOTION_ACTION_DRIVE_DISTANCE:
+            return "DIST";
         case MOTION_ACTION_WAIT:
             return "WAIT";
         case MOTION_ACTION_STOP:
@@ -150,6 +153,8 @@ static const char *mission_status_to_string(MissionStatus status)
             return "ERR";
     }
 }
+
+static const char *motion_result_to_string(MotionActionResult result);
 
 #if FEATURE_OBSTACLE_SCANNER
 static const char *obstacle_scan_state_to_string(ObstacleScanState state)
@@ -189,40 +194,51 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
 {
     const MissionRuntime *mission = MissionManager_GetRuntime();
     const MotionActionRuntime *action = MotionAction_GetRuntime();
+    const RuntimeSnapshot *snapshot = RuntimeSnapshot_Get();
     const char *actionName = "NONE";
-    const UltrasonicFeedback *ultrasonic = Ultrasonic_GetFeedback();
-    const ObstacleFeedback *obstacle = ObstacleMonitor_GetFeedback();
+    const char *missionName = "NONE";
     const FaultRecord *fault = Fault_GetRecord();
     uint16_t missionIndex = MissionManager_GetSelectedMissionIndex();
+    uint16_t missionCount = MissionManager_GetMissionCount();
 
     (void)raw;
+    (void)error;
     (void)keyEvent;
 
     if (action->action != (const MotionAction *)0) {
         actionName = motion_action_type_to_string(action->action->type);
     }
+    if (mission->definition != (const MissionDefinition *)0) {
+        missionName = mission->definition->name;
+    }
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("HOME T");
+#if APP_PROFILE == APP_PROFILE_DEVELOPMENT
+    OLED_PrintString("TEST T:");
+#else
+    OLED_PrintString("COMP T:");
+#endif
     OLED_PrintInt16((int16_t)(missionIndex + 1U));
+    OLED_PrintChar('/');
+    OLED_PrintInt16((int16_t)missionCount);
     OLED_PrintChar(' ');
     OLED_PrintString(mission_status_to_string(mission->status));
 
     OLED_SetCursor(2, 0);
-    OLED_PrintString("ACT:");
+    OLED_PrintString(missionName);
+    OLED_PrintString(" A:");
     OLED_PrintString(actionName);
-    OLED_PrintString(" M:");
-    OLED_PrintString(CarController_RunModeToString(CarController_GetRunMode()));
 
     OLED_SetCursor(4, 0);
     OLED_PrintString("E:");
-    OLED_PrintInt16(error);
-    OLED_PrintString(" O");
-    OLED_PrintInt16((int16_t)obstacle->blocked);
-    OLED_PrintString(" H");
+    OLED_PrintInt16(snapshot->wheel_estimator_valid ? 1 : 0);
+    OLED_PrintString(" I:");
+    OLED_PrintInt16(Imu_IsReady() ? 1 : 0);
+    OLED_PrintString(" M:");
+    OLED_PrintInt16((snapshot->motor_control_enabled &&
+        !snapshot->motor_control_error_latched) ? 1 : 0);
+    OLED_PrintString(" H:");
     OLED_PrintInt16((int16_t)ObstacleSafety_IsHolding());
-    OLED_PrintString(" A");
-    OLED_PrintInt16((int16_t)ObstacleAvoidance_IsActive());
 
     OLED_SetCursor(6, 0);
     if (fault->code != FAULT_CODE_NONE) {
@@ -237,17 +253,9 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
         OLED_PrintInt16((int16_t)mission->last_error_code);
         OLED_PrintString(" AE:");
         OLED_PrintInt16((int16_t)action->error_code);
-        OLED_PrintString(" IM:");
-        OLED_PrintInt16(Imu_IsReady() ? 1 : 0);
     } else {
-        OLED_PrintString("U:");
-        if (ultrasonic->measurement_valid) {
-            OLED_PrintInt16((int16_t)ultrasonic->distance_cm);
-        } else {
-            OLED_PrintInt16(0);
-        }
-        OLED_PrintString(" IMU:");
-        OLED_PrintInt16(Imu_IsReady() ? 1 : 0);
+        OLED_PrintString("F:NONE R:");
+        OLED_PrintString(motion_result_to_string(action->result));
     }
 }
 
@@ -372,6 +380,83 @@ static void print_encoder_page(void)
     OLED_PrintInt16(wheel->stale ? 1 : 0);
     OLED_PrintString(" E:");
     print_uint64_decimal((uint64_t)wheel->error_flags);
+}
+
+static const char *drive_distance_state_to_string(DriveDistanceState state)
+{
+    switch (state) {
+        case DRIVE_DISTANCE_STATE_DRIVE:
+            return "DRV";
+        case DRIVE_DISTANCE_STATE_SLOW:
+            return "SLW";
+        case DRIVE_DISTANCE_STATE_SETTLE:
+            return "SET";
+        case DRIVE_DISTANCE_STATE_DONE:
+            return "DONE";
+        case DRIVE_DISTANCE_STATE_ABORTED:
+            return "ABT";
+        case DRIVE_DISTANCE_STATE_ERROR:
+            return "ERR";
+        case DRIVE_DISTANCE_STATE_IDLE:
+        default:
+            return "IDLE";
+    }
+}
+
+static const char *motion_result_to_string(MotionActionResult result)
+{
+    switch (result) {
+        case MOTION_RESULT_RUNNING:
+            return "RUN";
+        case MOTION_RESULT_SUCCESS:
+            return "DONE";
+        case MOTION_RESULT_FAILED:
+            return "FAIL";
+        case MOTION_RESULT_TIMEOUT:
+            return "TIME";
+        case MOTION_RESULT_CANCELLED:
+            return "CANC";
+        case MOTION_RESULT_IDLE:
+        default:
+            return "IDLE";
+    }
+}
+
+static void print_drive_distance_page(void)
+{
+    const RuntimeSnapshot *snapshot = RuntimeSnapshot_Get();
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("T10:");
+    OLED_PrintInt16(clamp_display_float_i16(
+        snapshot->drive_distance_target_cm * 10.0f));
+    OLED_PrintString(" D10:");
+    OLED_PrintInt16(clamp_display_float_i16(
+        snapshot->drive_distance_travelled_cm * 10.0f));
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("R10:");
+    OLED_PrintInt16(clamp_display_float_i16(
+        snapshot->drive_distance_remaining_cm * 10.0f));
+    OLED_PrintString(" S:");
+    OLED_PrintString(drive_distance_state_to_string(
+        snapshot->drive_distance_state));
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("C:");
+    OLED_PrintInt16(snapshot->motor_control_left_normalized_target);
+    OLED_PrintChar('/');
+    OLED_PrintInt16(snapshot->motor_control_right_normalized_target);
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("M10:");
+    OLED_PrintInt16(clamp_display_float_i16(
+        snapshot->left_speed_cmps * 10.0f));
+    OLED_PrintChar('/');
+    OLED_PrintInt16(clamp_display_float_i16(
+        snapshot->right_speed_cmps * 10.0f));
+    OLED_PrintString(" V:");
+    OLED_PrintInt16(snapshot->wheel_estimator_valid ? 1 : 0);
 }
 
 static void print_motor_control_page(void)
@@ -513,8 +598,8 @@ static void print_sensor_page(uint8_t raw, uint8_t blackCount, int16_t error)
 {
 #if FEATURE_LINE_CONTROL_V2
     const LineControllerRuntime *line = LineController_GetRuntime();
-    const char *state = "FOLLOW";
-    const char *stopReason = "NONE";
+    const char *state = "FOL";
+    const char *stopReason = "-";
     char turnMark = 'U';
 
     (void)raw;
@@ -522,9 +607,9 @@ static void print_sensor_page(uint8_t raw, uint8_t blackCount, int16_t error)
     (void)error;
 
     if (line->state == LINE_CONTROL_STATE_LOST_TURN_LEFT) {
-        state = "LOST_L";
+        state = "LOSTL";
     } else if (line->state == LINE_CONTROL_STATE_LOST_TURN_RIGHT) {
-        state = "LOST_R";
+        state = "LOSTR";
     } else if (line->state == LINE_CONTROL_STATE_STOP) {
         state = "STOP";
     }
@@ -536,41 +621,41 @@ static void print_sensor_page(uint8_t raw, uint8_t blackCount, int16_t error)
     }
 
     if (line->stop_reason == LINE_CONTROL_STOP_REASON_NO_DIRECTION) {
-        stopReason = "NO_DIR";
+        stopReason = "NOD";
     } else if (line->stop_reason ==
         LINE_CONTROL_STOP_REASON_RECOVER_TIMEOUT) {
-        stopReason = "TIMEOUT";
+        stopReason = "TIME";
     }
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString(state);
-    OLED_PrintString(" P:");
+    OLED_PrintString("LINE P:");
     print_track_pattern_s1_to_s7(line->sensor_pattern);
-    OLED_PrintString(" N:");
-    OLED_PrintInt16((int16_t)line->active_count);
 
     OLED_SetCursor(2, 0);
-    OLED_PrintString("M:");
-    OLED_PrintChar(turnMark);
-    OLED_PrintString(" V:");
-    OLED_PrintInt16(line->turn_mark_valid ? 1 : 0);
-    OLED_PrintString(" T:");
-    OLED_PrintInt16((line->lost_elapsed_ms > 32767U) ? 32767 :
-        (int16_t)line->lost_elapsed_ms);
+    OLED_PrintString("S:");
+    OLED_PrintString(state);
+    OLED_PrintString(" E:");
+    OLED_PrintInt16(line->raw_error);
+    OLED_PrintChar('/');
+    OLED_PrintInt16(clamp_display_float_i16(line->filtered_error));
 
     OLED_SetCursor(4, 0);
-    OLED_PrintString("TO:");
-    OLED_PrintInt16(line->recover_timeout ? 1 : 0);
-    OLED_PrintString(" R:");
-    OLED_PrintString(stopReason);
-
-    OLED_SetCursor(6, 0);
-    OLED_PrintString("B:");
-    OLED_PrintInt16(line->base_command);
+    OLED_PrintString("C:");
+    OLED_PrintInt16(line->correction);
     OLED_PrintString(" L:");
     OLED_PrintInt16(line->left_target_command);
     OLED_PrintString(" R:");
     OLED_PrintInt16(line->right_target_command);
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("M:");
+    OLED_PrintChar(turnMark);
+    OLED_PrintString(" V:");
+    OLED_PrintInt16(line->turn_mark_valid ? 1 : 0);
+    OLED_PrintString(" N:");
+    OLED_PrintInt16((int16_t)line->active_count);
+    OLED_PrintString(" R:");
+    OLED_PrintString(stopReason);
 #else
     (void)error;
 
@@ -723,6 +808,9 @@ static float heading_display_target_yaw(void)
     if (g_appRuntime.run_mode == TRACK_MODE_TURN_TO_YAW) {
         return g_appRuntime.yaw_turn_target_deg;
     }
+    if (MissionManager_GetSelectedMissionId() == MISSION_ID_TEST_YAW) {
+        return g_appRuntime.yaw_turn_target_deg;
+    }
     if (g_appRuntime.run_mode == TRACK_MODE_DRIVE_HEADING) {
         return g_appRuntime.drive_heading_target_yaw_deg;
     }
@@ -747,27 +835,49 @@ static uint32_t heading_display_action_elapsed_ms(void)
     return 0U;
 }
 
+static const char *turn_display_state_to_string(void)
+{
+    const MissionRuntime *mission = MissionManager_GetRuntime();
+    float absError = g_appRuntime.yaw_turn_error_deg;
+
+    if (absError < 0.0f) {
+        absError = -absError;
+    }
+
+    if (mission->status == MISSION_STATUS_ERROR) {
+        return "ERR";
+    }
+    if ((MissionManager_GetSelectedMissionId() == MISSION_ID_TEST_YAW) &&
+        (mission->status == MISSION_STATUS_DONE)) {
+        return "DONE";
+    }
+    if (g_appRuntime.run_mode != TRACK_MODE_TURN_TO_YAW) {
+        return "IDLE";
+    }
+    if (absError <= g_appConfig.yaw_turn_done_tolerance_deg) {
+        return "SET";
+    }
+    if (absError <= g_appConfig.yaw_turn_slow_threshold_deg) {
+        return "SLOW";
+    }
+    return "FAST";
+}
+
 static void print_heading_page(void)
 {
     const ImuRuntime *imu = Imu_GetRuntime();
-    const HeadingControlRuntime *heading = HeadingControl_GetRuntime();
     const MotionActionRuntime *action = MotionAction_GetRuntime();
     int16_t yawDeg = clamp_display_i16((int32_t)imu->yaw_deg);
     int16_t targetDeg =
         clamp_display_i16((int32_t)heading_display_target_yaw());
     int16_t errorX10 =
         clamp_display_i16((int32_t)(
-            ((g_appRuntime.run_mode == TRACK_MODE_TURN_TO_YAW) ?
-                g_appRuntime.yaw_turn_error_deg :
-                heading->heading_error_deg) * 10.0f));
+            g_appRuntime.yaw_turn_error_deg * 10.0f));
     int16_t gyroX10 = clamp_display_i16(
         (int32_t)(imu->corrected_gyro_z_dps * 10.0f));
-    uint16_t imuWaitMs = action->waiting_for_imu ?
-        action->imu_wait_elapsed_ms :
-        g_appRuntime.heading_imu_invalid_elapsed_ms;
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("Y:");
+    OLED_PrintString("TURN Y:");
     OLED_PrintInt16(yawDeg);
     OLED_PrintString(" T:");
     OLED_PrintInt16(targetDeg);
@@ -779,16 +889,20 @@ static void print_heading_page(void)
     OLED_PrintInt16(gyroX10);
 
     OLED_SetCursor(4, 0);
-    OLED_PrintString("L:");
+    OLED_PrintString("C:");
     OLED_PrintInt16(g_appRuntime.left_speed);
-    OLED_PrintString(" R:");
+    OLED_PrintChar('/');
     OLED_PrintInt16(g_appRuntime.right_speed);
+    OLED_PrintString(" S:");
+    OLED_PrintString(turn_display_state_to_string());
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("A:");
+    OLED_PrintString("R:");
+    OLED_PrintString(motion_result_to_string(action->result));
+    OLED_PrintString(" A:");
     print_uint64_decimal((uint64_t)heading_display_action_elapsed_ms());
-    OLED_PrintString(" I:");
-    OLED_PrintInt16((int16_t)imuWaitMs);
+    OLED_PrintString(" V:");
+    OLED_PrintInt16(Imu_IsReady() ? 1 : 0);
 }
 
 #if FEATURE_GIMBAL_OLED_TEST
@@ -1373,6 +1487,9 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
             break;
         case OLED_PAGE_HEADING:
             print_heading_page();
+            break;
+        case OLED_PAGE_DISTANCE:
+            print_drive_distance_page();
             break;
         case OLED_PAGE_OBSTACLE:
             print_obstacle_page();

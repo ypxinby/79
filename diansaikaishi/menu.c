@@ -42,6 +42,8 @@ static void menu_next_main_page(void)
     } else if (g_oledPage == OLED_PAGE_IMU_COUNTERS) {
         g_oledPage = OLED_PAGE_HEADING;
     } else if (g_oledPage == OLED_PAGE_HEADING) {
+        g_oledPage = OLED_PAGE_DISTANCE;
+    } else if (g_oledPage == OLED_PAGE_DISTANCE) {
         g_oledPage = OLED_PAGE_OBSTACLE;
     } else if (g_oledPage == OLED_PAGE_OBSTACLE) {
         g_oledPage = OLED_PAGE_ENCODER;
@@ -54,13 +56,11 @@ static void menu_next_main_page(void)
     }
 #else
     if (g_oledPage == OLED_PAGE_STATUS) {
-        g_oledPage = OLED_PAGE_MOTOR_CONTROL;
-    } else if (g_oledPage == OLED_PAGE_MOTOR_CONTROL) {
         g_oledPage = OLED_PAGE_SENSOR;
     } else if (g_oledPage == OLED_PAGE_SENSOR) {
         g_oledPage = OLED_PAGE_HEADING;
     } else if (g_oledPage == OLED_PAGE_HEADING) {
-        g_oledPage = OLED_PAGE_OBSTACLE;
+        g_oledPage = OLED_PAGE_DISTANCE;
     } else {
         g_oledPage = OLED_PAGE_STATUS;
     }

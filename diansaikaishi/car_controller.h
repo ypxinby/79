@@ -14,8 +14,19 @@ typedef enum {
     TRACK_MODE_TURN_TO_YAW,
     TRACK_MODE_DRIVE_HEADING,
     TRACK_MODE_LOST_RECOVER,
-    TRACK_MODE_IDLE
+    TRACK_MODE_IDLE,
+    TRACK_MODE_DRIVE_DISTANCE
 } TrackRunMode;
+
+typedef enum {
+    DRIVE_DISTANCE_STATE_IDLE = 0,
+    DRIVE_DISTANCE_STATE_DRIVE,
+    DRIVE_DISTANCE_STATE_SLOW,
+    DRIVE_DISTANCE_STATE_SETTLE,
+    DRIVE_DISTANCE_STATE_DONE,
+    DRIVE_DISTANCE_STATE_ABORTED,
+    DRIVE_DISTANCE_STATE_ERROR
+} DriveDistanceState;
 
 typedef enum {
     CAR_TURN_POLICY_AUTO = 0,
@@ -27,7 +38,8 @@ typedef enum {
     CAR_CONTROLLER_ERROR_NONE = 0,
     CAR_CONTROLLER_ERROR_IMU_NOT_READY,
     CAR_CONTROLLER_ERROR_YAW_TURN_TIMEOUT,
-    CAR_CONTROLLER_ERROR_INVALID_MODE
+    CAR_CONTROLLER_ERROR_INVALID_MODE,
+    CAR_CONTROLLER_ERROR_ENCODER_NOT_READY
 } CarControllerErrorCode;
 
 typedef struct {
@@ -54,12 +66,19 @@ typedef struct {
     uint16_t heading_straight_elapsed_ms;
     uint16_t drive_heading_duration_ms;
     uint16_t heading_imu_invalid_elapsed_ms;
+    uint16_t drive_distance_settle_elapsed_ms;
     uint16_t lap_cooldown_ms;
 
     float yaw_turn_target_deg;
     float yaw_turn_error_deg;
     uint32_t yaw_turn_timeout_ms;
     float drive_heading_target_yaw_deg;
+    DriveDistanceState drive_distance_state;
+    float drive_distance_start_center_cm;
+    float drive_distance_target_cm;
+    float drive_distance_travelled_cm;
+    float drive_distance_remaining_cm;
+    int16_t drive_distance_command;
 } AppRuntime;
 
 typedef struct {
@@ -74,6 +93,7 @@ typedef struct {
 
     TrackTurnType detected_turn;
     bool turn_completed;
+    bool distance_completed;
     bool operation_failed;
     CarControllerErrorCode error_code;
 } CarControllerFeedback;
@@ -93,6 +113,8 @@ void CarController_StartTurnToYawRelative(float angle_deg,
     uint32_t timeout_ms);
 void CarController_StartDriveHeading(float target_yaw_deg,
     uint32_t duration_ms);
+void CarController_StartDriveDistance(float distance_cm,
+    int16_t normalized_command);
 void CarController_SetSafetyHold(bool enable);
 bool CarController_IsSafetyHoldActive(void);
 TrackRunMode CarController_GetRunMode(void);

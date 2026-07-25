@@ -25,8 +25,8 @@ typedef enum {
  * Test missions.
  *
  * Keep these missions for validating one behavior at a time.
- * Development registry below exposes only the common regression set:
- * TEST-BASIC, TEST-R90, TEST-TURN, TEST-HEAD, TEST-OBS-F, and TEST-STOP.
+ * Development registry below exposes only the three new-base validation
+ * tasks: TEST-LINE, TEST-TURN, and TEST-DIST.
  *
  * Retained diagnostic arrays:
  * - LEGACY: close to the old run mode.
@@ -35,6 +35,7 @@ typedef enum {
  * - TEST-SK-L / TEST-SK-S: same seek-line event, different decisions.
  * - TEST-TURN: one relative IMU yaw turn from the current pose.
  * - TEST-HEAD: drive along an absolute yaw referenced to boot yaw zero.
+ * - TEST-D20: P6.3A encoder-distance-only forward 20 cm test.
  * - TEST-STOP: follow with stop-only obstacle policy.
  */
 static const MotionAction g_missionLegacy[] = {
@@ -91,6 +92,9 @@ static const MotionAction g_missionTestSeekThenStop[] = {
 #define TEST_HEADING_TARGET_YAW_DEG     (0.0f)
 #define TEST_HEADING_DRIVE_MS           (3000U)
 #define TEST_HEADING_TIMEOUT_MS         (4000U)
+#define TEST_DISTANCE_TARGET_CM         (20.0f)
+#define TEST_DISTANCE_COMMAND           (200)
+#define TEST_DISTANCE_TIMEOUT_MS        (5000U)
 
 static const MotionAction g_missionTestTurn[] = {
     ACTION_WAIT_MS(500U),
@@ -98,10 +102,25 @@ static const MotionAction g_missionTestTurn[] = {
     ACTION_STOP()
 };
 
+static const MotionAction g_missionTestLine[] = {
+    /* Start on a visible line and exercise only the P5 -> P4 chain. */
+    ACTION_WAIT_MS(500U),
+    ACTION_FOLLOW_FOREVER_WITH_OBSTACLE(OBSTACLE_POLICY_STOP_ONLY,
+        BYPASS_DIRECTION_RIGHT, 0U),
+    ACTION_STOP()
+};
+
 static const MotionAction g_missionTestHeadingDrive[] = {
     ACTION_WAIT_MS(500U),
     ACTION_DRIVE_HEADING_YAW(TEST_HEADING_TARGET_YAW_DEG,
         TEST_HEADING_DRIVE_MS, TEST_HEADING_TIMEOUT_MS),
+    ACTION_STOP()
+};
+
+static const MotionAction g_missionTestDistance20[] = {
+    ACTION_WAIT_MS(500U),
+    ACTION_DRIVE_DISTANCE_FORWARD(TEST_DISTANCE_TARGET_CM,
+        TEST_DISTANCE_COMMAND, TEST_DISTANCE_TIMEOUT_MS),
     ACTION_STOP()
 };
 
@@ -177,23 +196,16 @@ static const MotionAction g_missionMapC[] = {
  * Mission registry.
  *
  * OLED shows visible list indexes. mission_id values remain stable internal
- * identifiers. Development builds expose test missions plus maps. Competition
- * builds expose maps only.
+ * identifiers. Development builds expose only the three isolated new-base
+ * tests. Competition builds expose map missions only.
  */
 static const MissionDefinition g_missionRegistry[] = {
 #if APP_PROFILE == APP_PROFILE_DEVELOPMENT
     {
         .mission_id = MISSION_ID_LEGACY,
-        .name = "TEST-BASIC",
-        .actions = g_missionTestSeekThenFollow,
-        .action_count = ARRAY_SIZE(g_missionTestSeekThenFollow),
-        .control_profile_id = 0U
-    },
-    {
-        .mission_id = MISSION_ID_TEST_R90,
-        .name = "TEST-R90",
-        .actions = g_missionTestRight90Turn,
-        .action_count = ARRAY_SIZE(g_missionTestRight90Turn),
+        .name = "TEST-LINE",
+        .actions = g_missionTestLine,
+        .action_count = ARRAY_SIZE(g_missionTestLine),
         .control_profile_id = 0U
     },
     {
@@ -204,27 +216,13 @@ static const MissionDefinition g_missionRegistry[] = {
         .control_profile_id = 0U
     },
     {
-        .mission_id = MISSION_ID_TEST_HEAD,
-        .name = "TEST-HEAD",
-        .actions = g_missionTestHeadingDrive,
-        .action_count = ARRAY_SIZE(g_missionTestHeadingDrive),
+        .mission_id = MISSION_ID_TEST_DISTANCE_20,
+        .name = "TEST-DIST",
+        .actions = g_missionTestDistance20,
+        .action_count = ARRAY_SIZE(g_missionTestDistance20),
         .control_profile_id = 0U
-    },
-    {
-        .mission_id = MISSION_ID_TEST_OBSTACLE_FIXED,
-        .name = "TEST-OBS-F",
-        .actions = g_missionTestObstacleFixed,
-        .action_count = ARRAY_SIZE(g_missionTestObstacleFixed),
-        .control_profile_id = 0U
-    },
-    {
-        .mission_id = MISSION_ID_TEST_STOP_ONLY,
-        .name = "TEST-STOP",
-        .actions = g_missionTestStopOnly,
-        .action_count = ARRAY_SIZE(g_missionTestStopOnly),
-        .control_profile_id = 0U
-    },
-#endif
+    }
+#else
     {
         .mission_id = MISSION_ID_MAP_A,
         .name = "MAP-A",
@@ -246,6 +244,7 @@ static const MissionDefinition g_missionRegistry[] = {
         .action_count = ARRAY_SIZE(g_missionMapC),
         .control_profile_id = 0U
     }
+#endif
 };
 
 static bool action_type_is_valid(MotionActionType type)
@@ -256,6 +255,7 @@ static bool action_type_is_valid(MotionActionType type)
         (type == MOTION_ACTION_TURN_RIGHT_90) ||
         (type == MOTION_ACTION_TURN_TO_YAW) ||
         (type == MOTION_ACTION_DRIVE_HEADING_TIME) ||
+        (type == MOTION_ACTION_DRIVE_DISTANCE) ||
         (type == MOTION_ACTION_WAIT) ||
         (type == MOTION_ACTION_STOP);
 }
@@ -273,6 +273,7 @@ static bool action_requires_timeout(const MotionAction *action)
         case MOTION_ACTION_TURN_RIGHT_90:
         case MOTION_ACTION_TURN_TO_YAW:
         case MOTION_ACTION_DRIVE_HEADING_TIME:
+        case MOTION_ACTION_DRIVE_DISTANCE:
             return true;
         case MOTION_ACTION_FOLLOW_LINE:
             return action->params.follow_line.end_condition !=
@@ -339,6 +340,14 @@ bool MissionLibrary_Validate(const MissionDefinition *mission,
         const MotionAction *action = &mission->actions[i];
 
         if (!action_type_is_valid(action->type)) {
+            set_error(error_code, MISSION_VALIDATE_INVALID_ACTION);
+            return false;
+        }
+        if ((action->type == MOTION_ACTION_DRIVE_DISTANCE) &&
+            (!(action->params.drive_distance.distance_cm > 0.0f) ||
+             (action->params.drive_distance.normalized_command <= 0) ||
+             (action->params.drive_distance.normalized_command >
+                MOTION_NORMALIZED_COMMAND_MAX))) {
             set_error(error_code, MISSION_VALIDATE_INVALID_ACTION);
             return false;
         }

@@ -8,7 +8,7 @@
 
 #define MISSION_MAX_ACTIONS             (32U)
 
-/* 0~9: debug and validation missions. */
+/* 0~9: legacy debug IDs; newer development-only tests use 100 and above. */
 #define MISSION_ID_LEGACY               (0U)
 #define MISSION_ID_TEST_SF              (1U)
 #define MISSION_ID_TEST_R90             (2U)
@@ -19,6 +19,8 @@
 #define MISSION_ID_TEST_HEAD            (7U)
 #define MISSION_ID_TEST_OBSTACLE_FIXED  (8U)
 #define MISSION_ID_TEST_STOP_ONLY       (9U)
+/* P6.3 development-only IDs live above the competition-map range. */
+#define MISSION_ID_TEST_DISTANCE_20     (100U)
 
 /* 10~99: competition map missions. */
 #define MISSION_ID_MAP_A                (10U)
@@ -286,6 +288,17 @@
             .target_yaw_deg = (float)(target_yaw), \
             .duration_ms = (uint32_t)(duration), \
             .speed_override = MOTION_USE_GLOBAL_SPEED \
+        } \
+    }
+
+#define ACTION_DRIVE_DISTANCE_FORWARD(distance, command, timeout) \
+    { \
+        .type = MOTION_ACTION_DRIVE_DISTANCE, \
+        .timeout_ms = (uint32_t)(timeout), \
+        .max_retries = 0U, \
+        .params.drive_distance = { \
+            .distance_cm = (float)(distance), \
+            .normalized_command = (int16_t)(command) \
         } \
     }
 

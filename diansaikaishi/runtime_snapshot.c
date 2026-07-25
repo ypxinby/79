@@ -145,6 +145,20 @@ void RuntimeSnapshot_Update(uint32_t timestamp_ms)
     g_snapshot.turn_to_yaw_error_deg = g_appRuntime.yaw_turn_error_deg;
     g_snapshot.heading_imu_invalid_elapsed_ms =
         g_appRuntime.heading_imu_invalid_elapsed_ms;
+    g_snapshot.drive_distance_state =
+        g_appRuntime.drive_distance_state;
+    g_snapshot.drive_distance_start_center_cm =
+        g_appRuntime.drive_distance_start_center_cm;
+    g_snapshot.drive_distance_target_cm =
+        g_appRuntime.drive_distance_target_cm;
+    g_snapshot.drive_distance_travelled_cm =
+        g_appRuntime.drive_distance_travelled_cm;
+    g_snapshot.drive_distance_remaining_cm =
+        g_appRuntime.drive_distance_remaining_cm;
+    g_snapshot.drive_distance_command =
+        g_appRuntime.drive_distance_command;
+    g_snapshot.drive_distance_settle_elapsed_ms =
+        g_appRuntime.drive_distance_settle_elapsed_ms;
     g_snapshot.app_missed_count = scheduler.app_20ms_missed_count;
     g_snapshot.app_drop_count = scheduler.app_20ms_drop_count;
     g_snapshot.app_overrun_count = scheduler.app_20ms_overrun_count;
