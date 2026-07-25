@@ -16,7 +16,8 @@ typedef enum {
     MOTION_ACTION_WAIT,
     MOTION_ACTION_STOP,
     MOTION_ACTION_DRIVE_DISTANCE,
-    MOTION_ACTION_DRIVE_DISTANCE_HEADING
+    MOTION_ACTION_DRIVE_DISTANCE_HEADING,
+    MOTION_ACTION_DRIVE_HEADING_UNTIL_LINE
 } MotionActionType;
 
 typedef enum {
@@ -104,6 +105,11 @@ typedef struct {
             uint32_t duration_ms;
             int16_t speed_override;
         } drive_heading_time;
+
+        struct {
+            float target_yaw_deg;
+            int16_t normalized_command;
+        } drive_heading_until_line;
 
         struct {
             float distance_cm;

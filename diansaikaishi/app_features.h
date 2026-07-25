@@ -28,7 +28,13 @@
 /* Minimal closed-loop test: select 10/20/30 cm/s and start with K2 short. */
 #define FEATURE_WHEEL_SPEED_TEST    (0)
 #define WHEEL_SPEED_TEST_TARGET_CMPS (30)
-/* P5.1 simple FOLLOW outer loop; set to 0 for the validated legacy path. */
+/*
+ * Frozen new-base build: old seek-line, sensor-triggered 90-degree turn and
+ * legacy lost-recover modes remain in source for reference but cannot own the
+ * motion output when this switch is 0.
+ */
+#define FEATURE_LEGACY_MOTION_CONTROL (0)
+/* P5 FOLLOW path. Legacy rollback requires enabling the legacy switch first. */
 #define FEATURE_LINE_CONTROL_V2     (1)
 /* Keep the normal K1 page loop compact. Set to 1 to restore P1-P6 detail pages. */
 #define FEATURE_OLED_LEGACY_DIAG_PAGES (0)
@@ -43,6 +49,14 @@
 
 #if FEATURE_LINE_CONTROL_V2 && !FEATURE_WHEEL_SPEED_CONTROL
 #error FEATURE_LINE_CONTROL_V2 requires FEATURE_WHEEL_SPEED_CONTROL
+#endif
+
+#if !FEATURE_LEGACY_MOTION_CONTROL && !FEATURE_LINE_CONTROL_V2
+#error Disabling legacy motion control requires FEATURE_LINE_CONTROL_V2
+#endif
+
+#if !FEATURE_LEGACY_MOTION_CONTROL && !FEATURE_WHEEL_SPEED_CONTROL
+#error Disabling legacy motion control requires P4 wheel speed control
 #endif
 
 #if FEATURE_WHEEL_SPEED_TEST && \

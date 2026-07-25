@@ -1,5 +1,6 @@
 #include "obstacle_safety.h"
 
+#include "app_features.h"
 #include "car_controller.h"
 #include "car_state.h"
 #include "emergency_stop.h"
@@ -15,9 +16,18 @@ static bool g_obstacleSafetyHolding;
 
 static bool obstacle_safety_can_hold_mode(TrackRunMode mode)
 {
-    return (mode == TRACK_MODE_SEEK_LINE) ||
-        (mode == TRACK_MODE_FOLLOW_LINE) ||
-        (mode == TRACK_MODE_LOST_RECOVER);
+    return (mode == TRACK_MODE_FOLLOW_LINE) ||
+        (mode == TRACK_MODE_TURN_TO_YAW) ||
+        (mode == TRACK_MODE_DRIVE_HEADING) ||
+        (mode == TRACK_MODE_DRIVE_DISTANCE) ||
+        (mode == TRACK_MODE_DRIVE_DISTANCE_HEADING)
+#if FEATURE_LEGACY_MOTION_CONTROL
+        || (mode == TRACK_MODE_SEEK_LINE)
+        || (mode == TRACK_MODE_LOST_RECOVER)
+        || (mode == TRACK_MODE_TURN_LEFT_90)
+        || (mode == TRACK_MODE_TURN_RIGHT_90)
+#endif
+        ;
 }
 
 static void obstacle_safety_apply_hold(bool enable)

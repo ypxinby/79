@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "app_features.h"
 #include "track_sensor.h"
 
 typedef enum {
@@ -67,6 +68,7 @@ typedef struct {
     uint16_t yaw_turn_stable_ms;
     uint16_t heading_straight_elapsed_ms;
     uint16_t drive_heading_duration_ms;
+    int16_t drive_heading_command;
     uint16_t heading_imu_invalid_elapsed_ms;
     uint16_t drive_distance_settle_elapsed_ms;
     uint16_t lap_cooldown_ms;
@@ -112,14 +114,18 @@ void CarController_ResetRuntime(void);
 void CarController_ResetTransientState(void);
 void CarController_Update_20ms(uint32_t elapsed_ms);
 void CarController_Stop(void);
+#if FEATURE_LEGACY_MOTION_CONTROL
 void CarController_StartSeekLine(void);
+#endif
 void CarController_StartFollowLine(CarTurnHandlingPolicy turn_policy);
+#if FEATURE_LEGACY_MOTION_CONTROL
 void CarController_StartTurnLeft90(void);
 void CarController_StartTurnRight90(void);
+#endif
 void CarController_StartTurnToYawRelative(float angle_deg,
     uint32_t timeout_ms);
 void CarController_StartDriveHeading(float target_yaw_deg,
-    uint32_t duration_ms);
+    uint32_t duration_ms, int16_t normalized_command);
 void CarController_StartDriveDistance(float distance_cm,
     int16_t normalized_command);
 void CarController_StartDriveDistanceAtYaw(float distance_cm,

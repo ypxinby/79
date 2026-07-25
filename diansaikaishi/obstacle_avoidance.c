@@ -1,6 +1,7 @@
 #include "obstacle_avoidance.h"
 
 #include "app_config.h"
+#include "app_features.h"
 #include "car_controller.h"
 #include "car_state.h"
 #include "emergency_stop.h"
@@ -13,10 +14,12 @@
 #include "scheduler_monitor.h"
 #include "watchdog_monitor.h"
 
-#define AVOID_CENTER_CONFIRM_COUNT      (3U)
 static ObstacleAvoidanceFeedback g_avoidFeedback;
-static bool g_stateStarted;
 static uint16_t g_resumeGraceMs;
+
+#if FEATURE_LEGACY_MOTION_CONTROL
+#define AVOID_CENTER_CONFIRM_COUNT      (3U)
+static bool g_stateStarted;
 
 static float avoid_direction_angle(float right_angle_deg)
 {
@@ -125,6 +128,7 @@ static bool avoid_feedback_failed(const CarControllerFeedback *feedback)
         feedback->operation_failed ||
         !Imu_IsReady();
 }
+#endif
 
 void ObstacleAvoidance_Init(void)
 {
@@ -139,12 +143,15 @@ void ObstacleAvoidance_Init(void)
     g_avoidFeedback.failure_code = FAULT_CODE_NONE;
     g_avoidFeedback.failure_stage = AVOID_STATE_IDLE;
     g_avoidFeedback.failure_detail = 0U;
+#if FEATURE_LEGACY_MOTION_CONTROL
     g_stateStarted = false;
+#endif
     g_resumeGraceMs = 0U;
 }
 
 void ObstacleAvoidance_Update_20ms(uint32_t elapsed_ms)
 {
+#if FEATURE_LEGACY_MOTION_CONTROL
     const CarControllerFeedback *feedback = CarController_GetFeedback();
 
     if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
@@ -227,7 +234,8 @@ void ObstacleAvoidance_Update_20ms(uint32_t elapsed_ms)
             if (!g_stateStarted) {
                 CarController_StartDriveHeading(
                     Imu_GetYaw(),
-                    g_appConfig.avoid_drive_out_ms);
+                    g_appConfig.avoid_drive_out_ms,
+                    g_appConfig.search_speed);
                 g_stateStarted = true;
                 break;
             }
@@ -327,6 +335,9 @@ void ObstacleAvoidance_Update_20ms(uint32_t elapsed_ms)
             avoid_fail(FAULT_CODE_AVOID_INVALID_STATE, 0U);
             break;
     }
+#else
+    (void)elapsed_ms;
+#endif
 }
 
 bool ObstacleAvoidance_IsActive(void)

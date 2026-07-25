@@ -147,6 +147,7 @@ static void reset_heading_control_runtime(void)
 #endif
 }
 
+#if FEATURE_LEGACY_MOTION_CONTROL
 static void handle_seek_line(uint32_t elapsed_ms)
 {
     (void)elapsed_ms;
@@ -170,6 +171,7 @@ static void handle_seek_line(uint32_t elapsed_ms)
 #endif
     reset_heading_control_runtime();
 }
+#endif
 
 static void reset_drive_distance_runtime(void)
 {
@@ -210,7 +212,7 @@ static void handle_follow_line(uint32_t elapsed_ms)
     const LineControllerRuntime *line;
     int16_t leftCommand = 0;
     int16_t rightCommand = 0;
-#else
+#elif FEATURE_LEGACY_MOTION_CONTROL
     int16_t derivative;
     int32_t correction;
 #endif
@@ -252,7 +254,7 @@ static void handle_follow_line(uint32_t elapsed_ms)
     reset_heading_control_runtime();
     set_output_speed(leftCommand, rightCommand);
     return;
-#else
+#elif FEATURE_LEGACY_MOTION_CONTROL
     if (TrackSensor_IsLineLost(g_appRuntime.sensor_raw)) {
         g_appRuntime.correction = 0;
         reset_heading_control_runtime();
@@ -316,6 +318,8 @@ static void handle_follow_line(uint32_t elapsed_ms)
         (int16_t)((int32_t)g_appConfig.base_speed -
             g_appRuntime.correction));
     g_appRuntime.last_error = error;
+#else
+#error CarController FOLLOW requires V2 or legacy motion control
 #endif
 }
 
@@ -374,6 +378,7 @@ static void set_yaw_turn_output(float error, int16_t speed)
     }
 }
 
+#if FEATURE_LEGACY_MOTION_CONTROL
 static void handle_lost_recover(uint32_t elapsed_ms)
 {
     if (!TrackSensor_IsLineLost(g_appRuntime.sensor_raw)) {
@@ -454,6 +459,7 @@ static void handle_turn_90(uint8_t turnLeft, uint32_t elapsed_ms)
         set_output_speed(g_appConfig.turn_speed, 0);
     }
 }
+#endif
 
 static void handle_turn_to_yaw(uint32_t elapsed_ms)
 {
@@ -566,8 +572,8 @@ static void handle_drive_heading(uint32_t elapsed_ms)
     g_appRuntime.correction = correction;
 
     set_output_speed(
-        (int16_t)((int32_t)g_appConfig.search_speed + correction),
-        (int16_t)((int32_t)g_appConfig.search_speed - correction));
+        (int16_t)((int32_t)g_appRuntime.drive_heading_command + correction),
+        (int16_t)((int32_t)g_appRuntime.drive_heading_command - correction));
 }
 
 static void handle_drive_distance(uint32_t elapsed_ms,
@@ -720,6 +726,7 @@ void CarController_ResetRuntime(void)
     g_appRuntime.yaw_turn_stable_ms = 0;
     g_appRuntime.heading_straight_elapsed_ms = 0;
     g_appRuntime.drive_heading_duration_ms = 0;
+    g_appRuntime.drive_heading_command = 0;
     g_appRuntime.heading_imu_invalid_elapsed_ms = 0;
     g_appRuntime.lap_cooldown_ms = 0;
     g_appRuntime.yaw_turn_target_deg = 0.0f;
@@ -747,6 +754,7 @@ void CarController_ResetTransientState(void)
     g_appRuntime.yaw_turn_stable_ms = 0;
     g_appRuntime.heading_straight_elapsed_ms = 0;
     g_appRuntime.drive_heading_duration_ms = 0;
+    g_appRuntime.drive_heading_command = 0;
     g_appRuntime.heading_imu_invalid_elapsed_ms = 0;
     g_appRuntime.yaw_turn_error_deg = 0.0f;
     g_appRuntime.yaw_turn_timeout_ms = 0U;
@@ -769,6 +777,7 @@ void CarController_Stop(void)
     g_appRuntime.run_mode = TRACK_MODE_IDLE;
 }
 
+#if FEATURE_LEGACY_MOTION_CONTROL
 void CarController_StartSeekLine(void)
 {
     if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
@@ -779,6 +788,7 @@ void CarController_StartSeekLine(void)
     g_appRuntime.run_mode = TRACK_MODE_SEEK_LINE;
     CarState_Set(CAR_STATE_RUNNING);
 }
+#endif
 
 void CarController_StartFollowLine(CarTurnHandlingPolicy turn_policy)
 {
@@ -795,6 +805,7 @@ void CarController_StartFollowLine(CarTurnHandlingPolicy turn_policy)
     CarState_Set(CAR_STATE_RUNNING);
 }
 
+#if FEATURE_LEGACY_MOTION_CONTROL
 void CarController_StartTurnLeft90(void)
 {
     if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
@@ -820,6 +831,7 @@ void CarController_StartTurnRight90(void)
     g_appRuntime.run_mode = TRACK_MODE_TURN_RIGHT_90;
     CarState_Set(CAR_STATE_RUNNING);
 }
+#endif
 
 void CarController_StartTurnToYawRelative(float angle_deg,
     uint32_t timeout_ms)
@@ -843,7 +855,7 @@ void CarController_StartTurnToYawRelative(float angle_deg,
 }
 
 void CarController_StartDriveHeading(float target_yaw_deg,
-    uint32_t duration_ms)
+    uint32_t duration_ms, int16_t normalized_command)
 {
     if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
         stop_output();
@@ -859,6 +871,8 @@ void CarController_StartDriveHeading(float target_yaw_deg,
     } else {
         g_appRuntime.drive_heading_duration_ms = (uint16_t)duration_ms;
     }
+    g_appRuntime.drive_heading_command = clamp_i16(normalized_command,
+        1, MOTOR_MAX_DUTY);
     HeadingControl_SetTargetYaw(g_appRuntime.drive_heading_target_yaw_deg);
     HeadingControl_Enable(true);
     g_appRuntime.run_mode = TRACK_MODE_DRIVE_HEADING;
@@ -1018,12 +1032,15 @@ void CarController_Update_20ms(uint32_t elapsed_ms)
             g_appRuntime.right_speed = 0;
             g_appRuntime.correction = 0;
             break;
+#if FEATURE_LEGACY_MOTION_CONTROL
         case TRACK_MODE_SEEK_LINE:
             handle_seek_line(elapsed_ms);
             break;
+#endif
         case TRACK_MODE_FOLLOW_LINE:
             handle_follow_line(elapsed_ms);
             break;
+#if FEATURE_LEGACY_MOTION_CONTROL
         case TRACK_MODE_LOST_RECOVER:
             handle_lost_recover(elapsed_ms);
             break;
@@ -1033,6 +1050,7 @@ void CarController_Update_20ms(uint32_t elapsed_ms)
         case TRACK_MODE_TURN_RIGHT_90:
             handle_turn_90(0U, elapsed_ms);
             break;
+#endif
         case TRACK_MODE_TURN_TO_YAW:
             handle_turn_to_yaw(elapsed_ms);
             break;

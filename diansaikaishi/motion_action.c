@@ -1,6 +1,7 @@
 #include "motion_action.h"
 
 #include "app_config.h"
+#include "app_features.h"
 #include "car_controller.h"
 #include "car_state.h"
 #include "emergency_stop.h"
@@ -36,8 +37,12 @@ static uint16_t motion_action_add_elapsed_u16(uint16_t value,
 static bool motion_action_is_imu_dependent(MotionActionType type)
 {
     return (type == MOTION_ACTION_TURN_TO_YAW) ||
-        (type == MOTION_ACTION_DRIVE_HEADING_TIME) ||
-        (type == MOTION_ACTION_DRIVE_DISTANCE_HEADING);
+        (type == MOTION_ACTION_DRIVE_HEADING_UNTIL_LINE) ||
+        (type == MOTION_ACTION_DRIVE_DISTANCE_HEADING)
+#if FEATURE_LEGACY_MOTION_CONTROL
+        || (type == MOTION_ACTION_DRIVE_HEADING_TIME)
+#endif
+        ;
 }
 
 static void motion_action_start_imu_controller(const MotionAction *action)
@@ -46,10 +51,23 @@ static void motion_action_start_imu_controller(const MotionAction *action)
         CarController_StartTurnToYawRelative(
             action->params.turn_to_yaw.angle_deg,
             action->timeout_ms);
-    } else if (action->type == MOTION_ACTION_DRIVE_HEADING_TIME) {
+    }
+#if FEATURE_LEGACY_MOTION_CONTROL
+    else if (action->type == MOTION_ACTION_DRIVE_HEADING_TIME) {
         CarController_StartDriveHeading(
             action->params.drive_heading_time.target_yaw_deg,
-            action->params.drive_heading_time.duration_ms);
+            action->params.drive_heading_time.duration_ms,
+            (action->params.drive_heading_time.speed_override ==
+                MOTION_USE_GLOBAL_SPEED) ? g_appConfig.search_speed :
+                action->params.drive_heading_time.speed_override);
+    }
+#endif
+    else if (action->type ==
+        MOTION_ACTION_DRIVE_HEADING_UNTIL_LINE) {
+        CarController_StartDriveHeading(
+            action->params.drive_heading_until_line.target_yaw_deg,
+            action->timeout_ms,
+            action->params.drive_heading_until_line.normalized_command);
     } else {
         CarController_StartDriveDistanceAtYaw(
             action->params.drive_distance_heading.distance_cm,
@@ -135,28 +153,38 @@ static bool motion_action_check_timeout(void)
     }
 
     switch (action->type) {
+#if FEATURE_LEGACY_MOTION_CONTROL
         case MOTION_ACTION_SEEK_LINE:
             motion_action_set_result(MOTION_RESULT_TIMEOUT,
                 MOTION_ERROR_SEEK_TIMEOUT);
             break;
+#endif
         case MOTION_ACTION_FOLLOW_LINE:
             motion_action_set_result(MOTION_RESULT_TIMEOUT,
                 MOTION_ERROR_FOLLOW_TIMEOUT);
             break;
+#if FEATURE_LEGACY_MOTION_CONTROL
         case MOTION_ACTION_DRIVE_HEADING_TIME:
             motion_action_set_result(MOTION_RESULT_TIMEOUT,
                 MOTION_ERROR_FOLLOW_TIMEOUT);
+            break;
+#endif
+        case MOTION_ACTION_DRIVE_HEADING_UNTIL_LINE:
+            motion_action_set_result(MOTION_RESULT_TIMEOUT,
+                MOTION_ERROR_SEEK_TIMEOUT);
             break;
         case MOTION_ACTION_DRIVE_DISTANCE:
         case MOTION_ACTION_DRIVE_DISTANCE_HEADING:
             motion_action_set_result(MOTION_RESULT_TIMEOUT,
                 MOTION_ERROR_DISTANCE_TIMEOUT);
             break;
+#if FEATURE_LEGACY_MOTION_CONTROL
         case MOTION_ACTION_TURN_LEFT_90:
         case MOTION_ACTION_TURN_RIGHT_90:
             motion_action_set_result(MOTION_RESULT_TIMEOUT,
                 MOTION_ERROR_TURN_TIMEOUT);
             break;
+#endif
         case MOTION_ACTION_WAIT:
         case MOTION_ACTION_STOP:
             return false;
@@ -226,13 +254,28 @@ bool MotionAction_Start(const MotionAction *action)
         motion_action_stop_car();
         return false;
     }
+    if ((action->type == MOTION_ACTION_DRIVE_HEADING_UNTIL_LINE) &&
+        ((action->params.drive_heading_until_line.target_yaw_deg !=
+            action->params.drive_heading_until_line.target_yaw_deg) ||
+         (action->params.drive_heading_until_line.target_yaw_deg < -180.0f) ||
+         (action->params.drive_heading_until_line.target_yaw_deg > 180.0f) ||
+         (action->params.drive_heading_until_line.normalized_command <= 0) ||
+         (action->params.drive_heading_until_line.normalized_command >
+            MOTION_NORMALIZED_COMMAND_MAX))) {
+        motion_action_set_result(MOTION_RESULT_FAILED,
+            MOTION_ERROR_INVALID_ACTION);
+        motion_action_stop_car();
+        return false;
+    }
 
     switch (action->type) {
+#if FEATURE_LEGACY_MOTION_CONTROL
         case MOTION_ACTION_SEEK_LINE:
             CarController_StartSeekLine();
             motion_action_set_result(MOTION_RESULT_RUNNING,
                 MOTION_ERROR_NONE);
             return true;
+#endif
 
         case MOTION_ACTION_FOLLOW_LINE:
             CarController_StartFollowLine(
@@ -242,6 +285,7 @@ bool MotionAction_Start(const MotionAction *action)
                 MOTION_ERROR_NONE);
             return true;
 
+#if FEATURE_LEGACY_MOTION_CONTROL
         case MOTION_ACTION_TURN_LEFT_90:
             CarController_StartTurnLeft90();
             motion_action_set_result(MOTION_RESULT_RUNNING,
@@ -254,6 +298,8 @@ bool MotionAction_Start(const MotionAction *action)
                 MOTION_ERROR_NONE);
             return true;
 
+#endif
+
         case MOTION_ACTION_TURN_TO_YAW:
             motion_action_set_result(MOTION_RESULT_RUNNING,
                 MOTION_ERROR_NONE);
@@ -265,7 +311,10 @@ bool MotionAction_Start(const MotionAction *action)
             }
             return true;
 
+#if FEATURE_LEGACY_MOTION_CONTROL
         case MOTION_ACTION_DRIVE_HEADING_TIME:
+#endif
+        case MOTION_ACTION_DRIVE_HEADING_UNTIL_LINE:
             motion_action_set_result(MOTION_RESULT_RUNNING,
                 MOTION_ERROR_NONE);
             if (Imu_IsReady()) {
@@ -348,6 +397,7 @@ MotionActionResult MotionAction_Update_20ms(uint32_t elapsed_ms)
     }
 
     switch (action->type) {
+#if FEATURE_LEGACY_MOTION_CONTROL
         case MOTION_ACTION_SEEK_LINE:
             if (motion_action_car_is_error()) {
                 motion_action_set_result(MOTION_RESULT_FAILED,
@@ -359,6 +409,7 @@ MotionActionResult MotionAction_Update_20ms(uint32_t elapsed_ms)
                     MOTION_ERROR_NONE);
             }
             break;
+#endif
 
         case MOTION_ACTION_FOLLOW_LINE:
         {
@@ -409,6 +460,7 @@ MotionActionResult MotionAction_Update_20ms(uint32_t elapsed_ms)
             break;
         }
 
+#if FEATURE_LEGACY_MOTION_CONTROL
         case MOTION_ACTION_TURN_LEFT_90:
         {
             const CarControllerFeedback *feedback =
@@ -442,6 +494,7 @@ MotionActionResult MotionAction_Update_20ms(uint32_t elapsed_ms)
             }
             break;
         }
+#endif
 
         case MOTION_ACTION_TURN_TO_YAW:
         {
@@ -471,6 +524,7 @@ MotionActionResult MotionAction_Update_20ms(uint32_t elapsed_ms)
             break;
         }
 
+#if FEATURE_LEGACY_MOTION_CONTROL
         case MOTION_ACTION_DRIVE_HEADING_TIME:
         {
             const CarControllerFeedback *feedback =
@@ -485,6 +539,27 @@ MotionActionResult MotionAction_Update_20ms(uint32_t elapsed_ms)
                 break;
             }
             if (feedback->turn_completed) {
+                motion_action_set_result(MOTION_RESULT_SUCCESS,
+                    MOTION_ERROR_NONE);
+            }
+            break;
+        }
+#endif
+
+        case MOTION_ACTION_DRIVE_HEADING_UNTIL_LINE:
+        {
+            const CarControllerFeedback *feedback =
+                CarController_GetFeedback();
+
+            if (motion_action_car_is_error() || feedback->operation_failed) {
+                motion_action_set_result(MOTION_RESULT_FAILED,
+                    (feedback->error_code ==
+                        CAR_CONTROLLER_ERROR_IMU_NOT_READY) ?
+                        MOTION_ERROR_IMU_NOT_READY :
+                        MOTION_ERROR_INVALID_ACTION);
+                break;
+            }
+            if (feedback->line_found) {
                 motion_action_set_result(MOTION_RESULT_SUCCESS,
                     MOTION_ERROR_NONE);
             }

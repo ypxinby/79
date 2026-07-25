@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "app_features.h"
 #include "motion_types.h"
 
 #define MISSION_MAX_ACTIONS             (32U)
@@ -22,10 +23,8 @@
 /* P6.3 development-only IDs live above the competition-map range. */
 #define MISSION_ID_TEST_DISTANCE_20     (100U)
 
-/* 10~99: competition map missions. */
-#define MISSION_ID_MAP_A                (10U)
-#define MISSION_ID_MAP_B                (11U)
-#define MISSION_ID_MAP_C                (12U)
+/* 10~99: competition missions. */
+#define MISSION_ID_COMPETITION_MAIN     (10U)
 
 #define ACTION_STOP() \
     { \
@@ -44,6 +43,7 @@
         } \
     }
 
+#if FEATURE_LEGACY_MOTION_CONTROL
 #define ACTION_SEEK_LINE(timeout) \
     { \
         .type = MOTION_ACTION_SEEK_LINE, \
@@ -53,6 +53,7 @@
             .speed_override = MOTION_USE_GLOBAL_SPEED \
         } \
     }
+#endif
 
 #define ACTION_FOLLOW_FOREVER(timeout) \
     { \
@@ -246,6 +247,7 @@
         } \
     }
 
+#if FEATURE_LEGACY_MOTION_CONTROL
 #define ACTION_TURN_LEFT_90(timeout) \
     { \
         .type = MOTION_ACTION_TURN_LEFT_90, \
@@ -267,6 +269,7 @@
             .min_turn_ms = 0U \
         } \
     }
+#endif
 
 #define ACTION_TURN_RELATIVE_YAW(angle, timeout) \
     { \
@@ -279,6 +282,7 @@
         } \
     }
 
+#if FEATURE_LEGACY_MOTION_CONTROL
 #define ACTION_DRIVE_HEADING_YAW(target_yaw, duration, timeout) \
     { \
         .type = MOTION_ACTION_DRIVE_HEADING_TIME, \
@@ -288,6 +292,18 @@
             .target_yaw_deg = (float)(target_yaw), \
             .duration_ms = (uint32_t)(duration), \
             .speed_override = MOTION_USE_GLOBAL_SPEED \
+        } \
+    }
+#endif
+
+#define ACTION_DRIVE_HEADING_UNTIL_LINE(target_yaw, command, timeout) \
+    { \
+        .type = MOTION_ACTION_DRIVE_HEADING_UNTIL_LINE, \
+        .timeout_ms = (uint32_t)(timeout), \
+        .max_retries = 0U, \
+        .params.drive_heading_until_line = { \
+            .target_yaw_deg = (float)(target_yaw), \
+            .normalized_command = (int16_t)(command) \
         } \
     }
 

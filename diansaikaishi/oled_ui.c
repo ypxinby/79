@@ -123,6 +123,8 @@ static const char *motion_action_type_to_string(MotionActionType type)
             return "YAW";
         case MOTION_ACTION_DRIVE_HEADING_TIME:
             return "HEAD";
+        case MOTION_ACTION_DRIVE_HEADING_UNTIL_LINE:
+            return "FIND";
         case MOTION_ACTION_DRIVE_DISTANCE:
             return "DIST";
         case MOTION_ACTION_DRIVE_DISTANCE_HEADING:
@@ -837,7 +839,9 @@ static uint32_t heading_display_action_elapsed_ms(void)
 
     if ((action->action != (const MotionAction *)0) &&
         ((action->action->type == MOTION_ACTION_TURN_TO_YAW) ||
-            (action->action->type == MOTION_ACTION_DRIVE_HEADING_TIME))) {
+            (action->action->type == MOTION_ACTION_DRIVE_HEADING_TIME) ||
+            (action->action->type ==
+                MOTION_ACTION_DRIVE_HEADING_UNTIL_LINE))) {
         return action->elapsed_ms;
     }
     if (g_appRuntime.run_mode == TRACK_MODE_TURN_TO_YAW) {

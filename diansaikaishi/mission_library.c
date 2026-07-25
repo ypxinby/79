@@ -21,77 +21,9 @@ typedef enum {
     MISSION_VALIDATE_TOO_MANY_RETRIES
 } MissionValidateError;
 
-/*
- * Test missions.
- *
- * Keep these missions for validating one behavior at a time.
- * Development registry below exposes only the three new-base validation
- * tasks: TEST-LINE, TEST-TURN, and TEST-DIST.
- *
- * Retained diagnostic arrays:
- * - LEGACY: close to the old run mode.
- * - TEST-SF: seek, follow until line lost, reverse seek, follow until lost.
- * - TEST-R90 / TEST-RSTOP: same right-90 detection, different decisions.
- * - TEST-SK-L / TEST-SK-S: same seek-line event, different decisions.
- * - TEST-TURN: one relative IMU yaw turn from the current pose.
- * - TEST-HEAD: drive along an absolute yaw referenced to boot yaw zero.
- * - TEST-D20: P6.3A encoder-distance-only forward 20 cm test.
- * - TEST-STOP: follow with stop-only obstacle policy.
- */
-static const MotionAction g_missionLegacy[] = {
-    ACTION_SEEK_LINE(0U),
-    /* Follow forever after the line is found. */
-    ACTION_FOLLOW_FOREVER(0U),
-    ACTION_STOP()
-};
-
-static const MotionAction g_missionTestSeekFollow[] = {
-    ACTION_SEEK_LINE(0U),
-    /* Leave the first line segment. */
-    ACTION_FOLLOW_UNTIL_LINE_LOST(0U),
-    ACTION_SEEK_LINE(0U),
-    /* Leave the second line segment, then stop. */
-    ACTION_FOLLOW_UNTIL_LINE_LOST(0U),
-    ACTION_STOP()
-};
-
-static const MotionAction g_missionTestRight90Turn[] = {
-    /* Find line, then follow until a right-90 event is reported. */
-    ACTION_SEEK_LINE(0U),
-    ACTION_FOLLOW_UNTIL_RIGHT_90(0U),
-    /* The task layer decides to turn right after the event. */
-    ACTION_TURN_RIGHT_90(0U),
-    /* Continue line following after the turn. */
-    ACTION_FOLLOW_FOREVER(0U),
-    ACTION_STOP()
-};
-
-static const MotionAction g_missionTestRight90Stop[] = {
-    /* Same right-90 event as TEST-R90, but this task stops instead. */
-    ACTION_SEEK_LINE(0U),
-    ACTION_FOLLOW_UNTIL_RIGHT_90(0U),
-    ACTION_STOP()
-};
-
-static const MotionAction g_missionTestSeekThenFollow[] = {
-    /* Seek until a line is found, then continue following it. */
-    ACTION_SEEK_LINE(0U),
-    ACTION_FOLLOW_FOREVER(0U),
-    ACTION_STOP()
-};
-
-static const MotionAction g_missionTestSeekThenStop[] = {
-    /* Seek until a line is found, then stop. */
-    ACTION_SEEK_LINE(0U),
-    ACTION_STOP()
-};
-
-/* Minimal P6 development tests. Change only these values for bench tests. */
+/* Three isolated new-base development tests. */
 #define TEST_TURN_ANGLE_DEG             (90.0f)
 #define TEST_TURN_TIMEOUT_MS            (4000U)
-#define TEST_HEADING_TARGET_YAW_DEG     (0.0f)
-#define TEST_HEADING_DRIVE_MS           (3000U)
-#define TEST_HEADING_TIMEOUT_MS         (4000U)
 #define TEST_DISTANCE_TARGET_CM         (20.0f)
 #define TEST_DISTANCE_TARGET_YAW_DEG    (45.0f)
 #define TEST_DISTANCE_COMMAND           (200)
@@ -111,13 +43,6 @@ static const MotionAction g_missionTestLine[] = {
     ACTION_STOP()
 };
 
-static const MotionAction g_missionTestHeadingDrive[] = {
-    ACTION_WAIT_MS(500U),
-    ACTION_DRIVE_HEADING_YAW(TEST_HEADING_TARGET_YAW_DEG,
-        TEST_HEADING_DRIVE_MS, TEST_HEADING_TIMEOUT_MS),
-    ACTION_STOP()
-};
-
 static const MotionAction g_missionTestDistance20[] = {
     ACTION_WAIT_MS(500U),
     ACTION_DRIVE_DISTANCE_AT_YAW(TEST_DISTANCE_TARGET_CM,
@@ -126,71 +51,20 @@ static const MotionAction g_missionTestDistance20[] = {
     ACTION_STOP()
 };
 
-static const MotionAction g_missionTestObstacleFixed[] = {
-    /* Place an obstacle while following to validate safety and fixed bypass. */
-    ACTION_SEEK_LINE(0U),
-    ACTION_FOLLOW_FOREVER_WITH_OBSTACLE(OBSTACLE_POLICY_FIXED_BYPASS,
-        BYPASS_DIRECTION_RIGHT, 0U),
-    ACTION_STOP()
-};
+/*
+ * The first formal competition task uses only the new motion primitives:
+ * P6 heading hold drives straight from boot yaw zero until any black line is
+ * detected, then P5 takes over and follows continuously through P4.
+ */
+#define COMPETITION_ENTRY_YAW_DEG       (0.0f)
+#define COMPETITION_ENTRY_COMMAND       (200)
+#define COMPETITION_FIND_LINE_TIMEOUT_MS (5000U)
 
-static const MotionAction g_missionTestStopOnly[] = {
-    /* Follow normally, but obstacle handling only stops and waits. */
-    ACTION_SEEK_LINE(0U),
+static const MotionAction g_missionCompetitionMain[] = {
+    ACTION_DRIVE_HEADING_UNTIL_LINE(COMPETITION_ENTRY_YAW_DEG,
+        COMPETITION_ENTRY_COMMAND, COMPETITION_FIND_LINE_TIMEOUT_MS),
     ACTION_FOLLOW_FOREVER_WITH_OBSTACLE(OBSTACLE_POLICY_STOP_ONLY,
         BYPASS_DIRECTION_RIGHT, 0U),
-    ACTION_STOP()
-};
-
-/*
- * Competition missions.
- *
- * Add formal map tasks here. New map work should normally only add:
- * 1. A static MotionAction array in this section.
- * 2. One entry in g_missionRegistry below.
- */
-#define MAP_SEEK_TIMEOUT_MS        (4000U)
-#define MAP_FOLLOW_TIMEOUT_MS      (8000U)
-#define MAP_TURN_TIMEOUT_MS        (2500U)
-#define MAP_FINAL_TIMEOUT_MS       (5000U)
-
-static const MotionAction g_missionMapA[] = {
-    ACTION_SEEK_LINE(MAP_SEEK_TIMEOUT_MS),
-    /* Follow until the right-90 event is reported. This does not auto-turn. */
-    ACTION_FOLLOW_UNTIL_RIGHT_90(MAP_FOLLOW_TIMEOUT_MS),
-    /* The task explicitly decides to turn right. */
-    ACTION_TURN_RIGHT_90(MAP_TURN_TIMEOUT_MS),
-    /* Follow until the left-90 event is reported. This does not auto-turn. */
-    ACTION_FOLLOW_UNTIL_LEFT_90(MAP_FOLLOW_TIMEOUT_MS),
-    /* The task explicitly decides to turn left. */
-    ACTION_TURN_LEFT_90(MAP_TURN_TIMEOUT_MS),
-    /* Follow until leaving the final line segment, then stop. */
-    ACTION_FOLLOW_UNTIL_LINE_LOST(MAP_FINAL_TIMEOUT_MS),
-    ACTION_STOP()
-};
-
-static const MotionAction g_missionMapB[] = {
-    ACTION_SEEK_LINE(MAP_SEEK_TIMEOUT_MS),
-    /* Follow until the left-90 event is reported. This does not auto-turn. */
-    ACTION_FOLLOW_UNTIL_LEFT_90(MAP_FOLLOW_TIMEOUT_MS),
-    /* The task explicitly decides to turn left. */
-    ACTION_TURN_LEFT_90(MAP_TURN_TIMEOUT_MS),
-    /* Follow until the right-90 event is reported. This does not auto-turn. */
-    ACTION_FOLLOW_UNTIL_RIGHT_90(MAP_FOLLOW_TIMEOUT_MS),
-    /* The task explicitly decides to turn right. */
-    ACTION_TURN_RIGHT_90(MAP_TURN_TIMEOUT_MS),
-    /* Follow until leaving the final line segment, then stop. */
-    ACTION_FOLLOW_UNTIL_LINE_LOST(MAP_FINAL_TIMEOUT_MS),
-    ACTION_STOP()
-};
-
-static const MotionAction g_missionMapC[] = {
-    ACTION_SEEK_LINE(MAP_SEEK_TIMEOUT_MS),
-    /* Leave the first line segment. */
-    ACTION_FOLLOW_UNTIL_LINE_LOST(MAP_FINAL_TIMEOUT_MS),
-    ACTION_SEEK_LINE(MAP_SEEK_TIMEOUT_MS),
-    /* Leave the second line segment, then stop. */
-    ACTION_FOLLOW_UNTIL_LINE_LOST(MAP_FINAL_TIMEOUT_MS),
     ACTION_STOP()
 };
 
@@ -198,8 +72,8 @@ static const MotionAction g_missionMapC[] = {
  * Mission registry.
  *
  * OLED shows visible list indexes. mission_id values remain stable internal
- * identifiers. Development builds expose only the three isolated new-base
- * tests. Competition builds expose map missions only.
+ * identifiers. Development builds expose the three isolated new-base tests
+ * plus RACE-1 for integration testing. Competition builds expose only RACE-1.
  */
 static const MissionDefinition g_missionRegistry[] = {
 #if APP_PROFILE == APP_PROFILE_DEVELOPMENT
@@ -223,27 +97,20 @@ static const MissionDefinition g_missionRegistry[] = {
         .actions = g_missionTestDistance20,
         .action_count = ARRAY_SIZE(g_missionTestDistance20),
         .control_profile_id = 0U
+    },
+    {
+        .mission_id = MISSION_ID_COMPETITION_MAIN,
+        .name = "RACE-1",
+        .actions = g_missionCompetitionMain,
+        .action_count = ARRAY_SIZE(g_missionCompetitionMain),
+        .control_profile_id = 0U
     }
 #else
     {
-        .mission_id = MISSION_ID_MAP_A,
-        .name = "MAP-A",
-        .actions = g_missionMapA,
-        .action_count = ARRAY_SIZE(g_missionMapA),
-        .control_profile_id = 0U
-    },
-    {
-        .mission_id = MISSION_ID_MAP_B,
-        .name = "MAP-B",
-        .actions = g_missionMapB,
-        .action_count = ARRAY_SIZE(g_missionMapB),
-        .control_profile_id = 0U
-    },
-    {
-        .mission_id = MISSION_ID_MAP_C,
-        .name = "MAP-C",
-        .actions = g_missionMapC,
-        .action_count = ARRAY_SIZE(g_missionMapC),
+        .mission_id = MISSION_ID_COMPETITION_MAIN,
+        .name = "RACE-1",
+        .actions = g_missionCompetitionMain,
+        .action_count = ARRAY_SIZE(g_missionCompetitionMain),
         .control_profile_id = 0U
     }
 #endif
@@ -251,16 +118,20 @@ static const MissionDefinition g_missionRegistry[] = {
 
 static bool action_type_is_valid(MotionActionType type)
 {
-    return (type == MOTION_ACTION_SEEK_LINE) ||
-        (type == MOTION_ACTION_FOLLOW_LINE) ||
-        (type == MOTION_ACTION_TURN_LEFT_90) ||
-        (type == MOTION_ACTION_TURN_RIGHT_90) ||
+    return (type == MOTION_ACTION_FOLLOW_LINE) ||
         (type == MOTION_ACTION_TURN_TO_YAW) ||
-        (type == MOTION_ACTION_DRIVE_HEADING_TIME) ||
+        (type == MOTION_ACTION_DRIVE_HEADING_UNTIL_LINE) ||
         (type == MOTION_ACTION_DRIVE_DISTANCE) ||
         (type == MOTION_ACTION_DRIVE_DISTANCE_HEADING) ||
         (type == MOTION_ACTION_WAIT) ||
-        (type == MOTION_ACTION_STOP);
+        (type == MOTION_ACTION_STOP)
+#if FEATURE_LEGACY_MOTION_CONTROL
+        || (type == MOTION_ACTION_SEEK_LINE)
+        || (type == MOTION_ACTION_TURN_LEFT_90)
+        || (type == MOTION_ACTION_TURN_RIGHT_90)
+        || (type == MOTION_ACTION_DRIVE_HEADING_TIME)
+#endif
+        ;
 }
 
 static bool action_requires_timeout(const MotionAction *action)
@@ -271,11 +142,16 @@ static bool action_requires_timeout(const MotionAction *action)
     }
 
     switch (action->type) {
+#if FEATURE_LEGACY_MOTION_CONTROL
         case MOTION_ACTION_SEEK_LINE:
         case MOTION_ACTION_TURN_LEFT_90:
         case MOTION_ACTION_TURN_RIGHT_90:
+#endif
         case MOTION_ACTION_TURN_TO_YAW:
+#if FEATURE_LEGACY_MOTION_CONTROL
         case MOTION_ACTION_DRIVE_HEADING_TIME:
+#endif
+        case MOTION_ACTION_DRIVE_HEADING_UNTIL_LINE:
         case MOTION_ACTION_DRIVE_DISTANCE:
         case MOTION_ACTION_DRIVE_DISTANCE_HEADING:
             return true;
@@ -347,6 +223,14 @@ bool MissionLibrary_Validate(const MissionDefinition *mission,
             set_error(error_code, MISSION_VALIDATE_INVALID_ACTION);
             return false;
         }
+#if !FEATURE_LEGACY_MOTION_CONTROL
+        if ((action->type == MOTION_ACTION_FOLLOW_LINE) &&
+            (action->params.follow_line.obstacle_policy !=
+                OBSTACLE_POLICY_STOP_ONLY)) {
+            set_error(error_code, MISSION_VALIDATE_INVALID_ACTION);
+            return false;
+        }
+#endif
         if ((action->type == MOTION_ACTION_DRIVE_DISTANCE) &&
             (!(action->params.drive_distance.distance_cm > 0.0f) ||
              (action->params.drive_distance.normalized_command <= 0) ||
@@ -365,6 +249,20 @@ bool MissionLibrary_Validate(const MissionDefinition *mission,
                 180.0f) ||
              (action->params.drive_distance_heading.normalized_command <= 0) ||
              (action->params.drive_distance_heading.normalized_command >
+                MOTION_NORMALIZED_COMMAND_MAX))) {
+            set_error(error_code, MISSION_VALIDATE_INVALID_ACTION);
+            return false;
+        }
+        if ((action->type == MOTION_ACTION_DRIVE_HEADING_UNTIL_LINE) &&
+            ((action->params.drive_heading_until_line.target_yaw_deg !=
+                action->params.drive_heading_until_line.target_yaw_deg) ||
+             (action->params.drive_heading_until_line.target_yaw_deg <
+                -180.0f) ||
+             (action->params.drive_heading_until_line.target_yaw_deg >
+                180.0f) ||
+             (action->params.drive_heading_until_line.normalized_command <=
+                0) ||
+             (action->params.drive_heading_until_line.normalized_command >
                 MOTION_NORMALIZED_COMMAND_MAX))) {
             set_error(error_code, MISSION_VALIDATE_INVALID_ACTION);
             return false;
