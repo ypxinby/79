@@ -10,6 +10,7 @@
 
 static uint8_t g_oledPage;
 static uint8_t g_oledColumn;
+static uint8_t g_oledFrame[OLED_PAGES][OLED_WIDTH];
 
 static void oled_delay(void)
 {
@@ -97,6 +98,13 @@ static void oled_end_data(void)
     oled_i2c_stop();
 }
 
+static void oled_set_hardware_cursor(uint8_t page, uint8_t column)
+{
+    oled_write_command((uint8_t)(0xB0U | page));
+    oled_write_command((uint8_t)(0x00U | (column & 0x0FU)));
+    oled_write_command((uint8_t)(0x10U | (column >> 4)));
+}
+
 static const uint8_t *oled_get_glyph(char ch)
 {
     static const uint8_t space[5] = {0x00, 0x00, 0x00, 0x00, 0x00};
@@ -118,6 +126,7 @@ static const uint8_t *oled_get_glyph(char ch)
     static const uint8_t glyphC[5] = {0x3E, 0x41, 0x41, 0x41, 0x22};
     static const uint8_t glyphD[5] = {0x7F, 0x41, 0x41, 0x22, 0x1C};
     static const uint8_t glyphE[5] = {0x7F, 0x49, 0x49, 0x49, 0x41};
+    static const uint8_t glyphF[5] = {0x7F, 0x09, 0x09, 0x09, 0x01};
     static const uint8_t glyphG[5] = {0x3E, 0x41, 0x49, 0x49, 0x7A};
     static const uint8_t glyphH[5] = {0x7F, 0x08, 0x08, 0x08, 0x7F};
     static const uint8_t glyphI[5] = {0x00, 0x41, 0x7F, 0x41, 0x00};
@@ -157,6 +166,7 @@ static const uint8_t *oled_get_glyph(char ch)
         case 'C': return glyphC;
         case 'D': return glyphD;
         case 'E': return glyphE;
+        case 'F': return glyphF;
         case 'G': return glyphG;
         case 'H': return glyphH;
         case 'I': return glyphI;
@@ -218,16 +228,45 @@ void OLED_Init(void)
 
 void OLED_Clear(void)
 {
+    OLED_ClearBuffer();
+
     for (uint8_t page = 0; page < OLED_PAGES; page++) {
-        OLED_SetCursor(page, 0);
-        oled_begin_data();
-        for (uint8_t column = 0; column < OLED_WIDTH; column++) {
-            oled_i2c_write_byte(0x00U);
-        }
-        oled_end_data();
+        OLED_FlushPage(page);
     }
 
-    OLED_SetCursor(0, 0);
+    g_oledPage = 0U;
+    g_oledColumn = 0U;
+}
+
+void OLED_ClearBuffer(void)
+{
+    uint8_t page;
+    uint8_t column;
+
+    for (page = 0U; page < OLED_PAGES; page++) {
+        for (column = 0U; column < OLED_WIDTH; column++) {
+            g_oledFrame[page][column] = 0U;
+        }
+    }
+
+    g_oledPage = 0U;
+    g_oledColumn = 0U;
+}
+
+void OLED_FlushPage(uint8_t page)
+{
+    uint8_t column;
+
+    if (page >= OLED_PAGES) {
+        return;
+    }
+
+    oled_set_hardware_cursor(page, 0U);
+    oled_begin_data();
+    for (column = 0U; column < OLED_WIDTH; column++) {
+        oled_i2c_write_byte(g_oledFrame[page][column]);
+    }
+    oled_end_data();
 }
 
 void OLED_SetCursor(uint8_t page, uint8_t column)
@@ -241,10 +280,6 @@ void OLED_SetCursor(uint8_t page, uint8_t column)
 
     g_oledPage = page;
     g_oledColumn = column;
-
-    oled_write_command((uint8_t)(0xB0U | page));
-    oled_write_command((uint8_t)(0x00U | (column & 0x0FU)));
-    oled_write_command((uint8_t)(0x10U | (column >> 4)));
 }
 
 void OLED_PrintChar(char ch)
@@ -255,12 +290,10 @@ void OLED_PrintChar(char ch)
         return;
     }
 
-    oled_begin_data();
     for (uint8_t i = 0; i < 5U; i++) {
-        oled_i2c_write_byte(glyph[i]);
+        g_oledFrame[g_oledPage][g_oledColumn + i] = glyph[i];
     }
-    oled_i2c_write_byte(0x00U);
-    oled_end_data();
+    g_oledFrame[g_oledPage][g_oledColumn + 5U] = 0x00U;
 
     g_oledColumn += 6U;
 }

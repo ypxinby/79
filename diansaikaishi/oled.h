@@ -5,6 +5,8 @@
 
 void OLED_Init(void);
 void OLED_Clear(void);
+void OLED_ClearBuffer(void);
+void OLED_FlushPage(uint8_t page);
 void OLED_SetCursor(uint8_t page, uint8_t column);
 void OLED_PrintChar(char ch);
 void OLED_PrintString(const char *text);

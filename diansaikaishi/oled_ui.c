@@ -1453,23 +1453,20 @@ static void print_vision_pitch_tuning_page(void)
 void OledUi_Init(void)
 {
     OLED_Init();
-    OLED_Clear();
 }
 
 void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
     uint8_t keyEvent)
 {
     static uint8_t refreshDivider;
+    static uint8_t flushRow;
 
     refreshDivider++;
-    if (refreshDivider < 5U) {
-        return;
-    }
-    refreshDivider = 0;
+    if (refreshDivider >= 5U) {
+        refreshDivider = 0U;
+        OLED_ClearBuffer();
 
-    OLED_Clear();
-
-    switch (Menu_GetPage()) {
+        switch (Menu_GetPage()) {
         case OLED_PAGE_PARAM:
             print_param_page(keyEvent);
             break;
@@ -1577,5 +1574,15 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
         default:
             print_status_page(raw, error, keyEvent);
             break;
+        }
+    }
+
+    /* The UI uses pages 0/2/4/6 as four text rows. Flush only one row per
+     * 20 ms control cycle so software-I2C traffic cannot stall the complete
+     * estimator and MotorControl update interval. */
+    OLED_FlushPage((uint8_t)(flushRow * 2U));
+    flushRow++;
+    if (flushRow >= 4U) {
+        flushRow = 0U;
     }
 }
