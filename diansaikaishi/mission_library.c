@@ -94,7 +94,7 @@ static const MotionAction g_missionTestSeekThenStop[] = {
 #define TEST_HEADING_TIMEOUT_MS         (4000U)
 #define TEST_DISTANCE_TARGET_CM         (20.0f)
 #define TEST_DISTANCE_TARGET_YAW_DEG    (45.0f)
-#define TEST_DISTANCE_COMMAND           (300)
+#define TEST_DISTANCE_COMMAND           (200)
 #define TEST_DISTANCE_TIMEOUT_MS        (5000U)
 
 static const MotionAction g_missionTestTurn[] = {

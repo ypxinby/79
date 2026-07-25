@@ -1,10 +1,10 @@
 ******************************************************************************
             TI ARM Clang Linker PC v4.0.4                      
 ******************************************************************************
->> Linked Sat Jul 25 23:10:42 2026
+>> Linked Sat Jul 25 23:23:47 2026
 
 OUTPUT FILE NAME:   <diansaikaishi.out>
-ENTRY POINT SYMBOL: "_c_int00_noargs"  address: 000120e9
+ENTRY POINT SYMBOL: "_c_int00_noargs"  address: 000120d9
 
 
 MEMORY CONFIGURATION
@@ -44,348 +44,349 @@ section   page    origin      length       input sections
 .text      0    000000c0    000128a0     
                   000000c0    000034dc     oled_ui.o (.text.OledUi_Update_20ms)
                   0000359c    00001dd4     vision_tuning_console.o (.text.VisionTuningConsole_Process)
-                  00005370    00000574     app_config.o (.text.AppConfig_LimitAll)
-                  000058e4    000004f0     line_controller.o (.text.LineController_Update)
-                  00005dd4    00000488     menu.o (.text.Menu_HandleKeyEvent)
-                  0000625c    00000480     runtime_snapshot.o (.text.RuntimeSnapshot_Update)
-                  000066dc    0000047c     gimbal_tracker.o (.text.GimbalTracker_Update)
-                  00006b58    0000044c     motor_control.o (.text.update_wheel)
-                  00006fa4    00000424     wheel_speed_estimator.o (.text.WheelSpeedEstimator_Update)
-                  000073c8    000003e0     imu.o (.text.Imu_Update)
-                  000077a8    000003b0     vision_receiver.o (.text.VisionReceiver_Process)
-                  00007b58    00000388     gimbal_vision_yaw_tracker.o (.text.GimbalVisionYawTracker_Update10ms)
-                  00007ee0    00000374     imu.o (.text.Imu_Init)
-                  00008254    00000370     gimbal.o (.text.gimbal_update_feedback)
-                  000085c4    00000344     obstacle_avoidance.o (.text.ObstacleAvoidance_Update_20ms)
-                  00008908    00000310     vision_tuning_console.o (.text.append_scaled)
-                  00008c18    000002f0     imu.o (.text.mpu6050_read_regs)
-                  00008f08    000002d0     motion_action.o (.text.MotionAction_Update_20ms)
-                  000091d8    000002a8     gimbal_tracker.o (.text.update_feedback)
-                  00009480    00000298     gimbal.o (.text.Gimbal_YawSetWrappedTargetDeg)
-                  00009718    00000294     gimbal.o (.text.Gimbal_YawUpdate5ms)
-                  000099ac    00000290     gimbal.o (.text.Gimbal_PitchSetTrackingSpeedDegS)
-                  00009c3c    0000028c     motor_control.o (.text.MotorControl_Update)
-                  00009ec8    00000260     gimbal.o (.text.gimbal_pitch_set_target_steps)
-                  0000a128    00000244     car_controller.o (.text.handle_drive_distance)
-                  0000a36c    00000238     gimbal.o (.text.gimbal_pitch_update_feedback)
-                  0000a5a4    00000230     imu.o (.text.Imu_CalibrateGyroBias)
-                  0000a7d4    00000228     gimbal_vision_pitch_tracker.o (.text.GimbalVisionPitchTracker_Update10ms)
-                  0000a9fc    00000204     motor.o (.text.Motor_SetSpeed)
-                  0000ac00    000001f4     app_config.o (.text.AppConfig_InitDefault)
-                  0000adf4    000001f4     vision_protocol.o (.text.VisionProtocol_ParseV1TargetFrame)
-                  0000afe8    000001e8     motor_control.o (.text.config_is_valid)
-                  0000b1d0    000001e8     car_controller.o (.text.handle_turn_to_yaw)
-                  0000b3b8    000001d4     car_controller.o (.text.CarController_StartDriveDistanceAtYaw)
-                  0000b58c    000001cc     imu.o (.text.imu_i2c_write_byte)
-                  0000b758    000001bc     gimbal.o (.text.Gimbal_PitchUpdate5ms)
-                  0000b914    000001b8     oled.o (.text.oled_i2c_write_byte)
-                  0000bacc    000001ac     car_controller.o (.text.CarController_Update_20ms)
-                  0000bc78    000001a0     ultrasonic.o (.text.Ultrasonic_Tick100us)
-                  0000be18    00000194     gimbal_stepper.o (.text.GimbalStepper_Tick100us)
-                  0000bfac    00000188     gimbal_vision_yaw_tracker.o (.text.GimbalVisionYawTracker_Enable)
-                  0000c134    00000188     motion_action.o (.text.MotionAction_Start)
-                  0000c2bc    00000180     gimbal.o (.text.Gimbal_PitchTick100us)
-                  0000c43c    0000017c     gimbal_stepper.o (.text.GimbalStepper_MoveToEstimatedSteps)
-                  0000c5b8    00000174     key.o (.text.Key_Update_20ms)
-                  0000c72c    00000170     oled.o (.text.OLED_FlushPage)
-                  0000c89c    0000016c     gimbal.o (.text.Gimbal_Init)
-                  0000ca08    0000016c     oled.o (.text.OLED_PrintInt16)
-                  0000cb74    00000168     empty.o (.text.main)
-                  0000ccdc    00000160     gimbal.o (.text.gimbal_yaw_set_target_x10)
-                  0000ce3c    00000160     car_controller.o (.text.handle_lost_recover)
-                  0000cf9c    00000158     vision_tuning_console.o (.text.send_parameter_reply)
-                  0000d0f4    00000158     vision_tuning_console.o (.text.send_yaw_parameter_reply)
-                  0000d24c    0000012c     imu.o (.text.imu_i2c_recover_bus)
-                  0000d378    00000128     gimbal.o (.text.Gimbal_YawEnableWorldLock)
-                  0000d4a0    00000124     oled.o (.text.OLED_Init)
-                  0000d5c4    00000124     vision_tuning_console.o (.text.send_simple_reply)
-                  0000d6e8    00000124     gimbal_vision_yaw_tracker.o (.text.sync_target_from_yaw)
-                  0000d80c    00000120     car_controller.o (.text.handle_drive_heading)
-                  0000d92c    0000011c     car_controller.o (.text.CarController_StartDriveDistance)
-                  0000da48    0000011c     line_controller.o (.text.LineController_Reset)
-                  0000db64    00000118     app.o (.text.App_Update_20ms)
-                  0000dc7c    0000010c     mission_library.o (.text.MissionLibrary_Validate)
-                  0000dd88    0000010c     car_controller.o (.text.handle_follow_line)
-                  0000de94    00000108     car_controller.o (.text.handle_turn_90)
-                  0000df9c    00000104     driverlib.a : dl_timer.o (.text.DL_Timer_initFourCCPWMMode)
-                  0000e0a0    00000104     line_controller.o (.text.LineController_ResetControlState)
-                  0000e1a4    00000104     mission_manager.o (.text.MissionManager_Update_20ms)
-                  0000e2a8    00000100     motor_control.o (.text.MotorControl_SetNormalizedTarget)
-                  0000e3a8    000000fc     gimbal.o (.text.Gimbal_PitchRelease)
-                  0000e4a4    000000fc     empty.o (.text.SysTick_Handler)
-                  0000e5a0    000000f8     line_controller.o (.text.LineController_Init)
-                  0000e698    000000f0     gimbal.o (.text.Gimbal_PitchStopHold)
-                  0000e788    000000ec     car_controller.o (.text.CarController_StartTurnToYawRelative)
-                  0000e874    000000ec     heading_control.o (.text.HeadingControl_Update)
-                  0000e960    000000ec     gimbal_tracker.o (.text.sync_targets_from_gimbal)
-                  0000ea4c    000000e8     vision_protocol.o (.text.fields_are_valid)
-                  0000eb34    000000e4     car_controller.o (.text.CarController_StartDriveHeading)
-                  0000ec18    000000e4     mission_manager.o (.text.MissionManager_SelectNext)
-                  0000ecfc    000000e0     obstacle_safety.o (.text.ObstacleSafety_Update_20ms)
-                  0000eddc    000000e0     wheel_speed_estimator.o (.text.WheelSpeedEstimator_Init)
-                  0000eebc    000000dc     gimbal.o (.text.Gimbal_PitchConfirmZero)
-                  0000ef98    000000dc     ti_msp_dl_config.o (.text.SYSCFG_DL_GPIO_init)
-                  0000f074    000000dc     oled_ui.o (.text.print_tuning_change_value)
-                  0000f150    000000d8     oled.o (.text.OLED_PrintUInt16)
-                  0000f228    000000d8     libclang_rt.builtins.a : addsf3.S.obj (.text)
-                  0000f300    000000cc     mission_manager.o (.text.MissionManager_SelectPrevious)
-                  0000f3cc    000000c8     fault.o (.text.FaultCode_ToShortString)
-                  0000f494    000000c8     gimbal.o (.text.Gimbal_YawConfirmZero)
-                  0000f55c    000000c0     angle_utils.o (.text.Angle_Normalize180)
-                  0000f61c    000000c0     car_controller.o (.text.CarController_StartFollowLine)
-                  0000f6dc    000000b4     car_controller.o (.text.CarController_StartTurnLeft90)
-                  0000f790    000000b4     car_controller.o (.text.CarController_StartTurnRight90)
-                  0000f844    000000b4     gimbal_stepper.o (.text.GimbalStepper_StopHold)
-                  0000f8f8    000000b4     gimbal_vision_adapter.o (.text.GimbalVisionAdapter_Update)
-                  0000f9ac    000000b0     gimbal_stepper.o (.text.GimbalStepper_Init)
-                  0000fa5c    000000b0     gimbal.o (.text.Gimbal_PitchMoveRelativeDeg)
-                  0000fb0c    000000a8     gimbal_vision_pitch_tracker.o (.text.GimbalVisionPitchTracker_Enable)
-                  0000fbb4    000000a4     car_controller.o (.text.CarController_ResetRuntime)
-                  0000fc58    000000a4     encoder.o (.text.Encoder_HandleGpioInterrupt)
-                  0000fcfc    000000a4     gimbal_vision_yaw_tracker.o (.text.wrap_deg_360)
-                  0000fda0    000000a2     libclang_rt.builtins.a : udivmoddi4.S.obj (.text)
-                  0000fe42    00000002     startup_mspm0g350x_ticlang.o (.text.Default_Handler)
-                  0000fe44    0000009c     obstacle_monitor.o (.text.ObstacleMonitor_Update_20ms)
-                  0000fee0    0000009a     libc.a : memcpy16.S.obj (.text:memcpy)
-                  0000ff7a    00000002     track_sensor.o (.text.TrackSensor_Init)
-                  0000ff7c    00000098     car_controller.o (.text.handle_seek_line)
-                  00010014    00000098     imu.o (.text.mpu6050_write_reg)
-                  000100ac    0000008c     gimbal.o (.text.Gimbal_YawDisableWorldLock)
-                  00010138    0000008c     gimbal.o (.text.Gimbal_YawStopHold)
-                  000101c4    0000008c     ti_msp_dl_config.o (.text.SYSCFG_DL_PWM_MOTOR_init)
-                  00010250    0000008c     libclang_rt.builtins.a : mulsf3.S.obj (.text.__mulsf3)
-                  000102dc    0000008c     car_controller.o (.text.heading_imu_wait_or_fail)
-                  00010368    00000008     car_controller.o (.text.CarController_GetFeedback)
-                  00010370    00000088     libc.a : strcmp-armv6m.S.obj (.text:strcmp)
-                  000103f8    00000084     car_controller.o (.text.CarController_SetSafetyHold)
-                  0001047c    00000084     gimbal_stepper.o (.text.GimbalStepper_ConfirmZero)
-                  00010500    00000084     gimbal_tracker.o (.text.GimbalTracker_PushObservation)
-                  00010584    00000084     motor.o (.text.Motor_Init)
-                  00010608    00000082     app.o (.text.App_Init)
-                  0001068a    00000002     libclang_rt.builtins.a : aeabi_div0.c.obj (.text.__aeabi_idiv0)
-                  0001068c    00000082                            : divsf3.S.obj (.text.__divsf3)
-                  0001070e    00000002                            : aeabi_div0.c.obj (.text.__aeabi_ldiv0)
-                  00010710    00000080     gimbal_tracker.o (.text.GimbalTracker_Init)
-                  00010790    00000080     motor.o (.text.Motor_Stop)
-                  00010810    0000007c     vision_pitch_tuning.o (.text.VisionPitchTuning_Set)
-                  0001088c    0000007c     libc.a : copy_decompress_lzss.c.obj (.text:decompress:lzss)
-                  00010908    00000078     oled.o (.text.oled_write_command)
-                  00010980    00000074     motor_control.o (.text.latch_control_error)
-                  000109f4    00000070     gimbal_stepper.o (.text.GimbalStepper_Release)
-                  00010a64    00000070     ti_msp_dl_config.o (.text.SYSCFG_DL_UART_VISION_init)
-                  00010ad4    00000070     vision_yaw_tuning.o (.text.VisionYawTuning_Set)
-                  00010b44    0000006e     track_sensor.o (.text.TrackSensor_DetectTurn)
-                  00010bb2    00000002     --HOLE-- [fill = 0]
-                  00010bb4    0000006c     gimbal_vision_yaw_tracker.o (.text.GimbalVisionYawTracker_Init)
-                  00010c20    00000068     mission_manager.o (.text.MissionManager_GetSelectedMissionIndex)
-                  00010c88    00000068     car_controller.o (.text.set_output_speed)
-                  00010cf0    00000066     track_sensor.o (.text.TrackSensor_GetErrorFromRaw)
-                  00010d56    00000002     --HOLE-- [fill = 0]
-                  00010d58    00000064     gimbal.o (.text.Gimbal_YawRelease)
-                  00010dbc    00000064     menu.o (.text.Menu_GetParamValue)
-                  00010e20    00000062     libclang_rt.builtins.a : aeabi_fcmp.S.obj (.text.__aeabi_fcmp)
-                  00010e82    00000062     libc.a : memset16.S.obj (.text:memset)
-                  00010ee4    00000060     gimbal_tracker.o (.text.GimbalTracker_Enable)
-                  00010f44    00000060     gimbal_tracker.o (.text.GimbalTracker_GetFeedback)
-                  00010fa4    00000060     vision_tuning_console.o (.text.VisionTuningConsole_Init)
-                  00011004    00000060     libclang_rt.builtins.a : fixsfdi.S.obj (.text.__fixsfdi)
-                  00011064    0000005c     vision_uart.o (.text.UART3_IRQHandler)
-                  000110c0    0000005c     ultrasonic.o (.text.Ultrasonic_Update_20ms)
-                  0001111c    0000005c     obstacle_avoidance.o (.text.avoid_fail)
-                  00011178    00000058     gimbal.o (.text.Gimbal_YawMoveRelativeDeg)
-                  000111d0    00000058     oled.o (.text.OLED_PrintChar)
-                  00011228    00000056     libclang_rt.builtins.a : aeabi_idivmod.S.obj (.text.__aeabi_idivmod)
-                  0001127e    00000002     --HOLE-- [fill = 0]
-                  00011280    00000054     car_controller.o (.text.CarController_Stop)
-                  000112d4    00000054     track_sensor.o (.text.TrackSensor_ReadRaw)
-                  00011328    00000054     gimbal_vision_yaw_tracker.o (.text.float_to_scaled_i16)
-                  0001137c    00000054     gimbal_vision_yaw_tracker.o (.text.stop_owned_tracking)
-                  000113d0    00000050     ultrasonic.o (.text.Ultrasonic_Init)
-                  00011420    00000050     watchdog_monitor.o (.text.WatchdogMonitor_ApplyFaultIfNeeded)
-                  00011470    0000004e     libclang_rt.builtins.a : floatdisf.S.obj (.text.__floatdisf)
-                  000114be    00000002     --HOLE-- [fill = 0]
-                  000114c0    0000004c     mission_manager.o (.text.MissionManager_Start)
-                  0001150c    0000004c     motor_control.o (.text.MotorControl_Stop)
-                  00011558    0000004c     watchdog_monitor.o (.text.WatchdogMonitor_Tick1msFromIsr)
-                  000115a4    0000004a     obstacle_avoidance.o (.text.avoid_can_start)
-                  000115ee    00000002     --HOLE-- [fill = 0]
-                  000115f0    00000048     driverlib.a : dl_uart.o (.text.DL_UART_init)
-                  00011638    00000048     motion_action.o (.text.MotionAction_ReapplyControllerTarget)
-                  00011680    00000044     encoder.o (.text.Encoder_GetAndClearPulseDeltas)
-                  000116c4    00000044     imu.o (.text.Imu_ResetYaw)
-                  00011708    00000044     servo.o (.text.Servo_Tick100us)
-                  0001174c    00000040     emergency_stop.o (.text.EmergencyStop_Reset)
-                  0001178c    00000040     gimbal_vision_pitch_tracker.o (.text.GimbalVisionPitchTracker_Init)
-                  000117cc    00000040     mission_manager.o (.text.MissionManager_Init)
-                  0001180c    00000040     ti_msp_dl_config.o (.text.SYSCFG_DL_SYSCTL_init)
-                  0001184c    00000040     ti_msp_dl_config.o (.text.SYSCFG_DL_initPower)
-                  0001188c    00000040     vision_receiver.o (.text.VisionReceiver_PushByteFromIsr)
-                  000118cc    00000040     libclang_rt.builtins.a : aeabi_uidivmod.S.obj (.text.__aeabi_uidivmod)
-                  0001190c    0000003e                            : divmoddi4.c.obj (.text.__divmoddi4)
-                  0001194a    00000002     --HOLE-- [fill = 0]
-                  0001194c    0000003c     gimbal_tracker.o (.text.GimbalTracker_ClearObservation)
-                  00011988    0000003c     servo.o (.text.Servo_SetAngleDeg)
-                  000119c4    0000003c     vision_tuning_console.o (.text.VisionTuningConsole_PushByteFromIsr)
-                  00011a00    0000003c     libclang_rt.builtins.a : floatsisf.S.obj (.text.__floatsisf)
-                  00011a3c    0000003c                            : comparesf2.S.obj (.text.__gtsf2)
-                  00011a78    0000003c     motion_action.o (.text.motion_action_start_imu_controller)
-                  00011ab4    0000003c     libc.a : autoinit.c.obj (.text:__TI_auto_init_nobinit_nopinit)
-                  00011af0    0000003a     libclang_rt.builtins.a : comparesf2.S.obj (.text.__eqsf2)
-                  00011b2a    00000002     --HOLE-- [fill = 0]
-                  00011b2c    0000003a                            : muldsi3.S.obj (.text.__muldsi3)
-                  00011b66    00000002     --HOLE-- [fill = 0]
-                  00011b68    00000038     vision_receiver.o (.text.VisionReceiver_Init)
-                  00011ba0    00000038     libclang_rt.builtins.a : fixsfsi.S.obj (.text.__fixsfsi)
-                  00011bd8    00000034     emergency_stop.o (.text.EmergencyStop_Trigger)
-                  00011c0c    00000034     imu.o (.text.Imu_IsReady)
-                  00011c40    00000034     vision_tuning_console.o (.text.VisionTuningConsole_TryPopTxByte)
-                  00011c74    00000034     vision_uart.o (.text.VisionUart_Process)
-                  00011ca8    00000034     obstacle_avoidance.o (.text.avoid_start)
-                  00011cdc    00000032     oled.o (.text.OLED_PrintString)
-                  00011d0e    00000002     --HOLE-- [fill = 0]
-                  00011d10    00000030     car_controller.o (.text.CarController_StartSeekLine)
-                  00011d40    00000030     fault.o (.text.Fault_Raise)
-                  00011d70    00000030     gimbal_vision_yaw_tracker.o (.text.GimbalVisionYawTracker_GetFeedback)
-                  00011da0    00000030     gimbal.o (.text.Gimbal_PitchGetFeedback)
-                  00011dd0    00000030     key.o (.text.Key_Init)
-                  00011e00    00000030     line_controller.o (.text.LineController_ObserveSensors)
-                  00011e30    00000030     mission_manager.o (.text.MissionManager_Resume)
-                  00011e60    00000030     vision_pitch_tuning.o (.text.VisionPitchTuning_RestoreDefault)
-                  00011e90    00000030     watchdog_monitor.o (.text.WatchdogMonitor_Init)
-                  00011ec0    00000030     gimbal_vision_yaw_tracker.o (.text.refresh_yaw_feedback)
-                  00011ef0    0000002c     encoder.o (.text.Encoder_Reset)
-                  00011f1c    0000002c     mission_manager.o (.text.MissionManager_Cancel)
-                  00011f48    0000002c     mission_manager.o (.text.MissionManager_Reset)
-                  00011f74    0000002c     track_sensor.o (.text.TrackSensor_CountBlack)
-                  00011fa0    0000002c     vision_yaw_tuning.o (.text.VisionYawTuning_RestoreDefault)
-                  00011fcc    0000002c     gimbal_vision_pitch_tracker.o (.text.speed_to_x10)
-                  00011ff8    00000028     obstacle_avoidance.o (.text.ObstacleAvoidance_Init)
-                  00012020    00000028     servo.o (.text.Servo_Init)
-                  00012048    00000028     vision_pitch_tuning.o (.text.VisionPitchTuning_Init)
-                  00012070    00000028     watchdog_monitor.o (.text.WatchdogMonitor_Reset)
-                  00012098    00000028     libclang_rt.builtins.a : floatunsisf.S.obj (.text.__floatunsisf)
-                  000120c0    00000028     libc.a : memmov.c.obj (.text.memmove)
-                  000120e8    00000028            : boot_cortex_m.c.obj (.text:_c_int00_noargs)
-                  00012110    00000024     emergency_stop.o (.text.EmergencyStop_Enforce)
-                  00012134    00000024     gimbal_vision_pitch_tracker.o (.text.GimbalVisionPitchTracker_GetFeedback)
-                  00012158    00000024     mission_library.o (.text.MissionLibrary_FindById)
-                  0001217c    00000024     mission_manager.o (.text.MissionManager_ReportExternalFailure)
-                  000121a0    00000024     motor_control.o (.text.MotorControl_Init)
-                  000121c4    00000024     motor_control.o (.text.MotorControl_Reset)
-                  000121e8    00000024     oled.o (.text.OLED_ClearBuffer)
-                  0001220c    00000024     ti_msp_dl_config.o (.text.SYSCFG_DL_init)
-                  00012230    00000024     vision_yaw_tuning.o (.text.VisionYawTuning_Init)
-                  00012254    00000024     libclang_rt.builtins.a : muldi3.S.obj (.text.__muldi3)
-                  00012278    00000020     driverlib.a : dl_timer.o (.text.DL_Timer_overrideCCPOut)
-                  00012298    00000020     debug_telemetry.o (.text.DebugTelemetry_Update)
-                  000122b8    00000020     mission_manager.o (.text.MissionManager_Pause)
-                  000122d8    00000020     motion_action.o (.text.MotionAction_GetCurrentBypassDirection)
-                  000122f8    00000020     motion_action.o (.text.MotionAction_GetCurrentObstaclePolicy)
-                  00012318    00000020     oled.o (.text.OLED_SetCursor)
-                  00012338    00000020     empty.o (.text.SchedulerMonitor_GetStats)
-                  00012358    00000020     vision_receiver.o (.text.VisionReceiver_GetProtocolErrorCount)
-                  00012378    00000020     mission_manager.o (.text.mission_finish_error)
-                  00012398    0000001e     libclang_rt.builtins.a : ashldi3.S.obj (.text.__ashldi3)
-                  000123b6    00000002     --HOLE-- [fill = 0]
-                  000123b8    0000001c     driverlib.a : dl_timer.o (.text.DL_Timer_setCaptCompUpdateMethod)
-                  000123d4    0000001c                 : dl_timer.o (.text.DL_Timer_setClockConfig)
-                  000123f0    0000001c     gimbal_vision_adapter.o (.text.GimbalVisionAdapter_Init)
-                  0001240c    0000001c     heading_control.o (.text.HeadingControl_SetTargetYaw)
-                  00012428    0000001c     menu.o (.text.Menu_Init)
-                  00012444    0000001c     motion_action.o (.text.MotionAction_Cancel)
-                  00012460    0000001c     obstacle_monitor.o (.text.ObstacleMonitor_Init)
-                  0001247c    0000001c     obstacle_safety.o (.text.ObstacleSafety_Init)
-                  00012498    0000001c     vision_pitch_tuning.o (.text.VisionPitchTuning_ParamName)
-                  000124b4    0000001c     vision_yaw_tuning.o (.text.VisionYawTuning_GetSnapshot)
-                  000124d0    0000001c     vision_yaw_tuning.o (.text.VisionYawTuning_ParamName)
-                  000124ec    0000001c     watchdog_monitor.o (.text.WatchdogMonitor_NotifyControlCycleComplete)
-                  00012508    0000001c     mission_manager.o (.text.mission_finish_success)
-                  00012524    00000018     driverlib.a : dl_timer.o (.text.DL_Timer_setCaptureCompareOutCtl)
-                  0001253c    00000018     debug_telemetry.o (.text.DebugTelemetry_Init)
-                  00012554    00000018     heading_control.o (.text.HeadingControl_Init)
-                  0001256c    00000018     heading_control.o (.text.HeadingControl_Reset)
-                  00012584    00000018     menu.o (.text.Menu_ParamItemToString)
-                  0001259c    00000018     motion_action.o (.text.MotionAction_Init)
-                  000125b4    00000018     runtime_snapshot.o (.text.RuntimeSnapshot_Init)
-                  000125cc    00000016     libclang_rt.builtins.a : comparesf2.S.obj (.text.__unordsf2)
-                  000125e2    00000002     --HOLE-- [fill = 0]
-                  000125e4    00000014     fault.o (.text.Fault_Clear)
-                  000125f8    00000014     fault.o (.text.Fault_Init)
-                  0001260c    00000014     empty.o (.text.GROUP1_IRQHandler)
-                  00012620    00000014     gimbal_stepper.o (.text.GimbalStepper_SetStepHalfPeriodTicks)
-                  00012634    00000014     heading_control.o (.text.HeadingControl_Enable)
-                  00012648    00000014     mission_library.o (.text.MissionLibrary_GetByIndex)
-                  0001265c    00000014     mission_manager.o (.text.MissionManager_GetSelectedMissionId)
-                  00012670    00000014     vision_pitch_tuning.o (.text.VisionPitchTuning_GetSnapshot)
-                  00012684    00000014     vision_uart.o (.text.VisionUart_Init)
-                  00012698    00000014     libclang_rt.builtins.a : aeabi_ldivmod.S.obj (.text.__aeabi_ldivmod)
-                  000126ac    00000014                            : aeabi_uldivmod.S.obj (.text.__aeabi_uldivmod)
-                  000126c0    00000012     driverlib.a : dl_uart.o (.text.DL_UART_setClockConfig)
-                  000126d2    00000012     libc.a : copy_decompress_none.c.obj (.text:decompress:none)
-                  000126e4    00000010     driverlib.a : dl_timer.o (.text.DL_Timer_setCaptureCompareValue)
-                  000126f4    00000010     gimbal.o (.text.Gimbal_YawGetFeedback)
-                  00012704    00000010     key.o (.text.Key_GetEvent)
-                  00012714    00000010     obstacle_avoidance.o (.text.ObstacleAvoidance_IsResumeGraceActive)
-                  00012724    00000010     libc.a : copy_zero_init.c.obj (.text:decompress:ZI)
-                  00012734    0000000c     car_controller.o (.text.CarController_GetRunMode)
-                  00012740    0000000c     car_controller.o (.text.CarController_Init)
-                  0001274c    0000000c     car_controller.o (.text.CarController_IsSafetyHoldActive)
-                  00012758    0000000c     car_state.o (.text.CarState_Get)
-                  00012764    0000000c     car_state.o (.text.CarState_Init)
-                  00012770    0000000c     car_state.o (.text.CarState_Set)
-                  0001277c    0000000c     emergency_stop.o (.text.EmergencyStop_Init)
-                  00012788    0000000c     emergency_stop.o (.text.EmergencyStop_IsActive)
-                  00012794    0000000c     gimbal_vision_adapter.o (.text.GimbalVisionAdapter_GetObservation)
-                  000127a0    0000000c     gimbal.o (.text.Gimbal_Tick100us)
-                  000127ac    0000000c     gimbal.o (.text.Gimbal_Update5ms)
-                  000127b8    0000000c     imu.o (.text.Imu_GetCorrectedGyroZDps)
-                  000127c4    0000000c     imu.o (.text.Imu_GetYaw)
-                  000127d0    0000000c     menu.o (.text.Menu_GetPage)
-                  000127dc    0000000c     menu.o (.text.Menu_GetParamItem)
-                  000127e8    0000000c     mission_manager.o (.text.MissionManager_IsExternallyHeld)
-                  000127f4    0000000c     mission_manager.o (.text.MissionManager_SetExternalHold)
-                  00012800    0000000c     obstacle_avoidance.o (.text.ObstacleAvoidance_IsActive)
-                  0001280c    0000000c     obstacle_avoidance.o (.text.ObstacleAvoidance_IsFailed)
-                  00012818    0000000c     obstacle_safety.o (.text.ObstacleSafety_IsHolding)
-                  00012824    0000000c     empty.o (.text.SystemTime_GetMs)
-                  00012830    0000000c     watchdog_monitor.o (.text.WatchdogMonitor_HasTripped)
-                  0001283c    0000000c     libclang_rt.builtins.a : aeabi_memset.S.obj (.text.__aeabi_memclr)
-                  00012848    0000000a     driverlib.a : dl_common.o (.text.DL_Common_delayCycles)
-                  00012852    0000000a     track_sensor.o (.text.TrackSensor_IsCenterDetected)
-                  0001285c    0000000a     track_sensor.o (.text.TrackSensor_IsLineDetected)
-                  00012866    0000000a     track_sensor.o (.text.TrackSensor_IsLineLost)
-                  00012870    00000008     fault.o (.text.Fault_GetRecord)
-                  00012878    00000008     gimbal_stepper.o (.text.GimbalStepper_GetFeedback)
-                  00012880    00000008     gimbal_vision_adapter.o (.text.GimbalVisionAdapter_GetFeedback)
-                  00012888    00000008     gimbal.o (.text.Gimbal_PitchStopTrackingHold)
-                  00012890    00000008     heading_control.o (.text.HeadingControl_GetRuntime)
-                  00012898    00000008     imu.o (.text.Imu_GetRuntime)
-                  000128a0    00000008     line_controller.o (.text.LineController_GetRuntime)
-                  000128a8    00000008     mission_manager.o (.text.MissionManager_GetMissionCount)
-                  000128b0    00000008     mission_manager.o (.text.MissionManager_GetRuntime)
-                  000128b8    00000008     motion_action.o (.text.MotionAction_GetRuntime)
-                  000128c0    00000008     motor_control.o (.text.MotorControl_GetRuntime)
-                  000128c8    00000008     obstacle_avoidance.o (.text.ObstacleAvoidance_GetFeedback)
-                  000128d0    00000008     obstacle_monitor.o (.text.ObstacleMonitor_GetFeedback)
-                  000128d8    00000008     oled_ui.o (.text.OledUi_Init)
-                  000128e0    00000008     runtime_snapshot.o (.text.RuntimeSnapshot_Get)
-                  000128e8    00000008     servo.o (.text.Servo_GetFeedback)
-                  000128f0    00000008     ultrasonic.o (.text.Ultrasonic_GetFeedback)
-                  000128f8    00000008     vision_pitch_tuning.o (.text.VisionPitchTuning_GetStatus)
-                  00012900    00000008     vision_receiver.o (.text.VisionReceiver_GetObservation)
-                  00012908    00000008     vision_receiver.o (.text.VisionReceiver_GetStatus)
-                  00012910    00000008     vision_tuning_console.o (.text.VisionTuningConsole_GetStatus)
-                  00012918    00000008     watchdog_monitor.o (.text.WatchdogMonitor_GetStatus)
-                  00012920    00000008     wheel_speed_estimator.o (.text.WheelSpeedEstimator_GetRuntime)
-                  00012928    00000008     libclang_rt.builtins.a : aeabi_memcpy.S.obj (.text.__aeabi_memcpy)
-                  00012930    00000008                            : aeabi_memmove.S.obj (.text.__aeabi_memmove)
-                  00012938    00000006     libc.a : exit.c.obj (.text:abort)
-                  0001293e    00000004     libsysbm.a : hostexit.c.obj (.text.HOSTexit)
-                  00012942    00000004     mission_library.o (.text.MissionLibrary_GetCount)
-                  00012946    00000004     startup_mspm0g350x_ticlang.o (.text.Reset_Handler)
-                  0001294a    00000002     --HOLE-- [fill = 0]
-                  0001294c    00000010     libc.a : boot_cortex_m.c.obj (.tramp._c_int00_noargs.1)
-                  0001295c    00000004            : pre_init.c.obj (.text._system_pre_init)
+                  00005370    00000570     app_config.o (.text.AppConfig_LimitAll)
+                  000058e0    000004f0     line_controller.o (.text.LineController_Update)
+                  00005dd0    00000488     menu.o (.text.Menu_HandleKeyEvent)
+                  00006258    00000480     runtime_snapshot.o (.text.RuntimeSnapshot_Update)
+                  000066d8    0000047c     gimbal_tracker.o (.text.GimbalTracker_Update)
+                  00006b54    0000044c     motor_control.o (.text.update_wheel)
+                  00006fa0    00000424     wheel_speed_estimator.o (.text.WheelSpeedEstimator_Update)
+                  000073c4    000003e0     imu.o (.text.Imu_Update)
+                  000077a4    000003b0     vision_receiver.o (.text.VisionReceiver_Process)
+                  00007b54    00000388     gimbal_vision_yaw_tracker.o (.text.GimbalVisionYawTracker_Update10ms)
+                  00007edc    00000374     imu.o (.text.Imu_Init)
+                  00008250    00000370     gimbal.o (.text.gimbal_update_feedback)
+                  000085c0    00000344     obstacle_avoidance.o (.text.ObstacleAvoidance_Update_20ms)
+                  00008904    00000310     vision_tuning_console.o (.text.append_scaled)
+                  00008c14    000002f0     imu.o (.text.mpu6050_read_regs)
+                  00008f04    000002d0     motion_action.o (.text.MotionAction_Update_20ms)
+                  000091d4    000002a8     gimbal_tracker.o (.text.update_feedback)
+                  0000947c    00000298     gimbal.o (.text.Gimbal_YawSetWrappedTargetDeg)
+                  00009714    00000294     gimbal.o (.text.Gimbal_YawUpdate5ms)
+                  000099a8    00000290     gimbal.o (.text.Gimbal_PitchSetTrackingSpeedDegS)
+                  00009c38    0000028c     motor_control.o (.text.MotorControl_Update)
+                  00009ec4    00000260     gimbal.o (.text.gimbal_pitch_set_target_steps)
+                  0000a124    00000244     car_controller.o (.text.handle_drive_distance)
+                  0000a368    00000238     gimbal.o (.text.gimbal_pitch_update_feedback)
+                  0000a5a0    00000230     imu.o (.text.Imu_CalibrateGyroBias)
+                  0000a7d0    00000228     gimbal_vision_pitch_tracker.o (.text.GimbalVisionPitchTracker_Update10ms)
+                  0000a9f8    00000204     motor.o (.text.Motor_SetSpeed)
+                  0000abfc    000001f4     vision_protocol.o (.text.VisionProtocol_ParseV1TargetFrame)
+                  0000adf0    000001f0     app_config.o (.text.AppConfig_InitDefault)
+                  0000afe0    000001e8     motor_control.o (.text.config_is_valid)
+                  0000b1c8    000001e8     car_controller.o (.text.handle_turn_to_yaw)
+                  0000b3b0    000001d4     car_controller.o (.text.CarController_StartDriveDistanceAtYaw)
+                  0000b584    000001cc     imu.o (.text.imu_i2c_write_byte)
+                  0000b750    000001bc     gimbal.o (.text.Gimbal_PitchUpdate5ms)
+                  0000b90c    000001b8     oled.o (.text.oled_i2c_write_byte)
+                  0000bac4    000001ac     car_controller.o (.text.CarController_Update_20ms)
+                  0000bc70    000001a0     ultrasonic.o (.text.Ultrasonic_Tick100us)
+                  0000be10    00000194     gimbal_stepper.o (.text.GimbalStepper_Tick100us)
+                  0000bfa4    00000188     gimbal_vision_yaw_tracker.o (.text.GimbalVisionYawTracker_Enable)
+                  0000c12c    00000188     motion_action.o (.text.MotionAction_Start)
+                  0000c2b4    00000180     gimbal.o (.text.Gimbal_PitchTick100us)
+                  0000c434    0000017c     gimbal_stepper.o (.text.GimbalStepper_MoveToEstimatedSteps)
+                  0000c5b0    00000174     key.o (.text.Key_Update_20ms)
+                  0000c724    00000170     oled.o (.text.OLED_FlushPage)
+                  0000c894    0000016c     gimbal.o (.text.Gimbal_Init)
+                  0000ca00    0000016c     oled.o (.text.OLED_PrintInt16)
+                  0000cb6c    00000168     empty.o (.text.main)
+                  0000ccd4    00000160     gimbal.o (.text.gimbal_yaw_set_target_x10)
+                  0000ce34    00000160     car_controller.o (.text.handle_lost_recover)
+                  0000cf94    00000158     vision_tuning_console.o (.text.send_parameter_reply)
+                  0000d0ec    00000158     vision_tuning_console.o (.text.send_yaw_parameter_reply)
+                  0000d244    0000012c     imu.o (.text.imu_i2c_recover_bus)
+                  0000d370    00000128     gimbal.o (.text.Gimbal_YawEnableWorldLock)
+                  0000d498    00000124     oled.o (.text.OLED_Init)
+                  0000d5bc    00000124     vision_tuning_console.o (.text.send_simple_reply)
+                  0000d6e0    00000124     gimbal_vision_yaw_tracker.o (.text.sync_target_from_yaw)
+                  0000d804    00000120     car_controller.o (.text.handle_drive_heading)
+                  0000d924    0000011c     car_controller.o (.text.CarController_StartDriveDistance)
+                  0000da40    0000011c     line_controller.o (.text.LineController_Reset)
+                  0000db5c    00000118     app.o (.text.App_Update_20ms)
+                  0000dc74    0000010c     mission_library.o (.text.MissionLibrary_Validate)
+                  0000dd80    0000010c     car_controller.o (.text.handle_follow_line)
+                  0000de8c    00000108     car_controller.o (.text.handle_turn_90)
+                  0000df94    00000104     driverlib.a : dl_timer.o (.text.DL_Timer_initFourCCPWMMode)
+                  0000e098    00000104     line_controller.o (.text.LineController_ResetControlState)
+                  0000e19c    00000104     mission_manager.o (.text.MissionManager_Update_20ms)
+                  0000e2a0    00000100     motor_control.o (.text.MotorControl_SetNormalizedTarget)
+                  0000e3a0    000000fc     gimbal.o (.text.Gimbal_PitchRelease)
+                  0000e49c    000000fc     empty.o (.text.SysTick_Handler)
+                  0000e598    000000f8     line_controller.o (.text.LineController_Init)
+                  0000e690    000000f0     gimbal.o (.text.Gimbal_PitchStopHold)
+                  0000e780    000000ec     car_controller.o (.text.CarController_StartTurnToYawRelative)
+                  0000e86c    000000ec     heading_control.o (.text.HeadingControl_Update)
+                  0000e958    000000ec     gimbal_tracker.o (.text.sync_targets_from_gimbal)
+                  0000ea44    000000e8     vision_protocol.o (.text.fields_are_valid)
+                  0000eb2c    000000e4     car_controller.o (.text.CarController_StartDriveHeading)
+                  0000ec10    000000e4     mission_manager.o (.text.MissionManager_SelectNext)
+                  0000ecf4    000000e0     obstacle_safety.o (.text.ObstacleSafety_Update_20ms)
+                  0000edd4    000000e0     wheel_speed_estimator.o (.text.WheelSpeedEstimator_Init)
+                  0000eeb4    000000dc     gimbal.o (.text.Gimbal_PitchConfirmZero)
+                  0000ef90    000000dc     ti_msp_dl_config.o (.text.SYSCFG_DL_GPIO_init)
+                  0000f06c    000000dc     oled_ui.o (.text.print_tuning_change_value)
+                  0000f148    000000d8     oled.o (.text.OLED_PrintUInt16)
+                  0000f220    000000d8     libclang_rt.builtins.a : addsf3.S.obj (.text)
+                  0000f2f8    000000cc     mission_manager.o (.text.MissionManager_SelectPrevious)
+                  0000f3c4    000000c8     fault.o (.text.FaultCode_ToShortString)
+                  0000f48c    000000c8     gimbal.o (.text.Gimbal_YawConfirmZero)
+                  0000f554    000000c0     angle_utils.o (.text.Angle_Normalize180)
+                  0000f614    000000c0     car_controller.o (.text.CarController_StartFollowLine)
+                  0000f6d4    000000b4     car_controller.o (.text.CarController_StartTurnLeft90)
+                  0000f788    000000b4     car_controller.o (.text.CarController_StartTurnRight90)
+                  0000f83c    000000b4     gimbal_stepper.o (.text.GimbalStepper_StopHold)
+                  0000f8f0    000000b4     gimbal_vision_adapter.o (.text.GimbalVisionAdapter_Update)
+                  0000f9a4    000000b0     gimbal_stepper.o (.text.GimbalStepper_Init)
+                  0000fa54    000000b0     gimbal.o (.text.Gimbal_PitchMoveRelativeDeg)
+                  0000fb04    000000a8     gimbal_vision_pitch_tracker.o (.text.GimbalVisionPitchTracker_Enable)
+                  0000fbac    000000a4     car_controller.o (.text.CarController_ResetRuntime)
+                  0000fc50    000000a4     encoder.o (.text.Encoder_HandleGpioInterrupt)
+                  0000fcf4    000000a4     gimbal_vision_yaw_tracker.o (.text.wrap_deg_360)
+                  0000fd98    000000a2     libclang_rt.builtins.a : udivmoddi4.S.obj (.text)
+                  0000fe3a    00000002     startup_mspm0g350x_ticlang.o (.text.Default_Handler)
+                  0000fe3c    0000009c     obstacle_monitor.o (.text.ObstacleMonitor_Update_20ms)
+                  0000fed8    0000009a     libc.a : memcpy16.S.obj (.text:memcpy)
+                  0000ff72    00000002     track_sensor.o (.text.TrackSensor_Init)
+                  0000ff74    00000098     car_controller.o (.text.handle_seek_line)
+                  0001000c    00000098     imu.o (.text.mpu6050_write_reg)
+                  000100a4    0000008c     gimbal.o (.text.Gimbal_YawDisableWorldLock)
+                  00010130    0000008c     gimbal.o (.text.Gimbal_YawStopHold)
+                  000101bc    0000008c     ti_msp_dl_config.o (.text.SYSCFG_DL_PWM_MOTOR_init)
+                  00010248    0000008c     libclang_rt.builtins.a : mulsf3.S.obj (.text.__mulsf3)
+                  000102d4    0000008c     car_controller.o (.text.heading_imu_wait_or_fail)
+                  00010360    00000088     libc.a : strcmp-armv6m.S.obj (.text:strcmp)
+                  000103e8    00000084     car_controller.o (.text.CarController_SetSafetyHold)
+                  0001046c    00000084     gimbal_stepper.o (.text.GimbalStepper_ConfirmZero)
+                  000104f0    00000084     gimbal_tracker.o (.text.GimbalTracker_PushObservation)
+                  00010574    00000084     motor.o (.text.Motor_Init)
+                  000105f8    00000082     app.o (.text.App_Init)
+                  0001067a    00000002     libclang_rt.builtins.a : aeabi_div0.c.obj (.text.__aeabi_idiv0)
+                  0001067c    00000082                            : divsf3.S.obj (.text.__divsf3)
+                  000106fe    00000002                            : aeabi_div0.c.obj (.text.__aeabi_ldiv0)
+                  00010700    00000080     gimbal_tracker.o (.text.GimbalTracker_Init)
+                  00010780    00000080     motor.o (.text.Motor_Stop)
+                  00010800    0000007c     vision_pitch_tuning.o (.text.VisionPitchTuning_Set)
+                  0001087c    0000007c     libc.a : copy_decompress_lzss.c.obj (.text:decompress:lzss)
+                  000108f8    00000078     oled.o (.text.oled_write_command)
+                  00010970    00000074     motor_control.o (.text.latch_control_error)
+                  000109e4    00000070     gimbal_stepper.o (.text.GimbalStepper_Release)
+                  00010a54    00000070     ti_msp_dl_config.o (.text.SYSCFG_DL_UART_VISION_init)
+                  00010ac4    00000070     vision_yaw_tuning.o (.text.VisionYawTuning_Set)
+                  00010b34    0000006e     track_sensor.o (.text.TrackSensor_DetectTurn)
+                  00010ba2    00000002     --HOLE-- [fill = 0]
+                  00010ba4    0000006c     gimbal_vision_yaw_tracker.o (.text.GimbalVisionYawTracker_Init)
+                  00010c10    00000068     mission_manager.o (.text.MissionManager_GetSelectedMissionIndex)
+                  00010c78    00000068     car_controller.o (.text.set_output_speed)
+                  00010ce0    00000066     track_sensor.o (.text.TrackSensor_GetErrorFromRaw)
+                  00010d46    00000002     --HOLE-- [fill = 0]
+                  00010d48    00000064     gimbal.o (.text.Gimbal_YawRelease)
+                  00010dac    00000064     menu.o (.text.Menu_GetParamValue)
+                  00010e10    00000062     libclang_rt.builtins.a : aeabi_fcmp.S.obj (.text.__aeabi_fcmp)
+                  00010e72    00000062     libc.a : memset16.S.obj (.text:memset)
+                  00010ed4    00000060     gimbal_tracker.o (.text.GimbalTracker_Enable)
+                  00010f34    00000060     gimbal_tracker.o (.text.GimbalTracker_GetFeedback)
+                  00010f94    00000060     vision_tuning_console.o (.text.VisionTuningConsole_Init)
+                  00010ff4    00000060     libclang_rt.builtins.a : fixsfdi.S.obj (.text.__fixsfdi)
+                  00011054    0000005c     vision_uart.o (.text.UART3_IRQHandler)
+                  000110b0    0000005c     ultrasonic.o (.text.Ultrasonic_Update_20ms)
+                  0001110c    0000005c     obstacle_avoidance.o (.text.avoid_fail)
+                  00011168    00000058     gimbal.o (.text.Gimbal_YawMoveRelativeDeg)
+                  000111c0    00000058     oled.o (.text.OLED_PrintChar)
+                  00011218    00000056     libclang_rt.builtins.a : aeabi_idivmod.S.obj (.text.__aeabi_idivmod)
+                  0001126e    00000002     --HOLE-- [fill = 0]
+                  00011270    00000054     car_controller.o (.text.CarController_Stop)
+                  000112c4    00000054     track_sensor.o (.text.TrackSensor_ReadRaw)
+                  00011318    00000054     gimbal_vision_yaw_tracker.o (.text.float_to_scaled_i16)
+                  0001136c    00000054     gimbal_vision_yaw_tracker.o (.text.stop_owned_tracking)
+                  000113c0    00000050     ultrasonic.o (.text.Ultrasonic_Init)
+                  00011410    00000050     watchdog_monitor.o (.text.WatchdogMonitor_ApplyFaultIfNeeded)
+                  00011460    0000004e     libclang_rt.builtins.a : floatdisf.S.obj (.text.__floatdisf)
+                  000114ae    00000002     --HOLE-- [fill = 0]
+                  000114b0    0000004c     mission_manager.o (.text.MissionManager_Start)
+                  000114fc    0000004c     motor_control.o (.text.MotorControl_Stop)
+                  00011548    0000004c     watchdog_monitor.o (.text.WatchdogMonitor_Tick1msFromIsr)
+                  00011594    0000004a     obstacle_avoidance.o (.text.avoid_can_start)
+                  000115de    00000002     --HOLE-- [fill = 0]
+                  000115e0    00000048     driverlib.a : dl_uart.o (.text.DL_UART_init)
+                  00011628    00000048     motion_action.o (.text.MotionAction_ReapplyControllerTarget)
+                  00011670    00000044     encoder.o (.text.Encoder_GetAndClearPulseDeltas)
+                  000116b4    00000044     imu.o (.text.Imu_ResetYaw)
+                  000116f8    00000044     servo.o (.text.Servo_Tick100us)
+                  0001173c    00000040     emergency_stop.o (.text.EmergencyStop_Reset)
+                  0001177c    00000040     gimbal_vision_pitch_tracker.o (.text.GimbalVisionPitchTracker_Init)
+                  000117bc    00000040     mission_manager.o (.text.MissionManager_Init)
+                  000117fc    00000040     ti_msp_dl_config.o (.text.SYSCFG_DL_SYSCTL_init)
+                  0001183c    00000040     ti_msp_dl_config.o (.text.SYSCFG_DL_initPower)
+                  0001187c    00000040     vision_receiver.o (.text.VisionReceiver_PushByteFromIsr)
+                  000118bc    00000040     libclang_rt.builtins.a : aeabi_uidivmod.S.obj (.text.__aeabi_uidivmod)
+                  000118fc    0000003e                            : divmoddi4.c.obj (.text.__divmoddi4)
+                  0001193a    00000002     --HOLE-- [fill = 0]
+                  0001193c    0000003c     gimbal_tracker.o (.text.GimbalTracker_ClearObservation)
+                  00011978    0000003c     servo.o (.text.Servo_SetAngleDeg)
+                  000119b4    0000003c     vision_tuning_console.o (.text.VisionTuningConsole_PushByteFromIsr)
+                  000119f0    0000003c     libclang_rt.builtins.a : floatsisf.S.obj (.text.__floatsisf)
+                  00011a2c    0000003c                            : comparesf2.S.obj (.text.__gtsf2)
+                  00011a68    0000003c     motion_action.o (.text.motion_action_start_imu_controller)
+                  00011aa4    0000003c     libc.a : autoinit.c.obj (.text:__TI_auto_init_nobinit_nopinit)
+                  00011ae0    0000003a     libclang_rt.builtins.a : comparesf2.S.obj (.text.__eqsf2)
+                  00011b1a    00000002     --HOLE-- [fill = 0]
+                  00011b1c    0000003a                            : muldsi3.S.obj (.text.__muldsi3)
+                  00011b56    00000002     --HOLE-- [fill = 0]
+                  00011b58    00000038     vision_receiver.o (.text.VisionReceiver_Init)
+                  00011b90    00000038     libclang_rt.builtins.a : fixsfsi.S.obj (.text.__fixsfsi)
+                  00011bc8    00000034     emergency_stop.o (.text.EmergencyStop_Trigger)
+                  00011bfc    00000034     imu.o (.text.Imu_IsReady)
+                  00011c30    00000034     vision_tuning_console.o (.text.VisionTuningConsole_TryPopTxByte)
+                  00011c64    00000034     vision_uart.o (.text.VisionUart_Process)
+                  00011c98    00000034     obstacle_avoidance.o (.text.avoid_start)
+                  00011ccc    00000032     oled.o (.text.OLED_PrintString)
+                  00011cfe    00000002     --HOLE-- [fill = 0]
+                  00011d00    00000030     car_controller.o (.text.CarController_StartSeekLine)
+                  00011d30    00000030     fault.o (.text.Fault_Raise)
+                  00011d60    00000030     gimbal_vision_yaw_tracker.o (.text.GimbalVisionYawTracker_GetFeedback)
+                  00011d90    00000030     gimbal.o (.text.Gimbal_PitchGetFeedback)
+                  00011dc0    00000030     key.o (.text.Key_Init)
+                  00011df0    00000030     line_controller.o (.text.LineController_ObserveSensors)
+                  00011e20    00000030     mission_manager.o (.text.MissionManager_Resume)
+                  00011e50    00000030     vision_pitch_tuning.o (.text.VisionPitchTuning_RestoreDefault)
+                  00011e80    00000030     watchdog_monitor.o (.text.WatchdogMonitor_Init)
+                  00011eb0    00000030     gimbal_vision_yaw_tracker.o (.text.refresh_yaw_feedback)
+                  00011ee0    0000002c     encoder.o (.text.Encoder_Reset)
+                  00011f0c    0000002c     mission_manager.o (.text.MissionManager_Cancel)
+                  00011f38    0000002c     mission_manager.o (.text.MissionManager_Reset)
+                  00011f64    0000002c     track_sensor.o (.text.TrackSensor_CountBlack)
+                  00011f90    0000002c     vision_yaw_tuning.o (.text.VisionYawTuning_RestoreDefault)
+                  00011fbc    0000002c     gimbal_vision_pitch_tracker.o (.text.speed_to_x10)
+                  00011fe8    00000028     obstacle_avoidance.o (.text.ObstacleAvoidance_Init)
+                  00012010    00000028     servo.o (.text.Servo_Init)
+                  00012038    00000028     vision_pitch_tuning.o (.text.VisionPitchTuning_Init)
+                  00012060    00000028     watchdog_monitor.o (.text.WatchdogMonitor_Reset)
+                  00012088    00000028     libclang_rt.builtins.a : floatunsisf.S.obj (.text.__floatunsisf)
+                  000120b0    00000028     libc.a : memmov.c.obj (.text.memmove)
+                  000120d8    00000028            : boot_cortex_m.c.obj (.text:_c_int00_noargs)
+                  00012100    00000024     emergency_stop.o (.text.EmergencyStop_Enforce)
+                  00012124    00000024     gimbal_vision_pitch_tracker.o (.text.GimbalVisionPitchTracker_GetFeedback)
+                  00012148    00000024     mission_library.o (.text.MissionLibrary_FindById)
+                  0001216c    00000024     mission_manager.o (.text.MissionManager_ReportExternalFailure)
+                  00012190    00000024     motor_control.o (.text.MotorControl_Init)
+                  000121b4    00000024     motor_control.o (.text.MotorControl_Reset)
+                  000121d8    00000024     oled.o (.text.OLED_ClearBuffer)
+                  000121fc    00000024     ti_msp_dl_config.o (.text.SYSCFG_DL_init)
+                  00012220    00000024     vision_yaw_tuning.o (.text.VisionYawTuning_Init)
+                  00012244    00000024     libclang_rt.builtins.a : muldi3.S.obj (.text.__muldi3)
+                  00012268    00000020     driverlib.a : dl_timer.o (.text.DL_Timer_overrideCCPOut)
+                  00012288    00000020     debug_telemetry.o (.text.DebugTelemetry_Update)
+                  000122a8    00000020     mission_manager.o (.text.MissionManager_Pause)
+                  000122c8    00000020     motion_action.o (.text.MotionAction_GetCurrentBypassDirection)
+                  000122e8    00000020     motion_action.o (.text.MotionAction_GetCurrentObstaclePolicy)
+                  00012308    00000020     oled.o (.text.OLED_SetCursor)
+                  00012328    00000020     empty.o (.text.SchedulerMonitor_GetStats)
+                  00012348    00000020     vision_receiver.o (.text.VisionReceiver_GetProtocolErrorCount)
+                  00012368    00000020     mission_manager.o (.text.mission_finish_error)
+                  00012388    0000001e     libclang_rt.builtins.a : ashldi3.S.obj (.text.__ashldi3)
+                  000123a6    00000002     --HOLE-- [fill = 0]
+                  000123a8    0000001c     driverlib.a : dl_timer.o (.text.DL_Timer_setCaptCompUpdateMethod)
+                  000123c4    0000001c                 : dl_timer.o (.text.DL_Timer_setClockConfig)
+                  000123e0    0000001c     gimbal_vision_adapter.o (.text.GimbalVisionAdapter_Init)
+                  000123fc    0000001c     heading_control.o (.text.HeadingControl_SetTargetYaw)
+                  00012418    0000001c     menu.o (.text.Menu_Init)
+                  00012434    0000001c     motion_action.o (.text.MotionAction_Cancel)
+                  00012450    0000001c     obstacle_monitor.o (.text.ObstacleMonitor_Init)
+                  0001246c    0000001c     obstacle_safety.o (.text.ObstacleSafety_Init)
+                  00012488    0000001c     vision_pitch_tuning.o (.text.VisionPitchTuning_ParamName)
+                  000124a4    0000001c     vision_yaw_tuning.o (.text.VisionYawTuning_GetSnapshot)
+                  000124c0    0000001c     vision_yaw_tuning.o (.text.VisionYawTuning_ParamName)
+                  000124dc    0000001c     watchdog_monitor.o (.text.WatchdogMonitor_NotifyControlCycleComplete)
+                  000124f8    0000001c     mission_manager.o (.text.mission_finish_success)
+                  00012514    00000018     driverlib.a : dl_timer.o (.text.DL_Timer_setCaptureCompareOutCtl)
+                  0001252c    00000018     debug_telemetry.o (.text.DebugTelemetry_Init)
+                  00012544    00000018     heading_control.o (.text.HeadingControl_Init)
+                  0001255c    00000018     heading_control.o (.text.HeadingControl_Reset)
+                  00012574    00000018     menu.o (.text.Menu_ParamItemToString)
+                  0001258c    00000018     motion_action.o (.text.MotionAction_Init)
+                  000125a4    00000018     runtime_snapshot.o (.text.RuntimeSnapshot_Init)
+                  000125bc    00000016     libclang_rt.builtins.a : comparesf2.S.obj (.text.__unordsf2)
+                  000125d2    00000002     --HOLE-- [fill = 0]
+                  000125d4    00000014     fault.o (.text.Fault_Clear)
+                  000125e8    00000014     fault.o (.text.Fault_Init)
+                  000125fc    00000014     empty.o (.text.GROUP1_IRQHandler)
+                  00012610    00000014     gimbal_stepper.o (.text.GimbalStepper_SetStepHalfPeriodTicks)
+                  00012624    00000014     heading_control.o (.text.HeadingControl_Enable)
+                  00012638    00000014     mission_library.o (.text.MissionLibrary_GetByIndex)
+                  0001264c    00000014     mission_manager.o (.text.MissionManager_GetSelectedMissionId)
+                  00012660    00000014     vision_pitch_tuning.o (.text.VisionPitchTuning_GetSnapshot)
+                  00012674    00000014     vision_uart.o (.text.VisionUart_Init)
+                  00012688    00000014     libclang_rt.builtins.a : aeabi_ldivmod.S.obj (.text.__aeabi_ldivmod)
+                  0001269c    00000014                            : aeabi_uldivmod.S.obj (.text.__aeabi_uldivmod)
+                  000126b0    00000012     driverlib.a : dl_uart.o (.text.DL_UART_setClockConfig)
+                  000126c2    00000012     libc.a : copy_decompress_none.c.obj (.text:decompress:none)
+                  000126d4    00000010     driverlib.a : dl_timer.o (.text.DL_Timer_setCaptureCompareValue)
+                  000126e4    00000010     gimbal.o (.text.Gimbal_YawGetFeedback)
+                  000126f4    00000010     key.o (.text.Key_GetEvent)
+                  00012704    00000010     obstacle_avoidance.o (.text.ObstacleAvoidance_IsResumeGraceActive)
+                  00012714    00000010     libc.a : copy_zero_init.c.obj (.text:decompress:ZI)
+                  00012724    0000000c     car_controller.o (.text.CarController_GetRunMode)
+                  00012730    0000000c     car_controller.o (.text.CarController_Init)
+                  0001273c    0000000c     car_controller.o (.text.CarController_IsSafetyHoldActive)
+                  00012748    0000000c     car_state.o (.text.CarState_Get)
+                  00012754    0000000c     car_state.o (.text.CarState_Init)
+                  00012760    0000000c     car_state.o (.text.CarState_Set)
+                  0001276c    0000000c     emergency_stop.o (.text.EmergencyStop_Init)
+                  00012778    0000000c     emergency_stop.o (.text.EmergencyStop_IsActive)
+                  00012784    0000000c     gimbal_vision_adapter.o (.text.GimbalVisionAdapter_GetObservation)
+                  00012790    0000000c     gimbal.o (.text.Gimbal_Tick100us)
+                  0001279c    0000000c     gimbal.o (.text.Gimbal_Update5ms)
+                  000127a8    0000000c     imu.o (.text.Imu_GetCorrectedGyroZDps)
+                  000127b4    0000000c     imu.o (.text.Imu_GetYaw)
+                  000127c0    0000000c     menu.o (.text.Menu_GetPage)
+                  000127cc    0000000c     menu.o (.text.Menu_GetParamItem)
+                  000127d8    0000000c     mission_manager.o (.text.MissionManager_IsExternallyHeld)
+                  000127e4    0000000c     mission_manager.o (.text.MissionManager_SetExternalHold)
+                  000127f0    0000000c     obstacle_avoidance.o (.text.ObstacleAvoidance_IsActive)
+                  000127fc    0000000c     obstacle_avoidance.o (.text.ObstacleAvoidance_IsFailed)
+                  00012808    0000000c     obstacle_safety.o (.text.ObstacleSafety_IsHolding)
+                  00012814    0000000c     empty.o (.text.SystemTime_GetMs)
+                  00012820    0000000c     watchdog_monitor.o (.text.WatchdogMonitor_HasTripped)
+                  0001282c    0000000c     libclang_rt.builtins.a : aeabi_memset.S.obj (.text.__aeabi_memclr)
+                  00012838    0000000a     driverlib.a : dl_common.o (.text.DL_Common_delayCycles)
+                  00012842    0000000a     track_sensor.o (.text.TrackSensor_IsCenterDetected)
+                  0001284c    0000000a     track_sensor.o (.text.TrackSensor_IsLineDetected)
+                  00012856    0000000a     track_sensor.o (.text.TrackSensor_IsLineLost)
+                  00012860    00000008     car_controller.o (.text.CarController_GetFeedback)
+                  00012868    00000008     fault.o (.text.Fault_GetRecord)
+                  00012870    00000008     gimbal_stepper.o (.text.GimbalStepper_GetFeedback)
+                  00012878    00000008     gimbal_vision_adapter.o (.text.GimbalVisionAdapter_GetFeedback)
+                  00012880    00000008     gimbal.o (.text.Gimbal_PitchStopTrackingHold)
+                  00012888    00000008     heading_control.o (.text.HeadingControl_GetRuntime)
+                  00012890    00000008     imu.o (.text.Imu_GetRuntime)
+                  00012898    00000008     line_controller.o (.text.LineController_GetRuntime)
+                  000128a0    00000008     mission_manager.o (.text.MissionManager_GetMissionCount)
+                  000128a8    00000008     mission_manager.o (.text.MissionManager_GetRuntime)
+                  000128b0    00000008     motion_action.o (.text.MotionAction_GetRuntime)
+                  000128b8    00000008     motor_control.o (.text.MotorControl_GetRuntime)
+                  000128c0    00000008     obstacle_avoidance.o (.text.ObstacleAvoidance_GetFeedback)
+                  000128c8    00000008     obstacle_monitor.o (.text.ObstacleMonitor_GetFeedback)
+                  000128d0    00000008     oled_ui.o (.text.OledUi_Init)
+                  000128d8    00000008     runtime_snapshot.o (.text.RuntimeSnapshot_Get)
+                  000128e0    00000008     servo.o (.text.Servo_GetFeedback)
+                  000128e8    00000008     ultrasonic.o (.text.Ultrasonic_GetFeedback)
+                  000128f0    00000008     vision_pitch_tuning.o (.text.VisionPitchTuning_GetStatus)
+                  000128f8    00000008     vision_receiver.o (.text.VisionReceiver_GetObservation)
+                  00012900    00000008     vision_receiver.o (.text.VisionReceiver_GetStatus)
+                  00012908    00000008     vision_tuning_console.o (.text.VisionTuningConsole_GetStatus)
+                  00012910    00000008     watchdog_monitor.o (.text.WatchdogMonitor_GetStatus)
+                  00012918    00000008     wheel_speed_estimator.o (.text.WheelSpeedEstimator_GetRuntime)
+                  00012920    00000008     libclang_rt.builtins.a : aeabi_memcpy.S.obj (.text.__aeabi_memcpy)
+                  00012928    00000008                            : aeabi_memmove.S.obj (.text.__aeabi_memmove)
+                  00012930    00000006     libc.a : exit.c.obj (.text:abort)
+                  00012936    00000004     libsysbm.a : hostexit.c.obj (.text.HOSTexit)
+                  0001293a    00000004     mission_library.o (.text.MissionLibrary_GetCount)
+                  0001293e    00000004     startup_mspm0g350x_ticlang.o (.text.Reset_Handler)
+                  00012942    00000002     --HOLE-- [fill = 0]
+                  00012944    00000010     libc.a : boot_cortex_m.c.obj (.tramp._c_int00_noargs.1)
+                  00012954    00000004            : pre_init.c.obj (.text._system_pre_init)
+                  00012958    00000008     --HOLE-- [fill = 0]
 
 .cinit     0    000131c0    00000030     
                   000131c0    0000000c     (__TI_handler_table)
@@ -905,7 +906,7 @@ MODULE SUMMARY
        gimbal_tracker.o                2576    0         74     
        line_controller.o               2112    0         64     
        gimbal_vision_yaw_tracker.o     2124    0         48     
-       app_config.o                    1896    0         256    
+       app_config.o                    1888    0         256    
        vision_receiver.o               1112    0         689    
        runtime_snapshot.o              1184    0         456    
        gimbal_stepper.o                1412    0         52     
@@ -941,7 +942,7 @@ MODULE SUMMARY
        debug_telemetry.o               56      0         16     
        car_state.o                     36      0         1      
     +--+-------------------------------+-------+---------+---------+
-       Total:                          73084   2335      4514   
+       Total:                          73076   2335      4514   
                                                                 
     C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/lib/ticlang/m0p/mspm0g1x0x_g3x0x/driverlib.a
        dl_timer.o                      388     0         0      
@@ -1000,7 +1001,7 @@ MODULE SUMMARY
        Stack:                          0       0         512    
        Linker Generated:               0       41        0      
     +--+-------------------------------+-------+---------+---------+
-       Grand Total:                    75912   2376      5026   
+       Grand Total:                    75904   2376      5026   
 
 
 LINKER GENERATED COPY TABLES
@@ -1024,7 +1025,7 @@ callee name               trampoline name
    callee addr  tramp addr   call addr  call info
 --------------  -----------  ---------  ----------------
 _c_int00_noargs           $Tramp$TT$L$PI$$_c_int00_noargs
-   000120e9     0001294c     00012946   startup_mspm0g350x_ticlang.o (.text.Reset_Handler)
+   000120d9     00012944     0001293e   startup_mspm0g350x_ticlang.o (.text.Reset_Handler)
 
 [1 trampolines]
 [1 trampoline calls]
@@ -1034,284 +1035,284 @@ GLOBAL SYMBOLS: SORTED ALPHABETICALLY BY Name
 
 address   name                                      
 -------   ----                                      
-0000fe43  ADC0_IRQHandler                           
-0000fe43  ADC1_IRQHandler                           
-0000fe43  AES_IRQHandler                            
-0000f55d  Angle_Normalize180                        
-0000ac01  AppConfig_InitDefault                     
+0000fe3b  ADC0_IRQHandler                           
+0000fe3b  ADC1_IRQHandler                           
+0000fe3b  AES_IRQHandler                            
+0000f555  Angle_Normalize180                        
+0000adf1  AppConfig_InitDefault                     
 00005371  AppConfig_LimitAll                        
-00010609  App_Init                                  
-0000db65  App_Update_20ms                           
-0001293e  C$$EXIT                                   
-0000fe43  CANFD0_IRQHandler                         
-00010369  CarController_GetFeedback                 
-00012735  CarController_GetRunMode                  
-00012741  CarController_Init                        
-0001274d  CarController_IsSafetyHoldActive          
-0000fbb5  CarController_ResetRuntime                
-000103f9  CarController_SetSafetyHold               
-0000d92d  CarController_StartDriveDistance          
-0000b3b9  CarController_StartDriveDistanceAtYaw     
-0000eb35  CarController_StartDriveHeading           
-0000f61d  CarController_StartFollowLine             
-00011d11  CarController_StartSeekLine               
-0000f6dd  CarController_StartTurnLeft90             
-0000f791  CarController_StartTurnRight90            
-0000e789  CarController_StartTurnToYawRelative      
-00011281  CarController_Stop                        
-0000bacd  CarController_Update_20ms                 
-00012759  CarState_Get                              
-00012765  CarState_Init                             
-00012771  CarState_Set                              
-0000fe43  DAC0_IRQHandler                           
-00012849  DL_Common_delayCycles                     
-0000df9d  DL_Timer_initFourCCPWMMode                
-00012279  DL_Timer_overrideCCPOut                   
-000123b9  DL_Timer_setCaptCompUpdateMethod          
-00012525  DL_Timer_setCaptureCompareOutCtl          
-000126e5  DL_Timer_setCaptureCompareValue           
-000123d5  DL_Timer_setClockConfig                   
-000115f1  DL_UART_init                              
-000126c1  DL_UART_setClockConfig                    
-0000fe43  DMA_IRQHandler                            
-0001253d  DebugTelemetry_Init                       
-00012299  DebugTelemetry_Update                     
-0000fe43  Default_Handler                           
-00012111  EmergencyStop_Enforce                     
-0001277d  EmergencyStop_Init                        
-00012789  EmergencyStop_IsActive                    
-0001174d  EmergencyStop_Reset                       
-00011bd9  EmergencyStop_Trigger                     
-00011681  Encoder_GetAndClearPulseDeltas            
-0000fc59  Encoder_HandleGpioInterrupt               
-00011ef1  Encoder_Reset                             
-0000f3cd  FaultCode_ToShortString                   
-000125e5  Fault_Clear                               
-00012871  Fault_GetRecord                           
-000125f9  Fault_Init                                
-00011d41  Fault_Raise                               
-0000fe43  GROUP0_IRQHandler                         
-0001260d  GROUP1_IRQHandler                         
-0001047d  GimbalStepper_ConfirmZero                 
-00012879  GimbalStepper_GetFeedback                 
-0000f9ad  GimbalStepper_Init                        
-0000c43d  GimbalStepper_MoveToEstimatedSteps        
-000109f5  GimbalStepper_Release                     
-00012621  GimbalStepper_SetStepHalfPeriodTicks      
-0000f845  GimbalStepper_StopHold                    
-0000be19  GimbalStepper_Tick100us                   
-0001194d  GimbalTracker_ClearObservation            
-00010ee5  GimbalTracker_Enable                      
-00010f45  GimbalTracker_GetFeedback                 
-00010711  GimbalTracker_Init                        
-00010501  GimbalTracker_PushObservation             
-000066dd  GimbalTracker_Update                      
-00012881  GimbalVisionAdapter_GetFeedback           
-00012795  GimbalVisionAdapter_GetObservation        
-000123f1  GimbalVisionAdapter_Init                  
-0000f8f9  GimbalVisionAdapter_Update                
-0000fb0d  GimbalVisionPitchTracker_Enable           
-00012135  GimbalVisionPitchTracker_GetFeedback      
-0001178d  GimbalVisionPitchTracker_Init             
-0000a7d5  GimbalVisionPitchTracker_Update10ms       
-0000bfad  GimbalVisionYawTracker_Enable             
-00011d71  GimbalVisionYawTracker_GetFeedback        
-00010bb5  GimbalVisionYawTracker_Init               
-00007b59  GimbalVisionYawTracker_Update10ms         
-0000c89d  Gimbal_Init                               
-0000eebd  Gimbal_PitchConfirmZero                   
-00011da1  Gimbal_PitchGetFeedback                   
-0000fa5d  Gimbal_PitchMoveRelativeDeg               
-0000e3a9  Gimbal_PitchRelease                       
-000099ad  Gimbal_PitchSetTrackingSpeedDegS          
-0000e699  Gimbal_PitchStopHold                      
-00012889  Gimbal_PitchStopTrackingHold              
-0000c2bd  Gimbal_PitchTick100us                     
-0000b759  Gimbal_PitchUpdate5ms                     
-000127a1  Gimbal_Tick100us                          
-000127ad  Gimbal_Update5ms                          
-0000f495  Gimbal_YawConfirmZero                     
-000100ad  Gimbal_YawDisableWorldLock                
-0000d379  Gimbal_YawEnableWorldLock                 
-000126f5  Gimbal_YawGetFeedback                     
-00011179  Gimbal_YawMoveRelativeDeg                 
-00010d59  Gimbal_YawRelease                         
-00009481  Gimbal_YawSetWrappedTargetDeg             
-00010139  Gimbal_YawStopHold                        
-00009719  Gimbal_YawUpdate5ms                       
-0001293f  HOSTexit                                  
-0000fe43  HardFault_Handler                         
-00012635  HeadingControl_Enable                     
-00012891  HeadingControl_GetRuntime                 
-00012555  HeadingControl_Init                       
-0001256d  HeadingControl_Reset                      
-0001240d  HeadingControl_SetTargetYaw               
-0000e875  HeadingControl_Update                     
-0000fe43  I2C0_IRQHandler                           
-0000fe43  I2C1_IRQHandler                           
-0000a5a5  Imu_CalibrateGyroBias                     
-000127b9  Imu_GetCorrectedGyroZDps                  
-00012899  Imu_GetRuntime                            
-000127c5  Imu_GetYaw                                
-00007ee1  Imu_Init                                  
-00011c0d  Imu_IsReady                               
-000116c5  Imu_ResetYaw                              
-000073c9  Imu_Update                                
-00012705  Key_GetEvent                              
-00011dd1  Key_Init                                  
-0000c5b9  Key_Update_20ms                           
-000128a1  LineController_GetRuntime                 
-0000e5a1  LineController_Init                       
-00011e01  LineController_ObserveSensors             
-0000da49  LineController_Reset                      
-0000e0a1  LineController_ResetControlState          
-000058e5  LineController_Update                     
-000127d1  Menu_GetPage                              
-000127dd  Menu_GetParamItem                         
-00010dbd  Menu_GetParamValue                        
-00005dd5  Menu_HandleKeyEvent                       
-00012429  Menu_Init                                 
-00012585  Menu_ParamItemToString                    
-00012159  MissionLibrary_FindById                   
-00012649  MissionLibrary_GetByIndex                 
-00012943  MissionLibrary_GetCount                   
-0000dc7d  MissionLibrary_Validate                   
-00011f1d  MissionManager_Cancel                     
-000128a9  MissionManager_GetMissionCount            
-000128b1  MissionManager_GetRuntime                 
-0001265d  MissionManager_GetSelectedMissionId       
-00010c21  MissionManager_GetSelectedMissionIndex    
-000117cd  MissionManager_Init                       
-000127e9  MissionManager_IsExternallyHeld           
-000122b9  MissionManager_Pause                      
-0001217d  MissionManager_ReportExternalFailure      
-00011f49  MissionManager_Reset                      
-00011e31  MissionManager_Resume                     
-0000ec19  MissionManager_SelectNext                 
-0000f301  MissionManager_SelectPrevious             
-000127f5  MissionManager_SetExternalHold            
-000114c1  MissionManager_Start                      
-0000e1a5  MissionManager_Update_20ms                
-00012445  MotionAction_Cancel                       
-000122d9  MotionAction_GetCurrentBypassDirection    
-000122f9  MotionAction_GetCurrentObstaclePolicy     
-000128b9  MotionAction_GetRuntime                   
-0001259d  MotionAction_Init                         
-00011639  MotionAction_ReapplyControllerTarget      
-0000c135  MotionAction_Start                        
-00008f09  MotionAction_Update_20ms                  
-000128c1  MotorControl_GetRuntime                   
-000121a1  MotorControl_Init                         
-000121c5  MotorControl_Reset                        
-0000e2a9  MotorControl_SetNormalizedTarget          
-0001150d  MotorControl_Stop                         
-00009c3d  MotorControl_Update                       
-00010585  Motor_Init                                
-0000a9fd  Motor_SetSpeed                            
-00010791  Motor_Stop                                
-0000fe43  NMI_Handler                               
-000121e9  OLED_ClearBuffer                          
-0000c72d  OLED_FlushPage                            
-0000d4a1  OLED_Init                                 
-000111d1  OLED_PrintChar                            
-0000ca09  OLED_PrintInt16                           
-00011cdd  OLED_PrintString                          
-0000f151  OLED_PrintUInt16                          
-00012319  OLED_SetCursor                            
-000128c9  ObstacleAvoidance_GetFeedback             
-00011ff9  ObstacleAvoidance_Init                    
-00012801  ObstacleAvoidance_IsActive                
-0001280d  ObstacleAvoidance_IsFailed                
-00012715  ObstacleAvoidance_IsResumeGraceActive     
-000085c5  ObstacleAvoidance_Update_20ms             
-000128d1  ObstacleMonitor_GetFeedback               
-00012461  ObstacleMonitor_Init                      
-0000fe45  ObstacleMonitor_Update_20ms               
-0001247d  ObstacleSafety_Init                       
-00012819  ObstacleSafety_IsHolding                  
-0000ecfd  ObstacleSafety_Update_20ms                
-000128d9  OledUi_Init                               
+000105f9  App_Init                                  
+0000db5d  App_Update_20ms                           
+00012936  C$$EXIT                                   
+0000fe3b  CANFD0_IRQHandler                         
+00012861  CarController_GetFeedback                 
+00012725  CarController_GetRunMode                  
+00012731  CarController_Init                        
+0001273d  CarController_IsSafetyHoldActive          
+0000fbad  CarController_ResetRuntime                
+000103e9  CarController_SetSafetyHold               
+0000d925  CarController_StartDriveDistance          
+0000b3b1  CarController_StartDriveDistanceAtYaw     
+0000eb2d  CarController_StartDriveHeading           
+0000f615  CarController_StartFollowLine             
+00011d01  CarController_StartSeekLine               
+0000f6d5  CarController_StartTurnLeft90             
+0000f789  CarController_StartTurnRight90            
+0000e781  CarController_StartTurnToYawRelative      
+00011271  CarController_Stop                        
+0000bac5  CarController_Update_20ms                 
+00012749  CarState_Get                              
+00012755  CarState_Init                             
+00012761  CarState_Set                              
+0000fe3b  DAC0_IRQHandler                           
+00012839  DL_Common_delayCycles                     
+0000df95  DL_Timer_initFourCCPWMMode                
+00012269  DL_Timer_overrideCCPOut                   
+000123a9  DL_Timer_setCaptCompUpdateMethod          
+00012515  DL_Timer_setCaptureCompareOutCtl          
+000126d5  DL_Timer_setCaptureCompareValue           
+000123c5  DL_Timer_setClockConfig                   
+000115e1  DL_UART_init                              
+000126b1  DL_UART_setClockConfig                    
+0000fe3b  DMA_IRQHandler                            
+0001252d  DebugTelemetry_Init                       
+00012289  DebugTelemetry_Update                     
+0000fe3b  Default_Handler                           
+00012101  EmergencyStop_Enforce                     
+0001276d  EmergencyStop_Init                        
+00012779  EmergencyStop_IsActive                    
+0001173d  EmergencyStop_Reset                       
+00011bc9  EmergencyStop_Trigger                     
+00011671  Encoder_GetAndClearPulseDeltas            
+0000fc51  Encoder_HandleGpioInterrupt               
+00011ee1  Encoder_Reset                             
+0000f3c5  FaultCode_ToShortString                   
+000125d5  Fault_Clear                               
+00012869  Fault_GetRecord                           
+000125e9  Fault_Init                                
+00011d31  Fault_Raise                               
+0000fe3b  GROUP0_IRQHandler                         
+000125fd  GROUP1_IRQHandler                         
+0001046d  GimbalStepper_ConfirmZero                 
+00012871  GimbalStepper_GetFeedback                 
+0000f9a5  GimbalStepper_Init                        
+0000c435  GimbalStepper_MoveToEstimatedSteps        
+000109e5  GimbalStepper_Release                     
+00012611  GimbalStepper_SetStepHalfPeriodTicks      
+0000f83d  GimbalStepper_StopHold                    
+0000be11  GimbalStepper_Tick100us                   
+0001193d  GimbalTracker_ClearObservation            
+00010ed5  GimbalTracker_Enable                      
+00010f35  GimbalTracker_GetFeedback                 
+00010701  GimbalTracker_Init                        
+000104f1  GimbalTracker_PushObservation             
+000066d9  GimbalTracker_Update                      
+00012879  GimbalVisionAdapter_GetFeedback           
+00012785  GimbalVisionAdapter_GetObservation        
+000123e1  GimbalVisionAdapter_Init                  
+0000f8f1  GimbalVisionAdapter_Update                
+0000fb05  GimbalVisionPitchTracker_Enable           
+00012125  GimbalVisionPitchTracker_GetFeedback      
+0001177d  GimbalVisionPitchTracker_Init             
+0000a7d1  GimbalVisionPitchTracker_Update10ms       
+0000bfa5  GimbalVisionYawTracker_Enable             
+00011d61  GimbalVisionYawTracker_GetFeedback        
+00010ba5  GimbalVisionYawTracker_Init               
+00007b55  GimbalVisionYawTracker_Update10ms         
+0000c895  Gimbal_Init                               
+0000eeb5  Gimbal_PitchConfirmZero                   
+00011d91  Gimbal_PitchGetFeedback                   
+0000fa55  Gimbal_PitchMoveRelativeDeg               
+0000e3a1  Gimbal_PitchRelease                       
+000099a9  Gimbal_PitchSetTrackingSpeedDegS          
+0000e691  Gimbal_PitchStopHold                      
+00012881  Gimbal_PitchStopTrackingHold              
+0000c2b5  Gimbal_PitchTick100us                     
+0000b751  Gimbal_PitchUpdate5ms                     
+00012791  Gimbal_Tick100us                          
+0001279d  Gimbal_Update5ms                          
+0000f48d  Gimbal_YawConfirmZero                     
+000100a5  Gimbal_YawDisableWorldLock                
+0000d371  Gimbal_YawEnableWorldLock                 
+000126e5  Gimbal_YawGetFeedback                     
+00011169  Gimbal_YawMoveRelativeDeg                 
+00010d49  Gimbal_YawRelease                         
+0000947d  Gimbal_YawSetWrappedTargetDeg             
+00010131  Gimbal_YawStopHold                        
+00009715  Gimbal_YawUpdate5ms                       
+00012937  HOSTexit                                  
+0000fe3b  HardFault_Handler                         
+00012625  HeadingControl_Enable                     
+00012889  HeadingControl_GetRuntime                 
+00012545  HeadingControl_Init                       
+0001255d  HeadingControl_Reset                      
+000123fd  HeadingControl_SetTargetYaw               
+0000e86d  HeadingControl_Update                     
+0000fe3b  I2C0_IRQHandler                           
+0000fe3b  I2C1_IRQHandler                           
+0000a5a1  Imu_CalibrateGyroBias                     
+000127a9  Imu_GetCorrectedGyroZDps                  
+00012891  Imu_GetRuntime                            
+000127b5  Imu_GetYaw                                
+00007edd  Imu_Init                                  
+00011bfd  Imu_IsReady                               
+000116b5  Imu_ResetYaw                              
+000073c5  Imu_Update                                
+000126f5  Key_GetEvent                              
+00011dc1  Key_Init                                  
+0000c5b1  Key_Update_20ms                           
+00012899  LineController_GetRuntime                 
+0000e599  LineController_Init                       
+00011df1  LineController_ObserveSensors             
+0000da41  LineController_Reset                      
+0000e099  LineController_ResetControlState          
+000058e1  LineController_Update                     
+000127c1  Menu_GetPage                              
+000127cd  Menu_GetParamItem                         
+00010dad  Menu_GetParamValue                        
+00005dd1  Menu_HandleKeyEvent                       
+00012419  Menu_Init                                 
+00012575  Menu_ParamItemToString                    
+00012149  MissionLibrary_FindById                   
+00012639  MissionLibrary_GetByIndex                 
+0001293b  MissionLibrary_GetCount                   
+0000dc75  MissionLibrary_Validate                   
+00011f0d  MissionManager_Cancel                     
+000128a1  MissionManager_GetMissionCount            
+000128a9  MissionManager_GetRuntime                 
+0001264d  MissionManager_GetSelectedMissionId       
+00010c11  MissionManager_GetSelectedMissionIndex    
+000117bd  MissionManager_Init                       
+000127d9  MissionManager_IsExternallyHeld           
+000122a9  MissionManager_Pause                      
+0001216d  MissionManager_ReportExternalFailure      
+00011f39  MissionManager_Reset                      
+00011e21  MissionManager_Resume                     
+0000ec11  MissionManager_SelectNext                 
+0000f2f9  MissionManager_SelectPrevious             
+000127e5  MissionManager_SetExternalHold            
+000114b1  MissionManager_Start                      
+0000e19d  MissionManager_Update_20ms                
+00012435  MotionAction_Cancel                       
+000122c9  MotionAction_GetCurrentBypassDirection    
+000122e9  MotionAction_GetCurrentObstaclePolicy     
+000128b1  MotionAction_GetRuntime                   
+0001258d  MotionAction_Init                         
+00011629  MotionAction_ReapplyControllerTarget      
+0000c12d  MotionAction_Start                        
+00008f05  MotionAction_Update_20ms                  
+000128b9  MotorControl_GetRuntime                   
+00012191  MotorControl_Init                         
+000121b5  MotorControl_Reset                        
+0000e2a1  MotorControl_SetNormalizedTarget          
+000114fd  MotorControl_Stop                         
+00009c39  MotorControl_Update                       
+00010575  Motor_Init                                
+0000a9f9  Motor_SetSpeed                            
+00010781  Motor_Stop                                
+0000fe3b  NMI_Handler                               
+000121d9  OLED_ClearBuffer                          
+0000c725  OLED_FlushPage                            
+0000d499  OLED_Init                                 
+000111c1  OLED_PrintChar                            
+0000ca01  OLED_PrintInt16                           
+00011ccd  OLED_PrintString                          
+0000f149  OLED_PrintUInt16                          
+00012309  OLED_SetCursor                            
+000128c1  ObstacleAvoidance_GetFeedback             
+00011fe9  ObstacleAvoidance_Init                    
+000127f1  ObstacleAvoidance_IsActive                
+000127fd  ObstacleAvoidance_IsFailed                
+00012705  ObstacleAvoidance_IsResumeGraceActive     
+000085c1  ObstacleAvoidance_Update_20ms             
+000128c9  ObstacleMonitor_GetFeedback               
+00012451  ObstacleMonitor_Init                      
+0000fe3d  ObstacleMonitor_Update_20ms               
+0001246d  ObstacleSafety_Init                       
+00012809  ObstacleSafety_IsHolding                  
+0000ecf5  ObstacleSafety_Update_20ms                
+000128d1  OledUi_Init                               
 000000c1  OledUi_Update_20ms                        
-0000fe43  PendSV_Handler                            
-0000fe43  RTC_IRQHandler                            
-00012947  Reset_Handler                             
-000128e1  RuntimeSnapshot_Get                       
-000125b5  RuntimeSnapshot_Init                      
-0000625d  RuntimeSnapshot_Update                    
-0000fe43  SPI0_IRQHandler                           
-0000fe43  SPI1_IRQHandler                           
-0000fe43  SVC_Handler                               
-0000ef99  SYSCFG_DL_GPIO_init                       
-000101c5  SYSCFG_DL_PWM_MOTOR_init                  
-0001180d  SYSCFG_DL_SYSCTL_init                     
-00010a65  SYSCFG_DL_UART_VISION_init                
-0001220d  SYSCFG_DL_init                            
-0001184d  SYSCFG_DL_initPower                       
-00012339  SchedulerMonitor_GetStats                 
-000128e9  Servo_GetFeedback                         
-00012021  Servo_Init                                
-00011989  Servo_SetAngleDeg                         
-00011709  Servo_Tick100us                           
-0000e4a5  SysTick_Handler                           
-00012825  SystemTime_GetMs                          
-0000fe43  TIMA0_IRQHandler                          
-0000fe43  TIMA1_IRQHandler                          
-0000fe43  TIMG0_IRQHandler                          
-0000fe43  TIMG12_IRQHandler                         
-0000fe43  TIMG6_IRQHandler                          
-0000fe43  TIMG7_IRQHandler                          
-0000fe43  TIMG8_IRQHandler                          
-00011f75  TrackSensor_CountBlack                    
-00010b45  TrackSensor_DetectTurn                    
-00010cf1  TrackSensor_GetErrorFromRaw               
-0000ff7b  TrackSensor_Init                          
-00012853  TrackSensor_IsCenterDetected              
-0001285d  TrackSensor_IsLineDetected                
-00012867  TrackSensor_IsLineLost                    
-000112d5  TrackSensor_ReadRaw                       
-0000fe43  UART0_IRQHandler                          
-0000fe43  UART1_IRQHandler                          
-0000fe43  UART2_IRQHandler                          
-00011065  UART3_IRQHandler                          
-000128f1  Ultrasonic_GetFeedback                    
-000113d1  Ultrasonic_Init                           
-0000bc79  Ultrasonic_Tick100us                      
-000110c1  Ultrasonic_Update_20ms                    
-00012671  VisionPitchTuning_GetSnapshot             
-000128f9  VisionPitchTuning_GetStatus               
-00012049  VisionPitchTuning_Init                    
-00012499  VisionPitchTuning_ParamName               
-00011e61  VisionPitchTuning_RestoreDefault          
-00010811  VisionPitchTuning_Set                     
-0000adf5  VisionProtocol_ParseV1TargetFrame         
-00012901  VisionReceiver_GetObservation             
-00012359  VisionReceiver_GetProtocolErrorCount      
-00012909  VisionReceiver_GetStatus                  
-00011b69  VisionReceiver_Init                       
-000077a9  VisionReceiver_Process                    
-0001188d  VisionReceiver_PushByteFromIsr            
-00012911  VisionTuningConsole_GetStatus             
-00010fa5  VisionTuningConsole_Init                  
+0000fe3b  PendSV_Handler                            
+0000fe3b  RTC_IRQHandler                            
+0001293f  Reset_Handler                             
+000128d9  RuntimeSnapshot_Get                       
+000125a5  RuntimeSnapshot_Init                      
+00006259  RuntimeSnapshot_Update                    
+0000fe3b  SPI0_IRQHandler                           
+0000fe3b  SPI1_IRQHandler                           
+0000fe3b  SVC_Handler                               
+0000ef91  SYSCFG_DL_GPIO_init                       
+000101bd  SYSCFG_DL_PWM_MOTOR_init                  
+000117fd  SYSCFG_DL_SYSCTL_init                     
+00010a55  SYSCFG_DL_UART_VISION_init                
+000121fd  SYSCFG_DL_init                            
+0001183d  SYSCFG_DL_initPower                       
+00012329  SchedulerMonitor_GetStats                 
+000128e1  Servo_GetFeedback                         
+00012011  Servo_Init                                
+00011979  Servo_SetAngleDeg                         
+000116f9  Servo_Tick100us                           
+0000e49d  SysTick_Handler                           
+00012815  SystemTime_GetMs                          
+0000fe3b  TIMA0_IRQHandler                          
+0000fe3b  TIMA1_IRQHandler                          
+0000fe3b  TIMG0_IRQHandler                          
+0000fe3b  TIMG12_IRQHandler                         
+0000fe3b  TIMG6_IRQHandler                          
+0000fe3b  TIMG7_IRQHandler                          
+0000fe3b  TIMG8_IRQHandler                          
+00011f65  TrackSensor_CountBlack                    
+00010b35  TrackSensor_DetectTurn                    
+00010ce1  TrackSensor_GetErrorFromRaw               
+0000ff73  TrackSensor_Init                          
+00012843  TrackSensor_IsCenterDetected              
+0001284d  TrackSensor_IsLineDetected                
+00012857  TrackSensor_IsLineLost                    
+000112c5  TrackSensor_ReadRaw                       
+0000fe3b  UART0_IRQHandler                          
+0000fe3b  UART1_IRQHandler                          
+0000fe3b  UART2_IRQHandler                          
+00011055  UART3_IRQHandler                          
+000128e9  Ultrasonic_GetFeedback                    
+000113c1  Ultrasonic_Init                           
+0000bc71  Ultrasonic_Tick100us                      
+000110b1  Ultrasonic_Update_20ms                    
+00012661  VisionPitchTuning_GetSnapshot             
+000128f1  VisionPitchTuning_GetStatus               
+00012039  VisionPitchTuning_Init                    
+00012489  VisionPitchTuning_ParamName               
+00011e51  VisionPitchTuning_RestoreDefault          
+00010801  VisionPitchTuning_Set                     
+0000abfd  VisionProtocol_ParseV1TargetFrame         
+000128f9  VisionReceiver_GetObservation             
+00012349  VisionReceiver_GetProtocolErrorCount      
+00012901  VisionReceiver_GetStatus                  
+00011b59  VisionReceiver_Init                       
+000077a5  VisionReceiver_Process                    
+0001187d  VisionReceiver_PushByteFromIsr            
+00012909  VisionTuningConsole_GetStatus             
+00010f95  VisionTuningConsole_Init                  
 0000359d  VisionTuningConsole_Process               
-000119c5  VisionTuningConsole_PushByteFromIsr       
-00011c41  VisionTuningConsole_TryPopTxByte          
-00012685  VisionUart_Init                           
-00011c75  VisionUart_Process                        
-000124b5  VisionYawTuning_GetSnapshot               
-00012231  VisionYawTuning_Init                      
-000124d1  VisionYawTuning_ParamName                 
-00011fa1  VisionYawTuning_RestoreDefault            
-00010ad5  VisionYawTuning_Set                       
-00011421  WatchdogMonitor_ApplyFaultIfNeeded        
-00012919  WatchdogMonitor_GetStatus                 
-00012831  WatchdogMonitor_HasTripped                
-00011e91  WatchdogMonitor_Init                      
-000124ed  WatchdogMonitor_NotifyControlCycleComplete
-00012071  WatchdogMonitor_Reset                     
-00011559  WatchdogMonitor_Tick1msFromIsr            
-00012921  WheelSpeedEstimator_GetRuntime            
-0000eddd  WheelSpeedEstimator_Init                  
-00006fa5  WheelSpeedEstimator_Update                
+000119b5  VisionTuningConsole_PushByteFromIsr       
+00011c31  VisionTuningConsole_TryPopTxByte          
+00012675  VisionUart_Init                           
+00011c65  VisionUart_Process                        
+000124a5  VisionYawTuning_GetSnapshot               
+00012221  VisionYawTuning_Init                      
+000124c1  VisionYawTuning_ParamName                 
+00011f91  VisionYawTuning_RestoreDefault            
+00010ac5  VisionYawTuning_Set                       
+00011411  WatchdogMonitor_ApplyFaultIfNeeded        
+00012911  WatchdogMonitor_GetStatus                 
+00012821  WatchdogMonitor_HasTripped                
+00011e81  WatchdogMonitor_Init                      
+000124dd  WatchdogMonitor_NotifyControlCycleComplete
+00012061  WatchdogMonitor_Reset                     
+00011549  WatchdogMonitor_Tick1msFromIsr            
+00012919  WheelSpeedEstimator_GetRuntime            
+0000edd5  WheelSpeedEstimator_Init                  
+00006fa1  WheelSpeedEstimator_Update                
 20208000  __STACK_END                               
 00000200  __STACK_SIZE                              
 00000000  __TI_ATRegion0_region_sz                  
@@ -1328,81 +1329,81 @@ address   name
 000131ec  __TI_CINIT_Warm                           
 000131c0  __TI_Handler_Table_Base                   
 000131cc  __TI_Handler_Table_Limit                  
-00011ab5  __TI_auto_init_nobinit_nopinit            
-0001088d  __TI_decompress_lzss                      
-000126d3  __TI_decompress_none                      
+00011aa5  __TI_auto_init_nobinit_nopinit            
+0001087d  __TI_decompress_lzss                      
+000126c3  __TI_decompress_none                      
 ffffffff  __TI_pprof_out_hndl                       
 ffffffff  __TI_prof_data_size                       
 ffffffff  __TI_prof_data_start                      
 00000000  __TI_static_base__                        
-00012725  __TI_zero_init                            
-0000f233  __addsf3                                  
-00011ba1  __aeabi_f2iz                              
-00011005  __aeabi_f2lz                              
-0000f233  __aeabi_fadd                              
-00010e21  __aeabi_fcmpeq                            
-00010e5d  __aeabi_fcmpge                            
-00010e71  __aeabi_fcmpgt                            
-00010e49  __aeabi_fcmple                            
-00010e35  __aeabi_fcmplt                            
-000125cd  __aeabi_fcmpun                            
-0001068d  __aeabi_fdiv                              
-00010251  __aeabi_fmul                              
-0000f229  __aeabi_fsub                              
-00011a01  __aeabi_i2f                               
-00011229  __aeabi_idiv                              
-0001068b  __aeabi_idiv0                             
-00011229  __aeabi_idivmod                           
-00011471  __aeabi_l2f                               
-0001070f  __aeabi_ldiv0                             
-00012699  __aeabi_ldivmod                           
-00012399  __aeabi_llsl                              
-00012255  __aeabi_lmul                              
-0001283d  __aeabi_memclr                            
-0001283d  __aeabi_memclr4                           
-0001283d  __aeabi_memclr8                           
-00012929  __aeabi_memcpy                            
-00012929  __aeabi_memcpy4                           
-00012929  __aeabi_memcpy8                           
-00012931  __aeabi_memmove                           
-00012931  __aeabi_memmove4                          
-00012931  __aeabi_memmove8                          
-00012099  __aeabi_ui2f                              
-000118cd  __aeabi_uidiv                             
-000118cd  __aeabi_uidivmod                          
-000126ad  __aeabi_uldivmod                          
-00012399  __ashldi3                                 
+00012715  __TI_zero_init                            
+0000f22b  __addsf3                                  
+00011b91  __aeabi_f2iz                              
+00010ff5  __aeabi_f2lz                              
+0000f22b  __aeabi_fadd                              
+00010e11  __aeabi_fcmpeq                            
+00010e4d  __aeabi_fcmpge                            
+00010e61  __aeabi_fcmpgt                            
+00010e39  __aeabi_fcmple                            
+00010e25  __aeabi_fcmplt                            
+000125bd  __aeabi_fcmpun                            
+0001067d  __aeabi_fdiv                              
+00010249  __aeabi_fmul                              
+0000f221  __aeabi_fsub                              
+000119f1  __aeabi_i2f                               
+00011219  __aeabi_idiv                              
+0001067b  __aeabi_idiv0                             
+00011219  __aeabi_idivmod                           
+00011461  __aeabi_l2f                               
+000106ff  __aeabi_ldiv0                             
+00012689  __aeabi_ldivmod                           
+00012389  __aeabi_llsl                              
+00012245  __aeabi_lmul                              
+0001282d  __aeabi_memclr                            
+0001282d  __aeabi_memclr4                           
+0001282d  __aeabi_memclr8                           
+00012921  __aeabi_memcpy                            
+00012921  __aeabi_memcpy4                           
+00012921  __aeabi_memcpy8                           
+00012929  __aeabi_memmove                           
+00012929  __aeabi_memmove4                          
+00012929  __aeabi_memmove8                          
+00012089  __aeabi_ui2f                              
+000118bd  __aeabi_uidiv                             
+000118bd  __aeabi_uidivmod                          
+0001269d  __aeabi_uldivmod                          
+00012389  __ashldi3                                 
 ffffffff  __binit__                                 
-00011af1  __cmpsf2                                  
-0001190d  __divmoddi4                               
-0001068d  __divsf3                                  
-00011af1  __eqsf2                                   
-00011005  __fixsfdi                                 
-00011ba1  __fixsfsi                                 
-00011471  __floatdisf                               
-00011a01  __floatsisf                               
-00012099  __floatunsisf                             
-00011a3d  __gesf2                                   
-00011a3d  __gtsf2                                   
-00011af1  __lesf2                                   
-00011af1  __ltsf2                                   
+00011ae1  __cmpsf2                                  
+000118fd  __divmoddi4                               
+0001067d  __divsf3                                  
+00011ae1  __eqsf2                                   
+00010ff5  __fixsfdi                                 
+00011b91  __fixsfsi                                 
+00011461  __floatdisf                               
+000119f1  __floatsisf                               
+00012089  __floatunsisf                             
+00011a2d  __gesf2                                   
+00011a2d  __gtsf2                                   
+00011ae1  __lesf2                                   
+00011ae1  __ltsf2                                   
 UNDEFED   __mpu_init                                
-00012255  __muldi3                                  
-00011b2d  __muldsi3                                 
-00010251  __mulsf3                                  
-00011af1  __nesf2                                   
+00012245  __muldi3                                  
+00011b1d  __muldsi3                                 
+00010249  __mulsf3                                  
+00011ae1  __nesf2                                   
 20207e00  __stack                                   
 20200000  __start___llvm_prf_bits                   
 20200000  __start___llvm_prf_cnts                   
 20200000  __stop___llvm_prf_bits                    
 20200000  __stop___llvm_prf_cnts                    
-0000f229  __subsf3                                  
-0000fda1  __udivmoddi4                              
-000125cd  __unordsf2                                
-000120e9  _c_int00_noargs                           
+0000f221  __subsf3                                  
+0000fd99  __udivmoddi4                              
+000125bd  __unordsf2                                
+000120d9  _c_int00_noargs                           
 UNDEFED   _system_post_cinit                        
-0001295d  _system_pre_init                          
-00012939  abort                                     
+00012955  _system_pre_init                          
+00012931  abort                                     
 ffffffff  binit                                     
 20200e20  gUART_VISIONBackup                        
 202009c8  g_appConfig                               
@@ -1420,11 +1421,11 @@ ffffffff  binit
 202011a0  g_trackTurnDebug                          
 20200c80  g_wheelSpeedEstimatorRuntime              
 00000000  interruptVectors                          
-0000cb75  main                                      
-0000fee1  memcpy                                    
-000120c1  memmove                                   
-00010e83  memset                                    
-00010371  strcmp                                    
+0000cb6d  main                                      
+0000fed9  memcpy                                    
+000120b1  memmove                                   
+00010e73  memset                                    
+00010361  strcmp                                    
 
 
 GLOBAL SYMBOLS: SORTED BY Symbol Address 
@@ -1446,349 +1447,349 @@ address   name
 00000200  __STACK_SIZE                              
 0000359d  VisionTuningConsole_Process               
 00005371  AppConfig_LimitAll                        
-000058e5  LineController_Update                     
-00005dd5  Menu_HandleKeyEvent                       
-0000625d  RuntimeSnapshot_Update                    
-000066dd  GimbalTracker_Update                      
-00006fa5  WheelSpeedEstimator_Update                
-000073c9  Imu_Update                                
-000077a9  VisionReceiver_Process                    
-00007b59  GimbalVisionYawTracker_Update10ms         
-00007ee1  Imu_Init                                  
-000085c5  ObstacleAvoidance_Update_20ms             
-00008f09  MotionAction_Update_20ms                  
-00009481  Gimbal_YawSetWrappedTargetDeg             
-00009719  Gimbal_YawUpdate5ms                       
-000099ad  Gimbal_PitchSetTrackingSpeedDegS          
-00009c3d  MotorControl_Update                       
-0000a5a5  Imu_CalibrateGyroBias                     
-0000a7d5  GimbalVisionPitchTracker_Update10ms       
-0000a9fd  Motor_SetSpeed                            
-0000ac01  AppConfig_InitDefault                     
-0000adf5  VisionProtocol_ParseV1TargetFrame         
-0000b3b9  CarController_StartDriveDistanceAtYaw     
-0000b759  Gimbal_PitchUpdate5ms                     
-0000bacd  CarController_Update_20ms                 
-0000bc79  Ultrasonic_Tick100us                      
-0000be19  GimbalStepper_Tick100us                   
-0000bfad  GimbalVisionYawTracker_Enable             
-0000c135  MotionAction_Start                        
-0000c2bd  Gimbal_PitchTick100us                     
-0000c43d  GimbalStepper_MoveToEstimatedSteps        
-0000c5b9  Key_Update_20ms                           
-0000c72d  OLED_FlushPage                            
-0000c89d  Gimbal_Init                               
-0000ca09  OLED_PrintInt16                           
-0000cb75  main                                      
-0000d379  Gimbal_YawEnableWorldLock                 
-0000d4a1  OLED_Init                                 
-0000d92d  CarController_StartDriveDistance          
-0000da49  LineController_Reset                      
-0000db65  App_Update_20ms                           
-0000dc7d  MissionLibrary_Validate                   
-0000df9d  DL_Timer_initFourCCPWMMode                
-0000e0a1  LineController_ResetControlState          
-0000e1a5  MissionManager_Update_20ms                
-0000e2a9  MotorControl_SetNormalizedTarget          
-0000e3a9  Gimbal_PitchRelease                       
-0000e4a5  SysTick_Handler                           
-0000e5a1  LineController_Init                       
-0000e699  Gimbal_PitchStopHold                      
-0000e789  CarController_StartTurnToYawRelative      
-0000e875  HeadingControl_Update                     
-0000eb35  CarController_StartDriveHeading           
-0000ec19  MissionManager_SelectNext                 
-0000ecfd  ObstacleSafety_Update_20ms                
-0000eddd  WheelSpeedEstimator_Init                  
-0000eebd  Gimbal_PitchConfirmZero                   
-0000ef99  SYSCFG_DL_GPIO_init                       
-0000f151  OLED_PrintUInt16                          
-0000f229  __aeabi_fsub                              
-0000f229  __subsf3                                  
-0000f233  __addsf3                                  
-0000f233  __aeabi_fadd                              
-0000f301  MissionManager_SelectPrevious             
-0000f3cd  FaultCode_ToShortString                   
-0000f495  Gimbal_YawConfirmZero                     
-0000f55d  Angle_Normalize180                        
-0000f61d  CarController_StartFollowLine             
-0000f6dd  CarController_StartTurnLeft90             
-0000f791  CarController_StartTurnRight90            
-0000f845  GimbalStepper_StopHold                    
-0000f8f9  GimbalVisionAdapter_Update                
-0000f9ad  GimbalStepper_Init                        
-0000fa5d  Gimbal_PitchMoveRelativeDeg               
-0000fb0d  GimbalVisionPitchTracker_Enable           
-0000fbb5  CarController_ResetRuntime                
-0000fc59  Encoder_HandleGpioInterrupt               
-0000fda1  __udivmoddi4                              
-0000fe43  ADC0_IRQHandler                           
-0000fe43  ADC1_IRQHandler                           
-0000fe43  AES_IRQHandler                            
-0000fe43  CANFD0_IRQHandler                         
-0000fe43  DAC0_IRQHandler                           
-0000fe43  DMA_IRQHandler                            
-0000fe43  Default_Handler                           
-0000fe43  GROUP0_IRQHandler                         
-0000fe43  HardFault_Handler                         
-0000fe43  I2C0_IRQHandler                           
-0000fe43  I2C1_IRQHandler                           
-0000fe43  NMI_Handler                               
-0000fe43  PendSV_Handler                            
-0000fe43  RTC_IRQHandler                            
-0000fe43  SPI0_IRQHandler                           
-0000fe43  SPI1_IRQHandler                           
-0000fe43  SVC_Handler                               
-0000fe43  TIMA0_IRQHandler                          
-0000fe43  TIMA1_IRQHandler                          
-0000fe43  TIMG0_IRQHandler                          
-0000fe43  TIMG12_IRQHandler                         
-0000fe43  TIMG6_IRQHandler                          
-0000fe43  TIMG7_IRQHandler                          
-0000fe43  TIMG8_IRQHandler                          
-0000fe43  UART0_IRQHandler                          
-0000fe43  UART1_IRQHandler                          
-0000fe43  UART2_IRQHandler                          
-0000fe45  ObstacleMonitor_Update_20ms               
-0000fee1  memcpy                                    
-0000ff7b  TrackSensor_Init                          
-000100ad  Gimbal_YawDisableWorldLock                
-00010139  Gimbal_YawStopHold                        
-000101c5  SYSCFG_DL_PWM_MOTOR_init                  
-00010251  __aeabi_fmul                              
-00010251  __mulsf3                                  
-00010369  CarController_GetFeedback                 
-00010371  strcmp                                    
-000103f9  CarController_SetSafetyHold               
-0001047d  GimbalStepper_ConfirmZero                 
-00010501  GimbalTracker_PushObservation             
-00010585  Motor_Init                                
-00010609  App_Init                                  
-0001068b  __aeabi_idiv0                             
-0001068d  __aeabi_fdiv                              
-0001068d  __divsf3                                  
-0001070f  __aeabi_ldiv0                             
-00010711  GimbalTracker_Init                        
-00010791  Motor_Stop                                
-00010811  VisionPitchTuning_Set                     
-0001088d  __TI_decompress_lzss                      
-000109f5  GimbalStepper_Release                     
-00010a65  SYSCFG_DL_UART_VISION_init                
-00010ad5  VisionYawTuning_Set                       
-00010b45  TrackSensor_DetectTurn                    
-00010bb5  GimbalVisionYawTracker_Init               
-00010c21  MissionManager_GetSelectedMissionIndex    
-00010cf1  TrackSensor_GetErrorFromRaw               
-00010d59  Gimbal_YawRelease                         
-00010dbd  Menu_GetParamValue                        
-00010e21  __aeabi_fcmpeq                            
-00010e35  __aeabi_fcmplt                            
-00010e49  __aeabi_fcmple                            
-00010e5d  __aeabi_fcmpge                            
-00010e71  __aeabi_fcmpgt                            
-00010e83  memset                                    
-00010ee5  GimbalTracker_Enable                      
-00010f45  GimbalTracker_GetFeedback                 
-00010fa5  VisionTuningConsole_Init                  
-00011005  __aeabi_f2lz                              
-00011005  __fixsfdi                                 
-00011065  UART3_IRQHandler                          
-000110c1  Ultrasonic_Update_20ms                    
-00011179  Gimbal_YawMoveRelativeDeg                 
-000111d1  OLED_PrintChar                            
-00011229  __aeabi_idiv                              
-00011229  __aeabi_idivmod                           
-00011281  CarController_Stop                        
-000112d5  TrackSensor_ReadRaw                       
-000113d1  Ultrasonic_Init                           
-00011421  WatchdogMonitor_ApplyFaultIfNeeded        
-00011471  __aeabi_l2f                               
-00011471  __floatdisf                               
-000114c1  MissionManager_Start                      
-0001150d  MotorControl_Stop                         
-00011559  WatchdogMonitor_Tick1msFromIsr            
-000115f1  DL_UART_init                              
-00011639  MotionAction_ReapplyControllerTarget      
-00011681  Encoder_GetAndClearPulseDeltas            
-000116c5  Imu_ResetYaw                              
-00011709  Servo_Tick100us                           
-0001174d  EmergencyStop_Reset                       
-0001178d  GimbalVisionPitchTracker_Init             
-000117cd  MissionManager_Init                       
-0001180d  SYSCFG_DL_SYSCTL_init                     
-0001184d  SYSCFG_DL_initPower                       
-0001188d  VisionReceiver_PushByteFromIsr            
-000118cd  __aeabi_uidiv                             
-000118cd  __aeabi_uidivmod                          
-0001190d  __divmoddi4                               
-0001194d  GimbalTracker_ClearObservation            
-00011989  Servo_SetAngleDeg                         
-000119c5  VisionTuningConsole_PushByteFromIsr       
-00011a01  __aeabi_i2f                               
-00011a01  __floatsisf                               
-00011a3d  __gesf2                                   
-00011a3d  __gtsf2                                   
-00011ab5  __TI_auto_init_nobinit_nopinit            
-00011af1  __cmpsf2                                  
-00011af1  __eqsf2                                   
-00011af1  __lesf2                                   
-00011af1  __ltsf2                                   
-00011af1  __nesf2                                   
-00011b2d  __muldsi3                                 
-00011b69  VisionReceiver_Init                       
-00011ba1  __aeabi_f2iz                              
-00011ba1  __fixsfsi                                 
-00011bd9  EmergencyStop_Trigger                     
-00011c0d  Imu_IsReady                               
-00011c41  VisionTuningConsole_TryPopTxByte          
-00011c75  VisionUart_Process                        
-00011cdd  OLED_PrintString                          
-00011d11  CarController_StartSeekLine               
-00011d41  Fault_Raise                               
-00011d71  GimbalVisionYawTracker_GetFeedback        
-00011da1  Gimbal_PitchGetFeedback                   
-00011dd1  Key_Init                                  
-00011e01  LineController_ObserveSensors             
-00011e31  MissionManager_Resume                     
-00011e61  VisionPitchTuning_RestoreDefault          
-00011e91  WatchdogMonitor_Init                      
-00011ef1  Encoder_Reset                             
-00011f1d  MissionManager_Cancel                     
-00011f49  MissionManager_Reset                      
-00011f75  TrackSensor_CountBlack                    
-00011fa1  VisionYawTuning_RestoreDefault            
-00011ff9  ObstacleAvoidance_Init                    
-00012021  Servo_Init                                
-00012049  VisionPitchTuning_Init                    
-00012071  WatchdogMonitor_Reset                     
-00012099  __aeabi_ui2f                              
-00012099  __floatunsisf                             
-000120c1  memmove                                   
-000120e9  _c_int00_noargs                           
-00012111  EmergencyStop_Enforce                     
-00012135  GimbalVisionPitchTracker_GetFeedback      
-00012159  MissionLibrary_FindById                   
-0001217d  MissionManager_ReportExternalFailure      
-000121a1  MotorControl_Init                         
-000121c5  MotorControl_Reset                        
-000121e9  OLED_ClearBuffer                          
-0001220d  SYSCFG_DL_init                            
-00012231  VisionYawTuning_Init                      
-00012255  __aeabi_lmul                              
-00012255  __muldi3                                  
-00012279  DL_Timer_overrideCCPOut                   
-00012299  DebugTelemetry_Update                     
-000122b9  MissionManager_Pause                      
-000122d9  MotionAction_GetCurrentBypassDirection    
-000122f9  MotionAction_GetCurrentObstaclePolicy     
-00012319  OLED_SetCursor                            
-00012339  SchedulerMonitor_GetStats                 
-00012359  VisionReceiver_GetProtocolErrorCount      
-00012399  __aeabi_llsl                              
-00012399  __ashldi3                                 
-000123b9  DL_Timer_setCaptCompUpdateMethod          
-000123d5  DL_Timer_setClockConfig                   
-000123f1  GimbalVisionAdapter_Init                  
-0001240d  HeadingControl_SetTargetYaw               
-00012429  Menu_Init                                 
-00012445  MotionAction_Cancel                       
-00012461  ObstacleMonitor_Init                      
-0001247d  ObstacleSafety_Init                       
-00012499  VisionPitchTuning_ParamName               
-000124b5  VisionYawTuning_GetSnapshot               
-000124d1  VisionYawTuning_ParamName                 
-000124ed  WatchdogMonitor_NotifyControlCycleComplete
-00012525  DL_Timer_setCaptureCompareOutCtl          
-0001253d  DebugTelemetry_Init                       
-00012555  HeadingControl_Init                       
-0001256d  HeadingControl_Reset                      
-00012585  Menu_ParamItemToString                    
-0001259d  MotionAction_Init                         
-000125b5  RuntimeSnapshot_Init                      
-000125cd  __aeabi_fcmpun                            
-000125cd  __unordsf2                                
-000125e5  Fault_Clear                               
-000125f9  Fault_Init                                
-0001260d  GROUP1_IRQHandler                         
-00012621  GimbalStepper_SetStepHalfPeriodTicks      
-00012635  HeadingControl_Enable                     
-00012649  MissionLibrary_GetByIndex                 
-0001265d  MissionManager_GetSelectedMissionId       
-00012671  VisionPitchTuning_GetSnapshot             
-00012685  VisionUart_Init                           
-00012699  __aeabi_ldivmod                           
-000126ad  __aeabi_uldivmod                          
-000126c1  DL_UART_setClockConfig                    
-000126d3  __TI_decompress_none                      
-000126e5  DL_Timer_setCaptureCompareValue           
-000126f5  Gimbal_YawGetFeedback                     
-00012705  Key_GetEvent                              
-00012715  ObstacleAvoidance_IsResumeGraceActive     
-00012725  __TI_zero_init                            
-00012735  CarController_GetRunMode                  
-00012741  CarController_Init                        
-0001274d  CarController_IsSafetyHoldActive          
-00012759  CarState_Get                              
-00012765  CarState_Init                             
-00012771  CarState_Set                              
-0001277d  EmergencyStop_Init                        
-00012789  EmergencyStop_IsActive                    
-00012795  GimbalVisionAdapter_GetObservation        
-000127a1  Gimbal_Tick100us                          
-000127ad  Gimbal_Update5ms                          
-000127b9  Imu_GetCorrectedGyroZDps                  
-000127c5  Imu_GetYaw                                
-000127d1  Menu_GetPage                              
-000127dd  Menu_GetParamItem                         
-000127e9  MissionManager_IsExternallyHeld           
-000127f5  MissionManager_SetExternalHold            
-00012801  ObstacleAvoidance_IsActive                
-0001280d  ObstacleAvoidance_IsFailed                
-00012819  ObstacleSafety_IsHolding                  
-00012825  SystemTime_GetMs                          
-00012831  WatchdogMonitor_HasTripped                
-0001283d  __aeabi_memclr                            
-0001283d  __aeabi_memclr4                           
-0001283d  __aeabi_memclr8                           
-00012849  DL_Common_delayCycles                     
-00012853  TrackSensor_IsCenterDetected              
-0001285d  TrackSensor_IsLineDetected                
-00012867  TrackSensor_IsLineLost                    
-00012871  Fault_GetRecord                           
-00012879  GimbalStepper_GetFeedback                 
-00012881  GimbalVisionAdapter_GetFeedback           
-00012889  Gimbal_PitchStopTrackingHold              
-00012891  HeadingControl_GetRuntime                 
-00012899  Imu_GetRuntime                            
-000128a1  LineController_GetRuntime                 
-000128a9  MissionManager_GetMissionCount            
-000128b1  MissionManager_GetRuntime                 
-000128b9  MotionAction_GetRuntime                   
-000128c1  MotorControl_GetRuntime                   
-000128c9  ObstacleAvoidance_GetFeedback             
-000128d1  ObstacleMonitor_GetFeedback               
-000128d9  OledUi_Init                               
-000128e1  RuntimeSnapshot_Get                       
-000128e9  Servo_GetFeedback                         
-000128f1  Ultrasonic_GetFeedback                    
-000128f9  VisionPitchTuning_GetStatus               
-00012901  VisionReceiver_GetObservation             
-00012909  VisionReceiver_GetStatus                  
-00012911  VisionTuningConsole_GetStatus             
-00012919  WatchdogMonitor_GetStatus                 
-00012921  WheelSpeedEstimator_GetRuntime            
-00012929  __aeabi_memcpy                            
-00012929  __aeabi_memcpy4                           
-00012929  __aeabi_memcpy8                           
-00012931  __aeabi_memmove                           
-00012931  __aeabi_memmove4                          
-00012931  __aeabi_memmove8                          
-00012939  abort                                     
-0001293e  C$$EXIT                                   
-0001293f  HOSTexit                                  
-00012943  MissionLibrary_GetCount                   
-00012947  Reset_Handler                             
-0001295d  _system_pre_init                          
+000058e1  LineController_Update                     
+00005dd1  Menu_HandleKeyEvent                       
+00006259  RuntimeSnapshot_Update                    
+000066d9  GimbalTracker_Update                      
+00006fa1  WheelSpeedEstimator_Update                
+000073c5  Imu_Update                                
+000077a5  VisionReceiver_Process                    
+00007b55  GimbalVisionYawTracker_Update10ms         
+00007edd  Imu_Init                                  
+000085c1  ObstacleAvoidance_Update_20ms             
+00008f05  MotionAction_Update_20ms                  
+0000947d  Gimbal_YawSetWrappedTargetDeg             
+00009715  Gimbal_YawUpdate5ms                       
+000099a9  Gimbal_PitchSetTrackingSpeedDegS          
+00009c39  MotorControl_Update                       
+0000a5a1  Imu_CalibrateGyroBias                     
+0000a7d1  GimbalVisionPitchTracker_Update10ms       
+0000a9f9  Motor_SetSpeed                            
+0000abfd  VisionProtocol_ParseV1TargetFrame         
+0000adf1  AppConfig_InitDefault                     
+0000b3b1  CarController_StartDriveDistanceAtYaw     
+0000b751  Gimbal_PitchUpdate5ms                     
+0000bac5  CarController_Update_20ms                 
+0000bc71  Ultrasonic_Tick100us                      
+0000be11  GimbalStepper_Tick100us                   
+0000bfa5  GimbalVisionYawTracker_Enable             
+0000c12d  MotionAction_Start                        
+0000c2b5  Gimbal_PitchTick100us                     
+0000c435  GimbalStepper_MoveToEstimatedSteps        
+0000c5b1  Key_Update_20ms                           
+0000c725  OLED_FlushPage                            
+0000c895  Gimbal_Init                               
+0000ca01  OLED_PrintInt16                           
+0000cb6d  main                                      
+0000d371  Gimbal_YawEnableWorldLock                 
+0000d499  OLED_Init                                 
+0000d925  CarController_StartDriveDistance          
+0000da41  LineController_Reset                      
+0000db5d  App_Update_20ms                           
+0000dc75  MissionLibrary_Validate                   
+0000df95  DL_Timer_initFourCCPWMMode                
+0000e099  LineController_ResetControlState          
+0000e19d  MissionManager_Update_20ms                
+0000e2a1  MotorControl_SetNormalizedTarget          
+0000e3a1  Gimbal_PitchRelease                       
+0000e49d  SysTick_Handler                           
+0000e599  LineController_Init                       
+0000e691  Gimbal_PitchStopHold                      
+0000e781  CarController_StartTurnToYawRelative      
+0000e86d  HeadingControl_Update                     
+0000eb2d  CarController_StartDriveHeading           
+0000ec11  MissionManager_SelectNext                 
+0000ecf5  ObstacleSafety_Update_20ms                
+0000edd5  WheelSpeedEstimator_Init                  
+0000eeb5  Gimbal_PitchConfirmZero                   
+0000ef91  SYSCFG_DL_GPIO_init                       
+0000f149  OLED_PrintUInt16                          
+0000f221  __aeabi_fsub                              
+0000f221  __subsf3                                  
+0000f22b  __addsf3                                  
+0000f22b  __aeabi_fadd                              
+0000f2f9  MissionManager_SelectPrevious             
+0000f3c5  FaultCode_ToShortString                   
+0000f48d  Gimbal_YawConfirmZero                     
+0000f555  Angle_Normalize180                        
+0000f615  CarController_StartFollowLine             
+0000f6d5  CarController_StartTurnLeft90             
+0000f789  CarController_StartTurnRight90            
+0000f83d  GimbalStepper_StopHold                    
+0000f8f1  GimbalVisionAdapter_Update                
+0000f9a5  GimbalStepper_Init                        
+0000fa55  Gimbal_PitchMoveRelativeDeg               
+0000fb05  GimbalVisionPitchTracker_Enable           
+0000fbad  CarController_ResetRuntime                
+0000fc51  Encoder_HandleGpioInterrupt               
+0000fd99  __udivmoddi4                              
+0000fe3b  ADC0_IRQHandler                           
+0000fe3b  ADC1_IRQHandler                           
+0000fe3b  AES_IRQHandler                            
+0000fe3b  CANFD0_IRQHandler                         
+0000fe3b  DAC0_IRQHandler                           
+0000fe3b  DMA_IRQHandler                            
+0000fe3b  Default_Handler                           
+0000fe3b  GROUP0_IRQHandler                         
+0000fe3b  HardFault_Handler                         
+0000fe3b  I2C0_IRQHandler                           
+0000fe3b  I2C1_IRQHandler                           
+0000fe3b  NMI_Handler                               
+0000fe3b  PendSV_Handler                            
+0000fe3b  RTC_IRQHandler                            
+0000fe3b  SPI0_IRQHandler                           
+0000fe3b  SPI1_IRQHandler                           
+0000fe3b  SVC_Handler                               
+0000fe3b  TIMA0_IRQHandler                          
+0000fe3b  TIMA1_IRQHandler                          
+0000fe3b  TIMG0_IRQHandler                          
+0000fe3b  TIMG12_IRQHandler                         
+0000fe3b  TIMG6_IRQHandler                          
+0000fe3b  TIMG7_IRQHandler                          
+0000fe3b  TIMG8_IRQHandler                          
+0000fe3b  UART0_IRQHandler                          
+0000fe3b  UART1_IRQHandler                          
+0000fe3b  UART2_IRQHandler                          
+0000fe3d  ObstacleMonitor_Update_20ms               
+0000fed9  memcpy                                    
+0000ff73  TrackSensor_Init                          
+000100a5  Gimbal_YawDisableWorldLock                
+00010131  Gimbal_YawStopHold                        
+000101bd  SYSCFG_DL_PWM_MOTOR_init                  
+00010249  __aeabi_fmul                              
+00010249  __mulsf3                                  
+00010361  strcmp                                    
+000103e9  CarController_SetSafetyHold               
+0001046d  GimbalStepper_ConfirmZero                 
+000104f1  GimbalTracker_PushObservation             
+00010575  Motor_Init                                
+000105f9  App_Init                                  
+0001067b  __aeabi_idiv0                             
+0001067d  __aeabi_fdiv                              
+0001067d  __divsf3                                  
+000106ff  __aeabi_ldiv0                             
+00010701  GimbalTracker_Init                        
+00010781  Motor_Stop                                
+00010801  VisionPitchTuning_Set                     
+0001087d  __TI_decompress_lzss                      
+000109e5  GimbalStepper_Release                     
+00010a55  SYSCFG_DL_UART_VISION_init                
+00010ac5  VisionYawTuning_Set                       
+00010b35  TrackSensor_DetectTurn                    
+00010ba5  GimbalVisionYawTracker_Init               
+00010c11  MissionManager_GetSelectedMissionIndex    
+00010ce1  TrackSensor_GetErrorFromRaw               
+00010d49  Gimbal_YawRelease                         
+00010dad  Menu_GetParamValue                        
+00010e11  __aeabi_fcmpeq                            
+00010e25  __aeabi_fcmplt                            
+00010e39  __aeabi_fcmple                            
+00010e4d  __aeabi_fcmpge                            
+00010e61  __aeabi_fcmpgt                            
+00010e73  memset                                    
+00010ed5  GimbalTracker_Enable                      
+00010f35  GimbalTracker_GetFeedback                 
+00010f95  VisionTuningConsole_Init                  
+00010ff5  __aeabi_f2lz                              
+00010ff5  __fixsfdi                                 
+00011055  UART3_IRQHandler                          
+000110b1  Ultrasonic_Update_20ms                    
+00011169  Gimbal_YawMoveRelativeDeg                 
+000111c1  OLED_PrintChar                            
+00011219  __aeabi_idiv                              
+00011219  __aeabi_idivmod                           
+00011271  CarController_Stop                        
+000112c5  TrackSensor_ReadRaw                       
+000113c1  Ultrasonic_Init                           
+00011411  WatchdogMonitor_ApplyFaultIfNeeded        
+00011461  __aeabi_l2f                               
+00011461  __floatdisf                               
+000114b1  MissionManager_Start                      
+000114fd  MotorControl_Stop                         
+00011549  WatchdogMonitor_Tick1msFromIsr            
+000115e1  DL_UART_init                              
+00011629  MotionAction_ReapplyControllerTarget      
+00011671  Encoder_GetAndClearPulseDeltas            
+000116b5  Imu_ResetYaw                              
+000116f9  Servo_Tick100us                           
+0001173d  EmergencyStop_Reset                       
+0001177d  GimbalVisionPitchTracker_Init             
+000117bd  MissionManager_Init                       
+000117fd  SYSCFG_DL_SYSCTL_init                     
+0001183d  SYSCFG_DL_initPower                       
+0001187d  VisionReceiver_PushByteFromIsr            
+000118bd  __aeabi_uidiv                             
+000118bd  __aeabi_uidivmod                          
+000118fd  __divmoddi4                               
+0001193d  GimbalTracker_ClearObservation            
+00011979  Servo_SetAngleDeg                         
+000119b5  VisionTuningConsole_PushByteFromIsr       
+000119f1  __aeabi_i2f                               
+000119f1  __floatsisf                               
+00011a2d  __gesf2                                   
+00011a2d  __gtsf2                                   
+00011aa5  __TI_auto_init_nobinit_nopinit            
+00011ae1  __cmpsf2                                  
+00011ae1  __eqsf2                                   
+00011ae1  __lesf2                                   
+00011ae1  __ltsf2                                   
+00011ae1  __nesf2                                   
+00011b1d  __muldsi3                                 
+00011b59  VisionReceiver_Init                       
+00011b91  __aeabi_f2iz                              
+00011b91  __fixsfsi                                 
+00011bc9  EmergencyStop_Trigger                     
+00011bfd  Imu_IsReady                               
+00011c31  VisionTuningConsole_TryPopTxByte          
+00011c65  VisionUart_Process                        
+00011ccd  OLED_PrintString                          
+00011d01  CarController_StartSeekLine               
+00011d31  Fault_Raise                               
+00011d61  GimbalVisionYawTracker_GetFeedback        
+00011d91  Gimbal_PitchGetFeedback                   
+00011dc1  Key_Init                                  
+00011df1  LineController_ObserveSensors             
+00011e21  MissionManager_Resume                     
+00011e51  VisionPitchTuning_RestoreDefault          
+00011e81  WatchdogMonitor_Init                      
+00011ee1  Encoder_Reset                             
+00011f0d  MissionManager_Cancel                     
+00011f39  MissionManager_Reset                      
+00011f65  TrackSensor_CountBlack                    
+00011f91  VisionYawTuning_RestoreDefault            
+00011fe9  ObstacleAvoidance_Init                    
+00012011  Servo_Init                                
+00012039  VisionPitchTuning_Init                    
+00012061  WatchdogMonitor_Reset                     
+00012089  __aeabi_ui2f                              
+00012089  __floatunsisf                             
+000120b1  memmove                                   
+000120d9  _c_int00_noargs                           
+00012101  EmergencyStop_Enforce                     
+00012125  GimbalVisionPitchTracker_GetFeedback      
+00012149  MissionLibrary_FindById                   
+0001216d  MissionManager_ReportExternalFailure      
+00012191  MotorControl_Init                         
+000121b5  MotorControl_Reset                        
+000121d9  OLED_ClearBuffer                          
+000121fd  SYSCFG_DL_init                            
+00012221  VisionYawTuning_Init                      
+00012245  __aeabi_lmul                              
+00012245  __muldi3                                  
+00012269  DL_Timer_overrideCCPOut                   
+00012289  DebugTelemetry_Update                     
+000122a9  MissionManager_Pause                      
+000122c9  MotionAction_GetCurrentBypassDirection    
+000122e9  MotionAction_GetCurrentObstaclePolicy     
+00012309  OLED_SetCursor                            
+00012329  SchedulerMonitor_GetStats                 
+00012349  VisionReceiver_GetProtocolErrorCount      
+00012389  __aeabi_llsl                              
+00012389  __ashldi3                                 
+000123a9  DL_Timer_setCaptCompUpdateMethod          
+000123c5  DL_Timer_setClockConfig                   
+000123e1  GimbalVisionAdapter_Init                  
+000123fd  HeadingControl_SetTargetYaw               
+00012419  Menu_Init                                 
+00012435  MotionAction_Cancel                       
+00012451  ObstacleMonitor_Init                      
+0001246d  ObstacleSafety_Init                       
+00012489  VisionPitchTuning_ParamName               
+000124a5  VisionYawTuning_GetSnapshot               
+000124c1  VisionYawTuning_ParamName                 
+000124dd  WatchdogMonitor_NotifyControlCycleComplete
+00012515  DL_Timer_setCaptureCompareOutCtl          
+0001252d  DebugTelemetry_Init                       
+00012545  HeadingControl_Init                       
+0001255d  HeadingControl_Reset                      
+00012575  Menu_ParamItemToString                    
+0001258d  MotionAction_Init                         
+000125a5  RuntimeSnapshot_Init                      
+000125bd  __aeabi_fcmpun                            
+000125bd  __unordsf2                                
+000125d5  Fault_Clear                               
+000125e9  Fault_Init                                
+000125fd  GROUP1_IRQHandler                         
+00012611  GimbalStepper_SetStepHalfPeriodTicks      
+00012625  HeadingControl_Enable                     
+00012639  MissionLibrary_GetByIndex                 
+0001264d  MissionManager_GetSelectedMissionId       
+00012661  VisionPitchTuning_GetSnapshot             
+00012675  VisionUart_Init                           
+00012689  __aeabi_ldivmod                           
+0001269d  __aeabi_uldivmod                          
+000126b1  DL_UART_setClockConfig                    
+000126c3  __TI_decompress_none                      
+000126d5  DL_Timer_setCaptureCompareValue           
+000126e5  Gimbal_YawGetFeedback                     
+000126f5  Key_GetEvent                              
+00012705  ObstacleAvoidance_IsResumeGraceActive     
+00012715  __TI_zero_init                            
+00012725  CarController_GetRunMode                  
+00012731  CarController_Init                        
+0001273d  CarController_IsSafetyHoldActive          
+00012749  CarState_Get                              
+00012755  CarState_Init                             
+00012761  CarState_Set                              
+0001276d  EmergencyStop_Init                        
+00012779  EmergencyStop_IsActive                    
+00012785  GimbalVisionAdapter_GetObservation        
+00012791  Gimbal_Tick100us                          
+0001279d  Gimbal_Update5ms                          
+000127a9  Imu_GetCorrectedGyroZDps                  
+000127b5  Imu_GetYaw                                
+000127c1  Menu_GetPage                              
+000127cd  Menu_GetParamItem                         
+000127d9  MissionManager_IsExternallyHeld           
+000127e5  MissionManager_SetExternalHold            
+000127f1  ObstacleAvoidance_IsActive                
+000127fd  ObstacleAvoidance_IsFailed                
+00012809  ObstacleSafety_IsHolding                  
+00012815  SystemTime_GetMs                          
+00012821  WatchdogMonitor_HasTripped                
+0001282d  __aeabi_memclr                            
+0001282d  __aeabi_memclr4                           
+0001282d  __aeabi_memclr8                           
+00012839  DL_Common_delayCycles                     
+00012843  TrackSensor_IsCenterDetected              
+0001284d  TrackSensor_IsLineDetected                
+00012857  TrackSensor_IsLineLost                    
+00012861  CarController_GetFeedback                 
+00012869  Fault_GetRecord                           
+00012871  GimbalStepper_GetFeedback                 
+00012879  GimbalVisionAdapter_GetFeedback           
+00012881  Gimbal_PitchStopTrackingHold              
+00012889  HeadingControl_GetRuntime                 
+00012891  Imu_GetRuntime                            
+00012899  LineController_GetRuntime                 
+000128a1  MissionManager_GetMissionCount            
+000128a9  MissionManager_GetRuntime                 
+000128b1  MotionAction_GetRuntime                   
+000128b9  MotorControl_GetRuntime                   
+000128c1  ObstacleAvoidance_GetFeedback             
+000128c9  ObstacleMonitor_GetFeedback               
+000128d1  OledUi_Init                               
+000128d9  RuntimeSnapshot_Get                       
+000128e1  Servo_GetFeedback                         
+000128e9  Ultrasonic_GetFeedback                    
+000128f1  VisionPitchTuning_GetStatus               
+000128f9  VisionReceiver_GetObservation             
+00012901  VisionReceiver_GetStatus                  
+00012909  VisionTuningConsole_GetStatus             
+00012911  WatchdogMonitor_GetStatus                 
+00012919  WheelSpeedEstimator_GetRuntime            
+00012921  __aeabi_memcpy                            
+00012921  __aeabi_memcpy4                           
+00012921  __aeabi_memcpy8                           
+00012929  __aeabi_memmove                           
+00012929  __aeabi_memmove4                          
+00012929  __aeabi_memmove8                          
+00012931  abort                                     
+00012936  C$$EXIT                                   
+00012937  HOSTexit                                  
+0001293b  MissionLibrary_GetCount                   
+0001293f  Reset_Handler                             
+00012955  _system_pre_init                          
 000131c0  __TI_Handler_Table_Base                   
 000131cc  __TI_Handler_Table_Limit                  
 000131dc  __TI_CINIT_Base                           

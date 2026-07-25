@@ -83,7 +83,8 @@ void AppConfig_InitDefault(void)
         IMU_MAX_ABS_GYRO_DPS_DEFAULT;
     g_appConfig.imu_yaw_axis_sign = IMU_YAW_AXIS_SIGN_DEFAULT;
 
-    g_appConfig.heading_kp = 20;
+    /* P6.3B initial straight-heading correction value; pending vehicle test. */
+    g_appConfig.heading_kp = 30;
     g_appConfig.heading_kd = 5;
     g_appConfig.heading_scale = 10;
     g_appConfig.heading_max_correction = 30;
