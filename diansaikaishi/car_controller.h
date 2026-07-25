@@ -15,7 +15,8 @@ typedef enum {
     TRACK_MODE_DRIVE_HEADING,
     TRACK_MODE_LOST_RECOVER,
     TRACK_MODE_IDLE,
-    TRACK_MODE_DRIVE_DISTANCE
+    TRACK_MODE_DRIVE_DISTANCE,
+    TRACK_MODE_DRIVE_DISTANCE_HEADING
 } TrackRunMode;
 
 typedef enum {
@@ -39,7 +40,8 @@ typedef enum {
     CAR_CONTROLLER_ERROR_IMU_NOT_READY,
     CAR_CONTROLLER_ERROR_YAW_TURN_TIMEOUT,
     CAR_CONTROLLER_ERROR_INVALID_MODE,
-    CAR_CONTROLLER_ERROR_ENCODER_NOT_READY
+    CAR_CONTROLLER_ERROR_ENCODER_NOT_READY,
+    CAR_CONTROLLER_ERROR_HEADING_START_MISMATCH
 } CarControllerErrorCode;
 
 typedef struct {
@@ -79,6 +81,11 @@ typedef struct {
     float drive_distance_travelled_cm;
     float drive_distance_remaining_cm;
     int16_t drive_distance_command;
+    bool drive_distance_heading_enabled;
+    bool drive_distance_heading_start_mismatch;
+    float drive_distance_target_yaw_deg;
+    float drive_distance_heading_error_deg;
+    int16_t drive_distance_heading_correction;
 } AppRuntime;
 
 typedef struct {
@@ -115,6 +122,8 @@ void CarController_StartDriveHeading(float target_yaw_deg,
     uint32_t duration_ms);
 void CarController_StartDriveDistance(float distance_cm,
     int16_t normalized_command);
+void CarController_StartDriveDistanceAtYaw(float distance_cm,
+    float target_yaw_deg, int16_t normalized_command);
 void CarController_SetSafetyHold(bool enable);
 bool CarController_IsSafetyHoldActive(void);
 TrackRunMode CarController_GetRunMode(void);

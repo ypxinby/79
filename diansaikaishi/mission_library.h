@@ -302,6 +302,18 @@
         } \
     }
 
+#define ACTION_DRIVE_DISTANCE_AT_YAW(distance, target_yaw, command, timeout) \
+    { \
+        .type = MOTION_ACTION_DRIVE_DISTANCE_HEADING, \
+        .timeout_ms = (uint32_t)(timeout), \
+        .max_retries = 0U, \
+        .params.drive_distance_heading = { \
+            .distance_cm = (float)(distance), \
+            .target_yaw_deg = (float)(target_yaw), \
+            .normalized_command = (int16_t)(command) \
+        } \
+    }
+
 typedef struct {
     uint8_t mission_id;
     const char *name;

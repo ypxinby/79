@@ -36,7 +36,8 @@ static uint16_t motion_action_add_elapsed_u16(uint16_t value,
 static bool motion_action_is_imu_dependent(MotionActionType type)
 {
     return (type == MOTION_ACTION_TURN_TO_YAW) ||
-        (type == MOTION_ACTION_DRIVE_HEADING_TIME);
+        (type == MOTION_ACTION_DRIVE_HEADING_TIME) ||
+        (type == MOTION_ACTION_DRIVE_DISTANCE_HEADING);
 }
 
 static void motion_action_start_imu_controller(const MotionAction *action)
@@ -45,10 +46,15 @@ static void motion_action_start_imu_controller(const MotionAction *action)
         CarController_StartTurnToYawRelative(
             action->params.turn_to_yaw.angle_deg,
             action->timeout_ms);
-    } else {
+    } else if (action->type == MOTION_ACTION_DRIVE_HEADING_TIME) {
         CarController_StartDriveHeading(
             action->params.drive_heading_time.target_yaw_deg,
             action->params.drive_heading_time.duration_ms);
+    } else {
+        CarController_StartDriveDistanceAtYaw(
+            action->params.drive_distance_heading.distance_cm,
+            action->params.drive_distance_heading.target_yaw_deg,
+            action->params.drive_distance_heading.normalized_command);
     }
 
     g_motionActionRuntime.controller_started = true;
@@ -142,6 +148,7 @@ static bool motion_action_check_timeout(void)
                 MOTION_ERROR_FOLLOW_TIMEOUT);
             break;
         case MOTION_ACTION_DRIVE_DISTANCE:
+        case MOTION_ACTION_DRIVE_DISTANCE_HEADING:
             motion_action_set_result(MOTION_RESULT_TIMEOUT,
                 MOTION_ERROR_DISTANCE_TIMEOUT);
             break;
@@ -205,6 +212,20 @@ bool MotionAction_Start(const MotionAction *action)
         motion_action_stop_car();
         return false;
     }
+    if ((action->type == MOTION_ACTION_DRIVE_DISTANCE_HEADING) &&
+        (!(action->params.drive_distance_heading.distance_cm > 0.0f) ||
+         (action->params.drive_distance_heading.target_yaw_deg !=
+            action->params.drive_distance_heading.target_yaw_deg) ||
+         (action->params.drive_distance_heading.target_yaw_deg < -180.0f) ||
+         (action->params.drive_distance_heading.target_yaw_deg > 180.0f) ||
+         (action->params.drive_distance_heading.normalized_command <= 0) ||
+         (action->params.drive_distance_heading.normalized_command >
+            MOTION_NORMALIZED_COMMAND_MAX))) {
+        motion_action_set_result(MOTION_RESULT_FAILED,
+            MOTION_ERROR_INVALID_ACTION);
+        motion_action_stop_car();
+        return false;
+    }
 
     switch (action->type) {
         case MOTION_ACTION_SEEK_LINE:
@@ -261,6 +282,17 @@ bool MotionAction_Start(const MotionAction *action)
                 action->params.drive_distance.normalized_command);
             motion_action_set_result(MOTION_RESULT_RUNNING,
                 MOTION_ERROR_NONE);
+            return true;
+
+        case MOTION_ACTION_DRIVE_DISTANCE_HEADING:
+            motion_action_set_result(MOTION_RESULT_RUNNING,
+                MOTION_ERROR_NONE);
+            if (Imu_IsReady()) {
+                motion_action_start_imu_controller(action);
+            } else {
+                motion_action_stop_car();
+                g_motionActionRuntime.waiting_for_imu = true;
+            }
             return true;
 
         case MOTION_ACTION_STOP:
@@ -470,6 +502,34 @@ MotionActionResult MotionAction_Update_20ms(uint32_t elapsed_ms)
                         CAR_CONTROLLER_ERROR_ENCODER_NOT_READY) ?
                         MOTION_ERROR_ENCODER_NOT_READY :
                         MOTION_ERROR_INVALID_ACTION);
+                break;
+            }
+            if (feedback->distance_completed) {
+                motion_action_set_result(MOTION_RESULT_SUCCESS,
+                    MOTION_ERROR_NONE);
+            }
+            break;
+        }
+
+        case MOTION_ACTION_DRIVE_DISTANCE_HEADING:
+        {
+            const CarControllerFeedback *feedback =
+                CarController_GetFeedback();
+
+            if (motion_action_car_is_error() || feedback->operation_failed) {
+                MotionErrorCode error = MOTION_ERROR_INVALID_ACTION;
+
+                if (feedback->error_code ==
+                    CAR_CONTROLLER_ERROR_ENCODER_NOT_READY) {
+                    error = MOTION_ERROR_ENCODER_NOT_READY;
+                } else if (feedback->error_code ==
+                    CAR_CONTROLLER_ERROR_IMU_NOT_READY) {
+                    error = MOTION_ERROR_IMU_NOT_READY;
+                } else if (feedback->error_code ==
+                    CAR_CONTROLLER_ERROR_HEADING_START_MISMATCH) {
+                    error = MOTION_ERROR_HEADING_START_MISMATCH;
+                }
+                motion_action_set_result(MOTION_RESULT_FAILED, error);
                 break;
             }
             if (feedback->distance_completed) {

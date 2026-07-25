@@ -15,7 +15,8 @@ typedef enum {
     MOTION_ACTION_DRIVE_HEADING_TIME,
     MOTION_ACTION_WAIT,
     MOTION_ACTION_STOP,
-    MOTION_ACTION_DRIVE_DISTANCE
+    MOTION_ACTION_DRIVE_DISTANCE,
+    MOTION_ACTION_DRIVE_DISTANCE_HEADING
 } MotionActionType;
 
 typedef enum {
@@ -64,7 +65,8 @@ typedef enum {
     MOTION_ERROR_INVALID_ACTION,
     MOTION_ERROR_INVALID_MISSION,
     MOTION_ERROR_ENCODER_NOT_READY,
-    MOTION_ERROR_DISTANCE_TIMEOUT
+    MOTION_ERROR_DISTANCE_TIMEOUT,
+    MOTION_ERROR_HEADING_START_MISMATCH
 } MotionErrorCode;
 
 typedef struct {
@@ -107,6 +109,12 @@ typedef struct {
             float distance_cm;
             int16_t normalized_command;
         } drive_distance;
+
+        struct {
+            float distance_cm;
+            float target_yaw_deg;
+            int16_t normalized_command;
+        } drive_distance_heading;
 
         struct {
             uint32_t wait_ms;

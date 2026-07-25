@@ -104,6 +104,11 @@ typedef struct {
     float drive_distance_remaining_cm;
     int16_t drive_distance_command;
     uint16_t drive_distance_settle_elapsed_ms;
+    bool drive_distance_heading_enabled;
+    bool drive_distance_heading_start_mismatch;
+    float drive_distance_target_yaw_deg;
+    float drive_distance_heading_error_deg;
+    int16_t drive_distance_heading_correction;
     uint32_t app_missed_count;
     uint32_t app_drop_count;
     uint32_t app_overrun_count;

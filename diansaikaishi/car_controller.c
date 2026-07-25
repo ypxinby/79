@@ -180,11 +180,17 @@ static void reset_drive_distance_runtime(void)
     g_appRuntime.drive_distance_remaining_cm = 0.0f;
     g_appRuntime.drive_distance_command = 0;
     g_appRuntime.drive_distance_settle_elapsed_ms = 0U;
+    g_appRuntime.drive_distance_heading_enabled = false;
+    g_appRuntime.drive_distance_heading_start_mismatch = false;
+    g_appRuntime.drive_distance_target_yaw_deg = 0.0f;
+    g_appRuntime.drive_distance_heading_error_deg = 0.0f;
+    g_appRuntime.drive_distance_heading_correction = 0;
 }
 
 static bool abort_active_drive_distance(void)
 {
-    if ((g_appRuntime.run_mode != TRACK_MODE_DRIVE_DISTANCE) ||
+    if (((g_appRuntime.run_mode != TRACK_MODE_DRIVE_DISTANCE) &&
+         (g_appRuntime.run_mode != TRACK_MODE_DRIVE_DISTANCE_HEADING)) ||
         ((g_appRuntime.drive_distance_state != DRIVE_DISTANCE_STATE_DRIVE) &&
          (g_appRuntime.drive_distance_state != DRIVE_DISTANCE_STATE_SLOW) &&
          (g_appRuntime.drive_distance_state != DRIVE_DISTANCE_STATE_SETTLE))) {
@@ -349,6 +355,7 @@ static void reset_heading_action_runtime(void)
     g_appRuntime.yaw_turn_stable_ms = 0U;
     g_appRuntime.heading_straight_elapsed_ms = 0U;
     g_appRuntime.heading_imu_invalid_elapsed_ms = 0U;
+    g_appRuntime.drive_distance_heading_correction = 0;
     reset_heading_control_runtime();
 }
 
@@ -563,17 +570,28 @@ static void handle_drive_heading(uint32_t elapsed_ms)
         (int16_t)((int32_t)g_appConfig.search_speed - correction));
 }
 
-static void handle_drive_distance(uint32_t elapsed_ms)
+static void handle_drive_distance(uint32_t elapsed_ms,
+    bool heading_enabled)
 {
     const volatile WheelSpeedEstimatorRuntime *wheel =
         WheelSpeedEstimator_GetRuntime();
     int16_t command;
+    int16_t correction = 0;
+    int16_t maximumCorrection;
     float leftSpeedAbs;
     float rightSpeedAbs;
 
     g_appRuntime.correction = 0;
     g_appRuntime.heading_correction = 0;
-    reset_heading_control_runtime();
+    g_appRuntime.drive_distance_heading_correction = 0;
+    if (heading_enabled) {
+        if (heading_imu_wait_or_fail(elapsed_ms)) {
+            return;
+        }
+    } else {
+        g_appRuntime.drive_distance_heading_error_deg = 0.0f;
+        reset_heading_control_runtime();
+    }
 
     if ((g_appRuntime.drive_distance_state == DRIVE_DISTANCE_STATE_ERROR) ||
         !wheel->valid || wheel->stale || (wheel->error_flags != 0U)) {
@@ -583,7 +601,9 @@ static void handle_drive_distance(uint32_t elapsed_ms)
         g_appRuntime.drive_distance_state = DRIVE_DISTANCE_STATE_ERROR;
         g_carControllerFeedback.operation_failed = true;
         g_carControllerFeedback.error_code =
-            CAR_CONTROLLER_ERROR_ENCODER_NOT_READY;
+            g_appRuntime.drive_distance_heading_start_mismatch ?
+                CAR_CONTROLLER_ERROR_HEADING_START_MISMATCH :
+                CAR_CONTROLLER_ERROR_ENCODER_NOT_READY;
         return;
     }
 
@@ -599,6 +619,7 @@ static void handle_drive_distance(uint32_t elapsed_ms)
         g_appRuntime.left_speed = 0;
         g_appRuntime.right_speed = 0;
         g_carControllerFeedback.distance_completed = true;
+        HeadingControl_Enable(false);
         return;
     }
 
@@ -609,6 +630,7 @@ static void handle_drive_distance(uint32_t elapsed_ms)
         stop_output();
         g_appRuntime.left_speed = 0;
         g_appRuntime.right_speed = 0;
+        HeadingControl_Enable(false);
 
         leftSpeedAbs = abs_float(wheel->left_speed_cmps);
         rightSpeedAbs = abs_float(wheel->right_speed_cmps);
@@ -641,7 +663,34 @@ static void handle_drive_distance(uint32_t elapsed_ms)
         g_appRuntime.drive_distance_state = DRIVE_DISTANCE_STATE_DRIVE;
     }
 
-    set_output_speed(command, command);
+    if (heading_enabled) {
+        if (!HeadingControl_GetRuntime()->target_locked) {
+            HeadingControl_SetTargetYaw(
+                g_appRuntime.drive_distance_target_yaw_deg);
+            HeadingControl_Enable(true);
+        }
+        correction = HeadingControl_Update(Imu_GetYaw(),
+            Imu_GetCorrectedGyroZDps(), (float)elapsed_ms / 1000.0f);
+        g_appRuntime.drive_distance_heading_error_deg =
+            HeadingControl_GetRuntime()->heading_error_deg;
+
+        maximumCorrection = command;
+        if (maximumCorrection > (MOTOR_MAX_DUTY - command)) {
+            maximumCorrection = (int16_t)(MOTOR_MAX_DUTY - command);
+        }
+        if (maximumCorrection < 0) {
+            maximumCorrection = 0;
+        }
+        correction = clamp_i16(correction,
+            (int16_t)-maximumCorrection, maximumCorrection);
+        g_appRuntime.drive_distance_heading_correction = correction;
+        g_appRuntime.heading_correction = correction;
+        g_appRuntime.correction = correction;
+        set_output_speed((int16_t)(command + correction),
+            (int16_t)(command - correction));
+    } else {
+        set_output_speed(command, command);
+    }
 }
 
 void CarController_Init(void)
@@ -848,6 +897,56 @@ void CarController_StartDriveDistance(float distance_cm,
     CarState_Set(CAR_STATE_RUNNING);
 }
 
+void CarController_StartDriveDistanceAtYaw(float distance_cm,
+    float target_yaw_deg, int16_t normalized_command)
+{
+    const volatile WheelSpeedEstimatorRuntime *wheel;
+    float startError;
+    bool targetYawValid;
+
+    if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
+        stop_output();
+        return;
+    }
+
+    stop_output();
+    CarController_ResetTransientState();
+    g_followTurnPolicy = CAR_TURN_POLICY_IGNORE;
+    g_appRuntime.drive_distance_heading_enabled = true;
+    g_appRuntime.drive_distance_target_cm = distance_cm;
+    g_appRuntime.drive_distance_remaining_cm = distance_cm;
+    g_appRuntime.drive_distance_command = clamp_i16(normalized_command,
+        1, MOTOR_MAX_DUTY);
+    targetYawValid = (target_yaw_deg == target_yaw_deg) &&
+        (target_yaw_deg >= -180.0f) && (target_yaw_deg <= 180.0f);
+    g_appRuntime.drive_distance_target_yaw_deg = targetYawValid ?
+        Angle_Normalize180(target_yaw_deg) : 0.0f;
+    startError = Angle_Normalize180(
+        g_appRuntime.drive_distance_target_yaw_deg - Imu_GetYaw());
+    g_appRuntime.drive_distance_heading_error_deg = startError;
+    g_appRuntime.run_mode = TRACK_MODE_DRIVE_DISTANCE_HEADING;
+
+    wheel = WheelSpeedEstimator_GetRuntime();
+    if (!(distance_cm > 0.0f) || !targetYawValid ||
+        (normalized_command <= 0) || !wheel->valid || wheel->stale ||
+        (wheel->error_flags != 0U) || !Imu_IsReady()) {
+        g_appRuntime.drive_distance_state = DRIVE_DISTANCE_STATE_ERROR;
+    } else if (abs_float(startError) >
+        g_appConfig.drive_distance_heading_start_error_limit_deg) {
+        g_appRuntime.drive_distance_heading_start_mismatch = true;
+        g_appRuntime.drive_distance_state = DRIVE_DISTANCE_STATE_ERROR;
+    } else {
+        g_appRuntime.drive_distance_start_center_cm =
+            wheel->center_distance_cm;
+        g_appRuntime.drive_distance_state = DRIVE_DISTANCE_STATE_DRIVE;
+        HeadingControl_SetTargetYaw(
+            g_appRuntime.drive_distance_target_yaw_deg);
+        HeadingControl_Enable(true);
+    }
+
+    CarState_Set(CAR_STATE_RUNNING);
+}
+
 void CarController_SetSafetyHold(bool enable)
 {
     if (!enable && (EmergencyStop_IsActive() ||
@@ -941,7 +1040,10 @@ void CarController_Update_20ms(uint32_t elapsed_ms)
             handle_drive_heading(elapsed_ms);
             break;
         case TRACK_MODE_DRIVE_DISTANCE:
-            handle_drive_distance(elapsed_ms);
+            handle_drive_distance(elapsed_ms, false);
+            break;
+        case TRACK_MODE_DRIVE_DISTANCE_HEADING:
+            handle_drive_distance(elapsed_ms, true);
             break;
         default:
             stop_output();
@@ -990,6 +1092,8 @@ const char *CarController_RunModeToString(TrackRunMode mode)
             return "HEAD";
         case TRACK_MODE_DRIVE_DISTANCE:
             return "DIST";
+        case TRACK_MODE_DRIVE_DISTANCE_HEADING:
+            return "D-YAW";
         case TRACK_MODE_LOST_RECOVER:
             return "LOST";
         default:

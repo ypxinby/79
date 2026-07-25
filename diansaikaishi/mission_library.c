@@ -93,7 +93,8 @@ static const MotionAction g_missionTestSeekThenStop[] = {
 #define TEST_HEADING_DRIVE_MS           (3000U)
 #define TEST_HEADING_TIMEOUT_MS         (4000U)
 #define TEST_DISTANCE_TARGET_CM         (20.0f)
-#define TEST_DISTANCE_COMMAND           (200)
+#define TEST_DISTANCE_TARGET_YAW_DEG    (45.0f)
+#define TEST_DISTANCE_COMMAND           (300)
 #define TEST_DISTANCE_TIMEOUT_MS        (5000U)
 
 static const MotionAction g_missionTestTurn[] = {
@@ -119,8 +120,9 @@ static const MotionAction g_missionTestHeadingDrive[] = {
 
 static const MotionAction g_missionTestDistance20[] = {
     ACTION_WAIT_MS(500U),
-    ACTION_DRIVE_DISTANCE_FORWARD(TEST_DISTANCE_TARGET_CM,
-        TEST_DISTANCE_COMMAND, TEST_DISTANCE_TIMEOUT_MS),
+    ACTION_DRIVE_DISTANCE_AT_YAW(TEST_DISTANCE_TARGET_CM,
+        TEST_DISTANCE_TARGET_YAW_DEG, TEST_DISTANCE_COMMAND,
+        TEST_DISTANCE_TIMEOUT_MS),
     ACTION_STOP()
 };
 
@@ -256,6 +258,7 @@ static bool action_type_is_valid(MotionActionType type)
         (type == MOTION_ACTION_TURN_TO_YAW) ||
         (type == MOTION_ACTION_DRIVE_HEADING_TIME) ||
         (type == MOTION_ACTION_DRIVE_DISTANCE) ||
+        (type == MOTION_ACTION_DRIVE_DISTANCE_HEADING) ||
         (type == MOTION_ACTION_WAIT) ||
         (type == MOTION_ACTION_STOP);
 }
@@ -274,6 +277,7 @@ static bool action_requires_timeout(const MotionAction *action)
         case MOTION_ACTION_TURN_TO_YAW:
         case MOTION_ACTION_DRIVE_HEADING_TIME:
         case MOTION_ACTION_DRIVE_DISTANCE:
+        case MOTION_ACTION_DRIVE_DISTANCE_HEADING:
             return true;
         case MOTION_ACTION_FOLLOW_LINE:
             return action->params.follow_line.end_condition !=
@@ -347,6 +351,20 @@ bool MissionLibrary_Validate(const MissionDefinition *mission,
             (!(action->params.drive_distance.distance_cm > 0.0f) ||
              (action->params.drive_distance.normalized_command <= 0) ||
              (action->params.drive_distance.normalized_command >
+                MOTION_NORMALIZED_COMMAND_MAX))) {
+            set_error(error_code, MISSION_VALIDATE_INVALID_ACTION);
+            return false;
+        }
+        if ((action->type == MOTION_ACTION_DRIVE_DISTANCE_HEADING) &&
+            (!(action->params.drive_distance_heading.distance_cm > 0.0f) ||
+             (action->params.drive_distance_heading.target_yaw_deg !=
+                action->params.drive_distance_heading.target_yaw_deg) ||
+             (action->params.drive_distance_heading.target_yaw_deg <
+                -180.0f) ||
+             (action->params.drive_distance_heading.target_yaw_deg >
+                180.0f) ||
+             (action->params.drive_distance_heading.normalized_command <= 0) ||
+             (action->params.drive_distance_heading.normalized_command >
                 MOTION_NORMALIZED_COMMAND_MAX))) {
             set_error(error_code, MISSION_VALIDATE_INVALID_ACTION);
             return false;

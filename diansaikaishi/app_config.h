@@ -60,6 +60,7 @@
 #define DRIVE_DISTANCE_SLOW_COMMAND_DEFAULT        (130)
 #define DRIVE_DISTANCE_SETTLE_SPEED_CMPS_DEFAULT   (2.0f)
 #define DRIVE_DISTANCE_SETTLE_MS_DEFAULT           (200U)
+#define DRIVE_DISTANCE_HEADING_START_ERROR_LIMIT_DEG_DEFAULT (15.0f)
 
 /*
  * P5.1 conservative FOLLOW values. Commands remain normalized -1000..1000;
@@ -139,6 +140,7 @@ typedef struct {
     int16_t drive_distance_slow_command;
     float drive_distance_settle_speed_cmps;
     uint16_t drive_distance_settle_ms;
+    float drive_distance_heading_start_error_limit_deg;
 
     int16_t servo_angle_deg;
     int16_t min_servo_angle_deg;

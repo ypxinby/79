@@ -125,6 +125,8 @@ static const char *motion_action_type_to_string(MotionActionType type)
             return "HEAD";
         case MOTION_ACTION_DRIVE_DISTANCE:
             return "DIST";
+        case MOTION_ACTION_DRIVE_DISTANCE_HEADING:
+            return "D-YAW";
         case MOTION_ACTION_WAIT:
             return "WAIT";
         case MOTION_ACTION_STOP:
@@ -427,29 +429,36 @@ static void print_drive_distance_page(void)
     const RuntimeSnapshot *snapshot = RuntimeSnapshot_Get();
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("T10:");
-    OLED_PrintInt16(clamp_display_float_i16(
-        snapshot->drive_distance_target_cm * 10.0f));
-    OLED_PrintString(" D10:");
+    OLED_PrintString("D10:");
     OLED_PrintInt16(clamp_display_float_i16(
         snapshot->drive_distance_travelled_cm * 10.0f));
-
-    OLED_SetCursor(2, 0);
-    OLED_PrintString("R10:");
+    OLED_PrintChar('/');
+    OLED_PrintInt16(clamp_display_float_i16(
+        snapshot->drive_distance_target_cm * 10.0f));
+    OLED_PrintString(" R:");
     OLED_PrintInt16(clamp_display_float_i16(
         snapshot->drive_distance_remaining_cm * 10.0f));
-    OLED_PrintString(" S:");
-    OLED_PrintString(drive_distance_state_to_string(
-        snapshot->drive_distance_state));
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("Y:");
+    OLED_PrintInt16(clamp_display_float_i16(snapshot->yaw_deg));
+    OLED_PrintString(" T:");
+    OLED_PrintInt16(clamp_display_float_i16(
+        snapshot->drive_distance_target_yaw_deg));
+    OLED_PrintString(" E:");
+    OLED_PrintInt16(clamp_display_float_i16(
+        snapshot->drive_distance_heading_error_deg * 10.0f));
 
     OLED_SetCursor(4, 0);
     OLED_PrintString("C:");
     OLED_PrintInt16(snapshot->motor_control_left_normalized_target);
     OLED_PrintChar('/');
     OLED_PrintInt16(snapshot->motor_control_right_normalized_target);
+    OLED_PrintString(" H:");
+    OLED_PrintInt16(snapshot->drive_distance_heading_correction);
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("M10:");
+    OLED_PrintString("M:");
     OLED_PrintInt16(clamp_display_float_i16(
         snapshot->left_speed_cmps * 10.0f));
     OLED_PrintChar('/');
@@ -457,6 +466,11 @@ static void print_drive_distance_page(void)
         snapshot->right_speed_cmps * 10.0f));
     OLED_PrintString(" V:");
     OLED_PrintInt16(snapshot->wheel_estimator_valid ? 1 : 0);
+    OLED_PrintInt16(snapshot->imu_initialized && snapshot->imu_calibrated &&
+        snapshot->imu_valid && !snapshot->imu_stale ? 1 : 0);
+    OLED_PrintChar(' ');
+    OLED_PrintString(drive_distance_state_to_string(
+        snapshot->drive_distance_state));
 }
 
 static void print_motor_control_page(void)
