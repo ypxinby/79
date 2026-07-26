@@ -417,7 +417,7 @@ static void print_bluetooth_page(void)
     OLED_PrintUInt16(overflowCount);
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("PB6:T PB7:R");
+    OLED_PrintString("P6>BT-R P7<BT-T");
 }
 
 static const char *drive_distance_state_to_string(DriveDistanceState state)

@@ -16,7 +16,7 @@
  * JDY-31 Bluetooth UART. Set back to 1 only after moving the gimbal pins. */
 #define FEATURE_GIMBAL_MOTION_CONTROL (0)
 #define FEATURE_GIMBAL_OLED_TEST   (0)
-/* JDY-31 Bluetooth 3.0 SPP transparent UART on UART1: PB6 TX, PB7 RX. */
+/* JDY-31 on UART1: PB6 MCU TX -> module RX; PB7 MCU RX <- module TX. */
 #define FEATURE_BLUETOOTH_UART     (1)
 /* Keep off until a receiver is confirmed safe for unsolicited $DBG frames. */
 #define FEATURE_DEBUG_TELEMETRY_VISION_UART (0)
