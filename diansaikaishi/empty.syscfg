@@ -48,8 +48,8 @@ UART1.enableFIFO = false;
 UART1.peripheral.txPin.$assign = "PB2";
 UART1.peripheral.rxPin.$assign = "PB3";
 
-/* JDY-31 Bluetooth 3.0 SPP transparent UART. Directions are named from the
- * MCU side: PB6 UART TX -> JDY-31 RX, PB7 UART RX <- JDY-31 TX. PB6/PB7 are
+/* HC-06 Bluetooth Classic SPP transparent UART. Directions are named from the
+ * MCU side: PB6 UART TX -> HC-06 RXD, PB7 UART RX <- HC-06 TXD. PB6/PB7 are
  * no longer owned by the gimbal pitch GPIO group. Keep both baud rates equal. */
 UART2.$name = "UART_BLUETOOTH";
 UART2.profile = "CONFIG_PROFILE_1";

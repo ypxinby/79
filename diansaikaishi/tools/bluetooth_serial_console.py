@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Interactive JDY-31 Bluetooth SPP serial console.
+"""Interactive HC-06 Bluetooth SPP serial console.
 
 The same script works with a Windows Bluetooth COM port and a Raspberry Pi
 RFCOMM device.  It intentionally sends only explicit ``send``, ``line`` or
@@ -25,7 +25,7 @@ except ImportError as exc:  # pragma: no cover - depends on host installation
 
 
 DEFAULT_BAUD = 9600
-DEFAULT_JDY31_ADDRESS = "CCDF24465A2D"
+DEFAULT_DEVICE_NAME = "HC-06"
 
 
 def normalized_identifier(text: str) -> str:
@@ -47,15 +47,30 @@ def print_ports(ports: Iterable) -> None:
         print(f"          {port.hwid}")
 
 
-def find_jdy31_port(address: str = DEFAULT_JDY31_ADDRESS) -> Optional[str]:
-    target = normalized_identifier(address)
+def find_hc06_port(name: str, address: Optional[str]) -> Optional[str]:
+    target_address = normalized_identifier(address or "")
+    target_name = name.strip().upper()
+    matches = []
 
     for port in available_ports():
-        if target and target in normalized_identifier(port.hwid):
-            return port.device
-        if "JDY-31" in port.description.upper():
-            return port.device
-    return None
+        metadata = " ".join(
+            str(value or "")
+            for value in (
+                port.description,
+                port.hwid,
+                port.manufacturer,
+                port.product,
+                port.interface,
+            )
+        )
+        address_matches = target_address and (
+            target_address in normalized_identifier(port.hwid)
+        )
+        name_matches = target_name and target_name in metadata.upper()
+        if address_matches or name_matches:
+            matches.append(port.device)
+
+    return matches[0] if len(matches) == 1 else None
 
 
 def parse_hex_bytes(text: str) -> bytes:
@@ -168,7 +183,7 @@ def interactive_console(port: serial.Serial) -> None:
 
 def build_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="JDY-31 Bluetooth SPP serial console"
+        description="HC-06 Bluetooth SPP serial console"
     )
     parser.add_argument(
         "--port",
@@ -177,8 +192,12 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--baud", type=int, default=DEFAULT_BAUD)
     parser.add_argument(
         "--address",
-        default=DEFAULT_JDY31_ADDRESS,
-        help="JDY-31 Bluetooth address used for Windows COM auto-detection",
+        help="HC-06 Bluetooth address used for Windows COM auto-detection",
+    )
+    parser.add_argument(
+        "--name",
+        default=DEFAULT_DEVICE_NAME,
+        help="HC-06 device name used for COM auto-detection",
     )
     parser.add_argument(
         "--list",
@@ -210,11 +229,12 @@ def main() -> int:
         print("Use only one of --send or --hex.", file=sys.stderr)
         return 2
 
-    port_name = args.port or find_jdy31_port(args.address)
+    port_name = args.port or find_hc06_port(args.name, args.address)
     if not port_name:
         print(
-            "JDY-31 outgoing serial port was not found. Use --list and then "
-            "specify --port explicitly.",
+            "A unique HC-06 outgoing serial port was not found. Use --list "
+            "and specify --port explicitly; alternatively provide its "
+            "Bluetooth address with --address.",
             file=sys.stderr,
         )
         return 1

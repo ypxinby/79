@@ -398,11 +398,21 @@ static void print_bluetooth_page(void)
     uint16_t overflowCount =
         (bluetooth->rx_overflow_count > UINT16_MAX) ?
             UINT16_MAX : (uint16_t)bluetooth->rx_overflow_count;
+    uint16_t irqCount = (bluetooth->irq_count > UINT16_MAX) ?
+        UINT16_MAX : (uint16_t)bluetooth->irq_count;
+    uint16_t polledCount =
+        (bluetooth->polled_rx_byte_count > UINT16_MAX) ?
+            UINT16_MAX : (uint16_t)bluetooth->polled_rx_byte_count;
+    uint16_t dropCount = (bluetooth->tx_drop_count > UINT16_MAX) ?
+        UINT16_MAX : (uint16_t)bluetooth->tx_drop_count;
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("BT I:");
+    OLED_PrintString("HC06 I:");
     OLED_PrintInt16(bluetooth->initialized ? 1 : 0);
-    OLED_PrintString(" B:9600");
+    OLED_PrintString(" M:");
+    OLED_PrintInt16(bluetooth->pinmux_valid ? 1 : 0);
+    OLED_PrintString(" H:");
+    OLED_PrintInt16(bluetooth->rx_pin_high ? 1 : 0);
 
     OLED_SetCursor(2, 0);
     OLED_PrintString("RX:");
@@ -411,13 +421,18 @@ static void print_bluetooth_page(void)
     OLED_PrintUInt16((uint16_t)bluetooth->last_rx_byte);
 
     OLED_SetCursor(4, 0);
-    OLED_PrintString("TX:");
-    OLED_PrintUInt16(txCount);
-    OLED_PrintString(" OV:");
-    OLED_PrintUInt16(overflowCount);
+    OLED_PrintString("IRQ:");
+    OLED_PrintUInt16(irqCount);
+    OLED_PrintString(" P:");
+    OLED_PrintUInt16(polledCount);
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("P6>BT-R P7<BT-T");
+    OLED_PrintString("T:");
+    OLED_PrintUInt16(txCount);
+    OLED_PrintString(" O:");
+    OLED_PrintUInt16(overflowCount);
+    OLED_PrintString(" D:");
+    OLED_PrintUInt16(dropCount);
 }
 
 static const char *drive_distance_state_to_string(DriveDistanceState state)

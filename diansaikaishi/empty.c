@@ -95,6 +95,9 @@ int main(void)
         uint8_t appUpdatePending;
         static uint32_t lastAppUpdateMs;
 
+#if FEATURE_BLUETOOTH_UART
+        BluetoothUart_Process();
+#endif
         VisionUart_Process();
         (void)VisionReceiver_Process(g_localTimeMs,
             VISION_RX_PROCESS_BUDGET);
