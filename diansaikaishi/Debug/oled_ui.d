@@ -1,10 +1,10 @@
 # FIXED
 
 oled_ui.o: ../oled_ui.c ../oled_ui.h ../app.h ../app_config.h \
- ../app_features.h ../car_controller.h ../track_sensor.h ../car_state.h \
- ../fault.h ../gimbal.h ../gimbal_tracker.h ../heading_control.h \
- ../imu.h ../line_controller.h ../menu.h ../key.h \
- ../gimbal_vision_adapter.h ../vision_protocol.h \
+ ../app_features.h ../bluetooth_uart.h ../car_controller.h \
+ ../track_sensor.h ../car_state.h ../fault.h ../gimbal.h \
+ ../gimbal_tracker.h ../heading_control.h ../imu.h ../line_controller.h \
+ ../menu.h ../key.h ../gimbal_vision_adapter.h ../vision_protocol.h \
  ../gimbal_vision_pitch_tracker.h ../gimbal_vision_yaw_tracker.h \
  ../mission_manager.h ../mission_library.h ../motion_types.h \
  ../motion_action.h ../motor_control.h ../obstacle_avoidance.h \
@@ -15,6 +15,7 @@ oled_ui.o: ../oled_ui.c ../oled_ui.h ../app.h ../app_config.h \
 ../app.h:
 ../app_config.h:
 ../app_features.h:
+../bluetooth_uart.h:
 ../car_controller.h:
 ../track_sensor.h:
 ../car_state.h:

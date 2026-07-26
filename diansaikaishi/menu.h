@@ -6,7 +6,7 @@
 #include "key.h"
 
 typedef enum {
-    /* Compact main loop: HOME -> LINE -> TURN -> DIST.
+    /* Compact main loop: HOME -> LINE -> TURN -> DIST -> BT.
      * FEATURE_OLED_LEGACY_DIAG_PAGES restores the historical detail loop. */
     OLED_PAGE_STATUS = 0,
     OLED_PAGE_PARAM,
@@ -29,7 +29,8 @@ typedef enum {
     OLED_PAGE_GIMBAL_VISION_DUAL,
     OLED_PAGE_GIMBAL_VISION_PITCH,
     OLED_PAGE_VISION_PITCH_TUNING,
-    OLED_PAGE_DISTANCE
+    OLED_PAGE_DISTANCE,
+    OLED_PAGE_BLUETOOTH
 } OledPage;
 
 typedef enum {

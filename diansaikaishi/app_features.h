@@ -12,7 +12,12 @@
 
 #define FEATURE_OBSTACLE_SCANNER   (0)
 #define FEATURE_GIMBAL_TEST_AUTO_RUN (0)
-#define FEATURE_GIMBAL_OLED_TEST   (1)
+/* Gimbal motion is frozen and its PB6/PB7 pitch pins are reassigned to the
+ * JDY-31 Bluetooth UART. Set back to 1 only after moving the gimbal pins. */
+#define FEATURE_GIMBAL_MOTION_CONTROL (0)
+#define FEATURE_GIMBAL_OLED_TEST   (0)
+/* JDY-31 Bluetooth 3.0 SPP transparent UART on UART1: PB6 TX, PB7 RX. */
+#define FEATURE_BLUETOOTH_UART     (1)
 /* Keep off until a receiver is confirmed safe for unsolicited $DBG frames. */
 #define FEATURE_DEBUG_TELEMETRY_VISION_UART (0)
 /* P1 provides the wrapper/heartbeat only; empty.syscfg has no WWDT yet. */
@@ -69,5 +74,9 @@
 #define ENABLE_IMU                 (1)
 #define ENABLE_HEADING_CONTROL     (1)
 #define ENABLE_IMU_ANGLE_TURN      (0)
+
+#if FEATURE_GIMBAL_MOTION_CONTROL && FEATURE_BLUETOOTH_UART
+#error PB6/PB7 cannot be shared by gimbal motion and Bluetooth UART
+#endif
 
 #endif

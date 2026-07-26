@@ -12,6 +12,7 @@ C_SRCS += \
 ../angle_utils.c \
 ../app.c \
 ../app_config.c \
+../bluetooth_uart.c \
 ../car_controller.c \
 ../car_state.c \
 ../debug_telemetry.c \
@@ -69,6 +70,7 @@ C_DEPS += \
 ./angle_utils.d \
 ./app.d \
 ./app_config.d \
+./bluetooth_uart.d \
 ./car_controller.d \
 ./car_state.d \
 ./debug_telemetry.d \
@@ -121,6 +123,7 @@ OBJS += \
 ./angle_utils.o \
 ./app.o \
 ./app_config.o \
+./bluetooth_uart.o \
 ./car_controller.o \
 ./car_state.o \
 ./debug_telemetry.o \
@@ -175,6 +178,7 @@ OBJS__QUOTED += \
 "angle_utils.o" \
 "app.o" \
 "app_config.o" \
+"bluetooth_uart.o" \
 "car_controller.o" \
 "car_state.o" \
 "debug_telemetry.o" \
@@ -229,6 +233,7 @@ C_DEPS__QUOTED += \
 "angle_utils.d" \
 "app.d" \
 "app_config.d" \
+"bluetooth_uart.d" \
 "car_controller.d" \
 "car_state.d" \
 "debug_telemetry.d" \
@@ -283,6 +288,7 @@ C_SRCS__QUOTED += \
 "../angle_utils.c" \
 "../app.c" \
 "../app_config.c" \
+"../bluetooth_uart.c" \
 "../car_controller.c" \
 "../car_state.c" \
 "../debug_telemetry.c" \

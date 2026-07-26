@@ -2,6 +2,7 @@
 #include "app.h"
 #include "app_config.h"
 #include "app_features.h"
+#include "bluetooth_uart.h"
 #include "car_controller.h"
 #include "car_state.h"
 #include "fault.h"
@@ -384,6 +385,39 @@ static void print_encoder_page(void)
     OLED_PrintInt16(wheel->stale ? 1 : 0);
     OLED_PrintString(" E:");
     print_uint64_decimal((uint64_t)wheel->error_flags);
+}
+
+static void print_bluetooth_page(void)
+{
+    const volatile BluetoothUartRuntime *bluetooth =
+        BluetoothUart_GetRuntime();
+    uint16_t rxCount = (bluetooth->rx_byte_count > UINT16_MAX) ?
+        UINT16_MAX : (uint16_t)bluetooth->rx_byte_count;
+    uint16_t txCount = (bluetooth->tx_byte_count > UINT16_MAX) ?
+        UINT16_MAX : (uint16_t)bluetooth->tx_byte_count;
+    uint16_t overflowCount =
+        (bluetooth->rx_overflow_count > UINT16_MAX) ?
+            UINT16_MAX : (uint16_t)bluetooth->rx_overflow_count;
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("BT I:");
+    OLED_PrintInt16(bluetooth->initialized ? 1 : 0);
+    OLED_PrintString(" B:9600");
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("RX:");
+    OLED_PrintUInt16(rxCount);
+    OLED_PrintString(" L:");
+    OLED_PrintUInt16((uint16_t)bluetooth->last_rx_byte);
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("TX:");
+    OLED_PrintUInt16(txCount);
+    OLED_PrintString(" OV:");
+    OLED_PrintUInt16(overflowCount);
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("PB6:T PB7:R");
 }
 
 static const char *drive_distance_state_to_string(DriveDistanceState state)
@@ -1505,6 +1539,9 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
             break;
         case OLED_PAGE_DISTANCE:
             print_drive_distance_page();
+            break;
+        case OLED_PAGE_BLUETOOTH:
+            print_bluetooth_page();
             break;
         case OLED_PAGE_OBSTACLE:
             print_obstacle_page();

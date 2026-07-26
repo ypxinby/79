@@ -51,6 +51,10 @@ static void menu_next_main_page(void)
         g_oledPage = OLED_PAGE_MOTOR_CONTROL;
     } else if (g_oledPage == OLED_PAGE_MOTOR_CONTROL) {
         g_oledPage = OLED_PAGE_MOTOR_CONTROL_DETAIL;
+#if FEATURE_BLUETOOTH_UART
+    } else if (g_oledPage == OLED_PAGE_MOTOR_CONTROL_DETAIL) {
+        g_oledPage = OLED_PAGE_BLUETOOTH;
+#endif
     } else {
         g_oledPage = OLED_PAGE_STATUS;
     }
@@ -61,6 +65,10 @@ static void menu_next_main_page(void)
         g_oledPage = OLED_PAGE_HEADING;
     } else if (g_oledPage == OLED_PAGE_HEADING) {
         g_oledPage = OLED_PAGE_DISTANCE;
+#if FEATURE_BLUETOOTH_UART
+    } else if (g_oledPage == OLED_PAGE_DISTANCE) {
+        g_oledPage = OLED_PAGE_BLUETOOTH;
+#endif
     } else {
         g_oledPage = OLED_PAGE_STATUS;
     }
@@ -173,11 +181,13 @@ static void menu_adjust_param(int8_t direction, uint8_t fast)
             }
             break;
         case PARAM_GIMBAL_WORLD_LOCK:
+#if FEATURE_GIMBAL_MOTION_CONTROL
             if (direction > 0) {
                 Gimbal_YawEnableWorldLock();
             } else {
                 Gimbal_YawDisableWorldLock();
             }
+#endif
             break;
         default:
             break;
@@ -549,7 +559,11 @@ int16_t Menu_GetParamValue(ParamItem item)
         case PARAM_SERVO_ANGLE:
             return g_appConfig.servo_angle_deg;
         case PARAM_GIMBAL_WORLD_LOCK:
+#if FEATURE_GIMBAL_MOTION_CONTROL
             return (int16_t)Gimbal_YawGetFeedback()->world_lock_enabled;
+#else
+            return 0;
+#endif
         default:
             return 0;
     }

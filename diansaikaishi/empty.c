@@ -8,6 +8,7 @@
 
 #include "app.h"
 #include "app_features.h"
+#include "bluetooth_uart.h"
 #include "encoder.h"
 #include "gimbal.h"
 #include "gimbal_tracker.h"
@@ -38,8 +39,10 @@
 #define VISION_RX_PROCESS_BUDGET (64U)
 
 static volatile uint8_t g_appUpdatePending;
+#if FEATURE_GIMBAL_MOTION_CONTROL
 static volatile uint8_t g_gimbalUpdatePending;
 static volatile uint8_t g_trackerUpdatePending;
+#endif
 static volatile uint32_t g_localTimeMs;
 static volatile SchedulerStats g_schedulerStats;
 
@@ -64,12 +67,19 @@ int main(void)
     SYSCFG_DL_init();
 
     App_Init();
+#if FEATURE_BLUETOOTH_UART
+    BluetoothUart_Init();
+#endif
     VisionReceiver_Init();
+#if FEATURE_GIMBAL_MOTION_CONTROL
     GimbalVisionAdapter_Init();
+#endif
     VisionPitchTuning_Init();
     VisionYawTuning_Init();
+#if FEATURE_GIMBAL_MOTION_CONTROL
     GimbalVisionPitchTracker_Init();
     GimbalVisionYawTracker_Init();
+#endif
     VisionTuningConsole_Init();
     VisionUart_Init();
 
@@ -78,14 +88,17 @@ int main(void)
     __enable_irq();
 
     while (1) {
+#if FEATURE_GIMBAL_MOTION_CONTROL
         bool gimbalUpdateDue;
         bool trackerUpdateDue;
+#endif
         uint8_t appUpdatePending;
         static uint32_t lastAppUpdateMs;
 
         VisionUart_Process();
         (void)VisionReceiver_Process(g_localTimeMs,
             VISION_RX_PROCESS_BUDGET);
+#if FEATURE_GIMBAL_MOTION_CONTROL
         GimbalVisionAdapter_Update();
 
         do {
@@ -131,6 +144,7 @@ int main(void)
                 }
             }
         } while (gimbalUpdateDue);
+#endif
 
         __disable_irq();
         appUpdatePending = g_appUpdatePending;
@@ -166,13 +180,17 @@ void SysTick_Handler(void)
 {
     static uint8_t tick100usCount;
     static uint8_t controlMsCount;
+#if FEATURE_GIMBAL_MOTION_CONTROL
     static uint8_t gimbalMsCount;
     static uint8_t trackerMsCount;
+#endif
 
 #if !FEATURE_HW_MOTOR_PWM
     Motor_PwmTick100us();
 #endif
+#if FEATURE_GIMBAL_MOTION_CONTROL
     Gimbal_Tick100us();
+#endif
     Servo_Tick100us();
     Ultrasonic_Tick100us();
 
@@ -184,6 +202,7 @@ void SysTick_Handler(void)
         WatchdogMonitor_Tick1msFromIsr(g_localTimeMs);
 
         controlMsCount++;
+#if FEATURE_GIMBAL_MOTION_CONTROL
         gimbalMsCount++;
         trackerMsCount++;
         if (gimbalMsCount >= GIMBAL_UPDATE_PERIOD_MS) {
@@ -209,6 +228,7 @@ void SysTick_Handler(void)
                 g_schedulerStats.tracker_10ms_drop_count++;
             }
         }
+#endif
 
         if (controlMsCount >= APP_UPDATE_PERIOD_MS) {
             controlMsCount = 0;

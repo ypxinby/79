@@ -82,8 +82,10 @@ void App_Init(void)
     RuntimeSnapshot_Init();
     DebugTelemetry_Init();
     Motor_Init();
+#if FEATURE_GIMBAL_MOTION_CONTROL
     Gimbal_Init();
     GimbalTracker_Init();
+#endif
     Encoder_Reset();
     AppConfig_InitDefault();
     WheelSpeedEstimator_Init();

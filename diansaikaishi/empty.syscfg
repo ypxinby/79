@@ -12,6 +12,7 @@
 const SYSCTL = scripting.addModule("/ti/driverlib/SYSCTL");
 const UART   = scripting.addModule("/ti/driverlib/UART", {}, false);
 const UART1  = UART.addInstance();
+const UART2  = UART.addInstance();
 const PWM    = scripting.addModule("/ti/driverlib/PWM", {}, false);
 const PWM1   = PWM.addInstance();
 const GPIO   = scripting.addModule("/ti/driverlib/GPIO", {}, false);
@@ -46,6 +47,18 @@ UART1.enabledInterrupts = ["RX"];
 UART1.enableFIFO = false;
 UART1.peripheral.txPin.$assign = "PB2";
 UART1.peripheral.rxPin.$assign = "PB3";
+
+/* JDY-31 Bluetooth 3.0 SPP transparent UART. PB6/PB7 are reserved by the
+ * carrier board for Bluetooth and are no longer owned by the gimbal pitch
+ * GPIO group. Keep the module and MCU UART baud rates identical. */
+UART2.$name = "UART_BLUETOOTH";
+UART2.profile = "CONFIG_PROFILE_1";
+UART2.targetBaudRate = 9600;
+UART2.enableInternalLoopback = false;
+UART2.enabledInterrupts = ["RX"];
+UART2.enableFIFO = false;
+UART2.peripheral.txPin.$assign = "PB6";
+UART2.peripheral.rxPin.$assign = "PB7";
 
 PWM1.$name                      = "PWM_MOTOR";
 PWM1.pwmMode                    = "EDGE_ALIGN_UP";
@@ -214,13 +227,7 @@ GPIO12.associatedPins[0].initialValue    = "CLEARED";
 
 GPIO13.$name                             = "GPIO_GIMBAL_PITCH";
 GPIO13.port                              = "PORTB";
-GPIO13.associatedPins.create(3);
+GPIO13.associatedPins.create(1);
 GPIO13.associatedPins[0].$name           = "STEP";
 GPIO13.associatedPins[0].assignedPin     = "5";
 GPIO13.associatedPins[0].initialValue    = "CLEARED";
-GPIO13.associatedPins[1].$name           = "DIR";
-GPIO13.associatedPins[1].assignedPin     = "6";
-GPIO13.associatedPins[1].initialValue    = "CLEARED";
-GPIO13.associatedPins[2].$name           = "EN";
-GPIO13.associatedPins[2].assignedPin     = "7";
-GPIO13.associatedPins[2].initialValue    = "CLEARED";

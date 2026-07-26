@@ -54,6 +54,7 @@ SYSCONFIG_WEAK void SYSCFG_DL_init(void)
     SYSCFG_DL_SYSCTL_init();
     SYSCFG_DL_PWM_MOTOR_init();
     SYSCFG_DL_UART_VISION_init();
+    SYSCFG_DL_UART_BLUETOOTH_init();
     /* Ensure backup structures have no valid state */
 
 	gUART_VISIONBackup.backupRdy 	= false;
@@ -88,11 +89,13 @@ SYSCONFIG_WEAK void SYSCFG_DL_initPower(void)
     DL_GPIO_reset(GPIOB);
     DL_TimerG_reset(PWM_MOTOR_INST);
     DL_UART_Main_reset(UART_VISION_INST);
+    DL_UART_Main_reset(UART_BLUETOOTH_INST);
 
     DL_GPIO_enablePower(GPIOA);
     DL_GPIO_enablePower(GPIOB);
     DL_TimerG_enablePower(PWM_MOTOR_INST);
     DL_UART_Main_enablePower(UART_VISION_INST);
+    DL_UART_Main_enablePower(UART_BLUETOOTH_INST);
     delay_cycles(POWER_STARTUP_DELAY);
 }
 
@@ -108,6 +111,10 @@ SYSCONFIG_WEAK void SYSCFG_DL_GPIO_init(void)
         GPIO_UART_VISION_IOMUX_TX, GPIO_UART_VISION_IOMUX_TX_FUNC);
     DL_GPIO_initPeripheralInputFunction(
         GPIO_UART_VISION_IOMUX_RX, GPIO_UART_VISION_IOMUX_RX_FUNC);
+    DL_GPIO_initPeripheralOutputFunction(
+        GPIO_UART_BLUETOOTH_IOMUX_TX, GPIO_UART_BLUETOOTH_IOMUX_TX_FUNC);
+    DL_GPIO_initPeripheralInputFunction(
+        GPIO_UART_BLUETOOTH_IOMUX_RX, GPIO_UART_BLUETOOTH_IOMUX_RX_FUNC);
 
     DL_GPIO_initDigitalOutput(GPIO_TB6612_A_AIN2_IOMUX);
 
@@ -201,10 +208,6 @@ SYSCONFIG_WEAK void SYSCFG_DL_GPIO_init(void)
 
     DL_GPIO_initDigitalOutput(GPIO_GIMBAL_PITCH_STEP_IOMUX);
 
-    DL_GPIO_initDigitalOutput(GPIO_GIMBAL_PITCH_DIR_IOMUX);
-
-    DL_GPIO_initDigitalOutput(GPIO_GIMBAL_PITCH_EN_IOMUX);
-
     DL_GPIO_clearPins(GPIOA, GPIO_TB6612_A_AIN2_PIN |
 		GPIO_TB6612_A_AIN1_PIN |
 		GPIO_ULTRASONIC_HC_TRIG_PIN |
@@ -233,16 +236,12 @@ SYSCONFIG_WEAK void SYSCFG_DL_GPIO_init(void)
 		GPIO_TB6612_B_BIN2_PIN |
 		GPIO_SERVO_SERVO_PIN |
 		GPIO_GIMBAL_B_PITCH_STEP_PIN |
-		GPIO_GIMBAL_PITCH_STEP_PIN |
-		GPIO_GIMBAL_PITCH_DIR_PIN |
-		GPIO_GIMBAL_PITCH_EN_PIN);
+		GPIO_GIMBAL_PITCH_STEP_PIN);
     DL_GPIO_enableOutput(GPIOB, GPIO_TB6612_B_BIN1_PIN |
 		GPIO_TB6612_B_BIN2_PIN |
 		GPIO_SERVO_SERVO_PIN |
 		GPIO_GIMBAL_B_PITCH_STEP_PIN |
-		GPIO_GIMBAL_PITCH_STEP_PIN |
-		GPIO_GIMBAL_PITCH_DIR_PIN |
-		GPIO_GIMBAL_PITCH_EN_PIN);
+		GPIO_GIMBAL_PITCH_STEP_PIN);
 
 }
 
@@ -350,5 +349,40 @@ SYSCONFIG_WEAK void SYSCFG_DL_UART_VISION_init(void)
 
 
     DL_UART_Main_enable(UART_VISION_INST);
+}
+static const DL_UART_Main_ClockConfig gUART_BLUETOOTHClockConfig = {
+    .clockSel    = DL_UART_MAIN_CLOCK_BUSCLK,
+    .divideRatio = DL_UART_MAIN_CLOCK_DIVIDE_RATIO_1
+};
+
+static const DL_UART_Main_Config gUART_BLUETOOTHConfig = {
+    .mode        = DL_UART_MAIN_MODE_NORMAL,
+    .direction   = DL_UART_MAIN_DIRECTION_TX_RX,
+    .flowControl = DL_UART_MAIN_FLOW_CONTROL_NONE,
+    .parity      = DL_UART_MAIN_PARITY_NONE,
+    .wordLength  = DL_UART_MAIN_WORD_LENGTH_8_BITS,
+    .stopBits    = DL_UART_MAIN_STOP_BITS_ONE
+};
+
+SYSCONFIG_WEAK void SYSCFG_DL_UART_BLUETOOTH_init(void)
+{
+    DL_UART_Main_setClockConfig(UART_BLUETOOTH_INST, (DL_UART_Main_ClockConfig *) &gUART_BLUETOOTHClockConfig);
+
+    DL_UART_Main_init(UART_BLUETOOTH_INST, (DL_UART_Main_Config *) &gUART_BLUETOOTHConfig);
+    /*
+     * Configure baud rate by setting oversampling and baud rate divisors.
+     *  Target baud rate: 9600
+     *  Actual baud rate: 9600.24
+     */
+    DL_UART_Main_setOversampling(UART_BLUETOOTH_INST, DL_UART_OVERSAMPLING_RATE_16X);
+    DL_UART_Main_setBaudRateDivisor(UART_BLUETOOTH_INST, UART_BLUETOOTH_IBRD_32_MHZ_9600_BAUD, UART_BLUETOOTH_FBRD_32_MHZ_9600_BAUD);
+
+
+    /* Configure Interrupts */
+    DL_UART_Main_enableInterrupt(UART_BLUETOOTH_INST,
+                                 DL_UART_MAIN_INTERRUPT_RX);
+
+
+    DL_UART_Main_enable(UART_BLUETOOTH_INST);
 }
 
