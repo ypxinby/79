@@ -41,13 +41,14 @@
 /* Normalize installed MPU6050 Z-axis to the project's yaw convention. */
 #define IMU_YAW_AXIS_SIGN_DEFAULT                 (-1)
 
-/* P6.2 existing two-speed yaw turn values, centralized for vehicle tuning. */
+/* P6.2 two-speed yaw turn values, centralized for vehicle tuning. */
 #define YAW_TURN_TIMEOUT_MS_DEFAULT               (4000U)
 #define YAW_TURN_SLOW_THRESHOLD_DEG_DEFAULT       (12.0f)
 #define YAW_TURN_DONE_TOLERANCE_DEG_DEFAULT       (5.0f)
 #define YAW_TURN_SETTLE_GYRO_DPS_DEFAULT           (5.0f)
 #define YAW_TURN_SETTLE_MS_DEFAULT                 (100U)
-#define YAW_TURN_MIN_SLOW_COMMAND_DEFAULT          (60)
+#define YAW_TURN_FAST_COMMAND_DEFAULT              (220)
+#define YAW_TURN_MIN_SLOW_COMMAND_DEFAULT          (160)
 /* Keep navigation stopped through brief IMU validity dropouts. */
 #define HEADING_IMU_INVALID_GRACE_MS_DEFAULT       (200U)
 

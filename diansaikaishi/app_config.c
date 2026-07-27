@@ -44,7 +44,9 @@ void AppConfig_InitDefault(void)
     g_appConfig.min_recover_speed = 50;
     g_appConfig.max_recover_speed = 300;
 
-    g_appConfig.turn_speed = 130;
+    /* Both-direction vehicle test showed the right wheel could not reliably
+     * break static friction with the previous TURN commands 130/65. */
+    g_appConfig.turn_speed = YAW_TURN_FAST_COMMAND_DEFAULT;
     g_appConfig.min_turn_speed = 50;
     g_appConfig.max_turn_speed = 300;
 

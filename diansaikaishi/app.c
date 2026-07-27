@@ -120,6 +120,20 @@ static uint16_t app_remote_append_u32(char *buffer, uint16_t length,
     return length;
 }
 
+static uint16_t app_remote_append_i32(char *buffer, uint16_t length,
+    uint16_t capacity, int32_t value)
+{
+    uint32_t magnitude;
+
+    if (value < 0) {
+        length = app_remote_append_text(buffer, length, capacity, "-");
+        magnitude = (uint32_t)(-(value + 1)) + 1U;
+    } else {
+        magnitude = (uint32_t)value;
+    }
+    return app_remote_append_u32(buffer, length, capacity, magnitude);
+}
+
 static uint16_t app_remote_append_float_tenth(char *buffer,
     uint16_t length, uint16_t capacity, float value)
 {
@@ -330,6 +344,56 @@ static void app_remote_send_status(void)
     app_remote_send(response);
 }
 
+static void app_remote_send_motor_status(void)
+{
+    const MotorControlRuntime *control = MotorControl_GetRuntime();
+    const volatile WheelSpeedEstimatorRuntime *wheel =
+        WheelSpeedEstimator_GetRuntime();
+    char response[128];
+    uint16_t length = 0U;
+
+    response[0] = '\0';
+    length = app_remote_append_text(response, length, sizeof(response),
+        "MOTOR,C=");
+    length = app_remote_append_i32(response, length, sizeof(response),
+        g_appRuntime.left_speed);
+    length = app_remote_append_text(response, length, sizeof(response),
+        "/");
+    length = app_remote_append_i32(response, length, sizeof(response),
+        g_appRuntime.right_speed);
+    length = app_remote_append_text(response, length, sizeof(response),
+        ",T=");
+    length = app_remote_append_float_tenth(response, length,
+        sizeof(response), control->left.ramped_target_speed_cmps);
+    length = app_remote_append_text(response, length, sizeof(response),
+        "/");
+    length = app_remote_append_float_tenth(response, length,
+        sizeof(response), control->right.ramped_target_speed_cmps);
+    length = app_remote_append_text(response, length, sizeof(response),
+        ",M=");
+    length = app_remote_append_float_tenth(response, length,
+        sizeof(response), wheel->left_speed_cmps);
+    length = app_remote_append_text(response, length, sizeof(response),
+        "/");
+    length = app_remote_append_float_tenth(response, length,
+        sizeof(response), wheel->right_speed_cmps);
+    length = app_remote_append_text(response, length, sizeof(response),
+        ",O=");
+    length = app_remote_append_i32(response, length, sizeof(response),
+        control->left.output_command);
+    length = app_remote_append_text(response, length, sizeof(response),
+        "/");
+    length = app_remote_append_i32(response, length, sizeof(response),
+        control->right.output_command);
+    length = app_remote_append_text(response, length, sizeof(response),
+        ",E=");
+    length = app_remote_append_u32(response, length, sizeof(response),
+        control->error_flags);
+    (void)app_remote_append_text(response, length, sizeof(response),
+        "\r\n");
+    app_remote_send(response);
+}
+
 static void app_remote_handle_move(char **tokens, uint8_t count)
 {
     MotionAction action = {0};
@@ -411,6 +475,8 @@ static void app_remote_handle_line(char *line)
         app_remote_send("PONG\r\n");
     } else if ((strcmp(tokens[0], "STATUS") == 0) && (count == 1U)) {
         app_remote_send_status();
+    } else if ((strcmp(tokens[0], "MOTOR") == 0) && (count == 1U)) {
+        app_remote_send_motor_status();
     } else if (strcmp(tokens[0], "MOVE") == 0) {
         app_remote_handle_move(tokens, count);
     } else if (strcmp(tokens[0], "TURN") == 0) {
