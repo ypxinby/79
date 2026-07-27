@@ -68,6 +68,38 @@ static float abs_float(float value)
     return (value < 0.0f) ? -value : value;
 }
 
+static int16_t speed_cmps_to_normalized_command(float speed_cmps)
+{
+    float maximum = g_appConfig.wheel_control_max_speed_cmps;
+    float command;
+
+    if (!(maximum > 0.0f) || !(speed_cmps > 0.0f)) {
+        return 0;
+    }
+    command = speed_cmps * (float)MOTOR_MAX_DUTY / maximum + 0.5f;
+    return clamp_i16((int32_t)command, 1, MOTOR_MAX_DUTY);
+}
+
+static float drive_distance_high_decel_zone_cm(int16_t cruise_command)
+{
+    int16_t lowCommand = speed_cmps_to_normalized_command(
+        g_appConfig.motion_low_speed_cmps);
+    float zone;
+
+    if ((lowCommand <= 0) || (cruise_command <= lowCommand)) {
+        return 0.0f;
+    }
+    zone = g_appRuntime.drive_distance_target_cm *
+        g_appConfig.drive_distance_high_decel_ratio;
+    if (zone < g_appConfig.drive_distance_high_decel_min_cm) {
+        zone = g_appConfig.drive_distance_high_decel_min_cm;
+    }
+    if (zone > g_appRuntime.drive_distance_target_cm) {
+        zone = g_appRuntime.drive_distance_target_cm;
+    }
+    return zone;
+}
+
 static void update_sensor_runtime(void)
 {
     g_appRuntime.sensor_raw = TrackSensor_ReadRaw();
@@ -195,6 +227,7 @@ static bool abort_active_drive_distance(void)
     if (((g_appRuntime.run_mode != TRACK_MODE_DRIVE_DISTANCE) &&
          (g_appRuntime.run_mode != TRACK_MODE_DRIVE_DISTANCE_HEADING)) ||
         ((g_appRuntime.drive_distance_state != DRIVE_DISTANCE_STATE_DRIVE) &&
+         (g_appRuntime.drive_distance_state != DRIVE_DISTANCE_STATE_DECEL) &&
          (g_appRuntime.drive_distance_state != DRIVE_DISTANCE_STATE_SLOW) &&
          (g_appRuntime.drive_distance_state != DRIVE_DISTANCE_STATE_SETTLE))) {
         return false;
@@ -592,8 +625,10 @@ static void handle_drive_distance(uint32_t elapsed_ms,
         WheelSpeedEstimator_GetRuntime();
     int16_t command;
     int16_t commandMagnitude;
+    int16_t decelCommand;
     int16_t correction = 0;
     int16_t maximumCorrection;
+    float decelZoneCm;
     float leftSpeedAbs;
     float rightSpeedAbs;
 
@@ -671,11 +706,22 @@ static void handle_drive_distance(uint32_t elapsed_ms,
 
     command = g_appRuntime.drive_distance_command;
     commandMagnitude = (command < 0) ? (int16_t)-command : command;
+    decelCommand = speed_cmps_to_normalized_command(
+        g_appConfig.motion_low_speed_cmps);
+    decelZoneCm = drive_distance_high_decel_zone_cm(commandMagnitude);
     if (g_appRuntime.drive_distance_remaining_cm <=
         g_appConfig.drive_distance_slow_zone_cm) {
         g_appRuntime.drive_distance_state = DRIVE_DISTANCE_STATE_SLOW;
         if (commandMagnitude > g_appConfig.drive_distance_slow_command) {
             commandMagnitude = g_appConfig.drive_distance_slow_command;
+            command = (g_appRuntime.drive_distance_direction < 0) ?
+                (int16_t)-commandMagnitude : commandMagnitude;
+        }
+    } else if ((decelZoneCm > 0.0f) &&
+        (g_appRuntime.drive_distance_remaining_cm <= decelZoneCm)) {
+        g_appRuntime.drive_distance_state = DRIVE_DISTANCE_STATE_DECEL;
+        if ((decelCommand > 0) && (commandMagnitude > decelCommand)) {
+            commandMagnitude = decelCommand;
             command = (g_appRuntime.drive_distance_direction < 0) ?
                 (int16_t)-commandMagnitude : commandMagnitude;
         }

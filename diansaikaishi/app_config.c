@@ -97,6 +97,10 @@ void AppConfig_InitDefault(void)
         DRIVE_DISTANCE_TOLERANCE_CM_DEFAULT;
     g_appConfig.drive_distance_slow_command =
         DRIVE_DISTANCE_SLOW_COMMAND_DEFAULT;
+    g_appConfig.drive_distance_high_decel_ratio =
+        DRIVE_DISTANCE_HIGH_DECEL_RATIO_DEFAULT;
+    g_appConfig.drive_distance_high_decel_min_cm =
+        DRIVE_DISTANCE_HIGH_DECEL_MIN_CM_DEFAULT;
     g_appConfig.drive_distance_settle_speed_cmps =
         DRIVE_DISTANCE_SETTLE_SPEED_CMPS_DEFAULT;
     g_appConfig.drive_distance_settle_ms =
@@ -320,6 +324,21 @@ void AppConfig_LimitAll(void)
     }
     g_appConfig.drive_distance_slow_command = clamp_i16(
         g_appConfig.drive_distance_slow_command, 1, 1000);
+    if ((g_appConfig.drive_distance_high_decel_ratio !=
+            g_appConfig.drive_distance_high_decel_ratio) ||
+        (g_appConfig.drive_distance_high_decel_ratio <= 0.0f) ||
+        (g_appConfig.drive_distance_high_decel_ratio > 0.5f)) {
+        g_appConfig.drive_distance_high_decel_ratio =
+            DRIVE_DISTANCE_HIGH_DECEL_RATIO_DEFAULT;
+    }
+    if ((g_appConfig.drive_distance_high_decel_min_cm !=
+            g_appConfig.drive_distance_high_decel_min_cm) ||
+        (g_appConfig.drive_distance_high_decel_min_cm <
+            g_appConfig.drive_distance_slow_zone_cm) ||
+        (g_appConfig.drive_distance_high_decel_min_cm > 100.0f)) {
+        g_appConfig.drive_distance_high_decel_min_cm =
+            DRIVE_DISTANCE_HIGH_DECEL_MIN_CM_DEFAULT;
+    }
     if ((g_appConfig.drive_distance_settle_speed_cmps !=
             g_appConfig.drive_distance_settle_speed_cmps) ||
         (g_appConfig.drive_distance_settle_speed_cmps < 0.0f) ||

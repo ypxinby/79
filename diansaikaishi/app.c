@@ -322,7 +322,8 @@ static bool app_remote_start_action(const MotionAction *action,
 
 static void app_remote_send_status(void)
 {
-    char response[80];
+    const ObstacleFeedback *obstacle = ObstacleMonitor_GetFeedback();
+    char response[112];
     uint16_t length = 0U;
     const FaultRecord *fault = Fault_GetRecord();
 
@@ -340,6 +341,19 @@ static void app_remote_send_status(void)
     length = app_remote_append_text(response, length, sizeof(response), ",");
     length = app_remote_append_text(response, length, sizeof(response),
         app_remote_gear_name(g_remoteGear));
+    length = app_remote_append_text(response, length, sizeof(response),
+        ",H=");
+    length = app_remote_append_u32(response, length, sizeof(response),
+        ObstacleSafety_IsHolding() ? 1U : 0U);
+    length = app_remote_append_text(response, length, sizeof(response),
+        ",OBS=");
+    if (obstacle->distance_valid) {
+        length = app_remote_append_u32(response, length, sizeof(response),
+            obstacle->distance_cm);
+    } else {
+        length = app_remote_append_text(response, length, sizeof(response),
+            "NA");
+    }
     (void)app_remote_append_text(response, length, sizeof(response), "\r\n");
     app_remote_send(response);
 }

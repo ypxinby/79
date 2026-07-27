@@ -440,6 +440,8 @@ static const char *drive_distance_state_to_string(DriveDistanceState state)
     switch (state) {
         case DRIVE_DISTANCE_STATE_DRIVE:
             return "DRV";
+        case DRIVE_DISTANCE_STATE_DECEL:
+            return "DEC";
         case DRIVE_DISTANCE_STATE_SLOW:
             return "SLW";
         case DRIVE_DISTANCE_STATE_SETTLE:

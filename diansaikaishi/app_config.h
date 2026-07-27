@@ -59,6 +59,8 @@
 #define DRIVE_DISTANCE_SLOW_ZONE_CM_DEFAULT        (5.0f)
 #define DRIVE_DISTANCE_TOLERANCE_CM_DEFAULT        (0.8f)
 #define DRIVE_DISTANCE_SLOW_COMMAND_DEFAULT        (130)
+#define DRIVE_DISTANCE_HIGH_DECEL_RATIO_DEFAULT    (0.20f)
+#define DRIVE_DISTANCE_HIGH_DECEL_MIN_CM_DEFAULT   (20.0f)
 #define DRIVE_DISTANCE_SETTLE_SPEED_CMPS_DEFAULT   (2.0f)
 #define DRIVE_DISTANCE_SETTLE_MS_DEFAULT           (200U)
 #define DRIVE_DISTANCE_HEADING_START_ERROR_LIMIT_DEG_DEFAULT (20.0f)
@@ -143,6 +145,8 @@ typedef struct {
     float drive_distance_slow_zone_cm;
     float drive_distance_tolerance_cm;
     int16_t drive_distance_slow_command;
+    float drive_distance_high_decel_ratio;
+    float drive_distance_high_decel_min_cm;
     float drive_distance_settle_speed_cmps;
     uint16_t drive_distance_settle_ms;
     float drive_distance_heading_start_error_limit_deg;
