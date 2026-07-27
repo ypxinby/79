@@ -20,7 +20,7 @@
 #define FEATURE_BLUETOOTH_UART     (1)
 /* Bring-up aid: echo every received byte through HC-06. Disable this when the
  * application protocol takes ownership of Bluetooth TX. */
-#define FEATURE_BLUETOOTH_RX_ECHO  (1)
+#define FEATURE_BLUETOOTH_RX_ECHO  (0)
 /* Keep off until a receiver is confirmed safe for unsolicited $DBG frames. */
 #define FEATURE_DEBUG_TELEMETRY_VISION_UART (0)
 /* P1 provides the wrapper/heartbeat only; empty.syscfg has no WWDT yet. */

@@ -231,8 +231,18 @@ bool MissionLibrary_Validate(const MissionDefinition *mission,
             return false;
         }
 #endif
+        if ((action->type == MOTION_ACTION_TURN_TO_YAW) &&
+            ((action->params.turn_to_yaw.angle_deg !=
+                action->params.turn_to_yaw.angle_deg) ||
+             (action->params.turn_to_yaw.angle_deg < -180.0f) ||
+             (action->params.turn_to_yaw.angle_deg > 180.0f))) {
+            set_error(error_code, MISSION_VALIDATE_INVALID_ACTION);
+            return false;
+        }
         if ((action->type == MOTION_ACTION_DRIVE_DISTANCE) &&
-            (!(action->params.drive_distance.distance_cm > 0.0f) ||
+            ((action->params.drive_distance.distance_cm !=
+                action->params.drive_distance.distance_cm) ||
+             (action->params.drive_distance.distance_cm == 0.0f) ||
              (action->params.drive_distance.normalized_command <= 0) ||
              (action->params.drive_distance.normalized_command >
                 MOTION_NORMALIZED_COMMAND_MAX))) {
@@ -240,13 +250,16 @@ bool MissionLibrary_Validate(const MissionDefinition *mission,
             return false;
         }
         if ((action->type == MOTION_ACTION_DRIVE_DISTANCE_HEADING) &&
-            (!(action->params.drive_distance_heading.distance_cm > 0.0f) ||
-             (action->params.drive_distance_heading.target_yaw_deg !=
-                action->params.drive_distance_heading.target_yaw_deg) ||
-             (action->params.drive_distance_heading.target_yaw_deg <
-                -180.0f) ||
-             (action->params.drive_distance_heading.target_yaw_deg >
-                180.0f) ||
+            ((action->params.drive_distance_heading.distance_cm !=
+                action->params.drive_distance_heading.distance_cm) ||
+             (action->params.drive_distance_heading.distance_cm == 0.0f) ||
+             (!action->params.drive_distance_heading.lock_current_yaw_on_start &&
+              ((action->params.drive_distance_heading.target_yaw_deg !=
+                    action->params.drive_distance_heading.target_yaw_deg) ||
+               (action->params.drive_distance_heading.target_yaw_deg <
+                    -180.0f) ||
+               (action->params.drive_distance_heading.target_yaw_deg >
+                    180.0f))) ||
              (action->params.drive_distance_heading.normalized_command <= 0) ||
              (action->params.drive_distance_heading.normalized_command >
                 MOTION_NORMALIZED_COMMAND_MAX))) {

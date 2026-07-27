@@ -62,6 +62,10 @@
 #define DRIVE_DISTANCE_SETTLE_MS_DEFAULT           (200U)
 #define DRIVE_DISTANCE_HEADING_START_ERROR_LIMIT_DEG_DEFAULT (20.0f)
 
+/* App-layer physical speed gears for direct MOVE commands. */
+#define MOTION_LOW_SPEED_CMPS_DEFAULT             (25.0f)
+#define MOTION_HIGH_SPEED_CMPS_DEFAULT            (45.0f)
+
 /*
  * P5.1 conservative FOLLOW values. Commands remain normalized -1000..1000;
  * these are initial vehicle-test values and are intentionally independent of
@@ -141,6 +145,8 @@ typedef struct {
     float drive_distance_settle_speed_cmps;
     uint16_t drive_distance_settle_ms;
     float drive_distance_heading_start_error_limit_deg;
+    float motion_low_speed_cmps;
+    float motion_high_speed_cmps;
 
     int16_t servo_angle_deg;
     int16_t min_servo_angle_deg;

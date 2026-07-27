@@ -71,7 +71,9 @@ static void motion_action_start_imu_controller(const MotionAction *action)
     } else {
         CarController_StartDriveDistanceAtYaw(
             action->params.drive_distance_heading.distance_cm,
-            action->params.drive_distance_heading.target_yaw_deg,
+            action->params.drive_distance_heading.lock_current_yaw_on_start ?
+                Imu_GetYaw() :
+                action->params.drive_distance_heading.target_yaw_deg,
             action->params.drive_distance_heading.normalized_command);
     }
 
@@ -230,8 +232,20 @@ bool MotionAction_Start(const MotionAction *action)
     g_motionActionRuntime.action = action;
     g_motionActionRuntime.started = true;
 
+    if ((action->type == MOTION_ACTION_TURN_TO_YAW) &&
+        ((action->params.turn_to_yaw.angle_deg !=
+            action->params.turn_to_yaw.angle_deg) ||
+         (action->params.turn_to_yaw.angle_deg < -180.0f) ||
+         (action->params.turn_to_yaw.angle_deg > 180.0f))) {
+        motion_action_set_result(MOTION_RESULT_FAILED,
+            MOTION_ERROR_INVALID_ACTION);
+        motion_action_stop_car();
+        return false;
+    }
     if ((action->type == MOTION_ACTION_DRIVE_DISTANCE) &&
-        (!(action->params.drive_distance.distance_cm > 0.0f) ||
+        ((action->params.drive_distance.distance_cm !=
+            action->params.drive_distance.distance_cm) ||
+         (action->params.drive_distance.distance_cm == 0.0f) ||
          (action->params.drive_distance.normalized_command <= 0) ||
          (action->params.drive_distance.normalized_command >
             MOTION_NORMALIZED_COMMAND_MAX))) {
@@ -241,11 +255,14 @@ bool MotionAction_Start(const MotionAction *action)
         return false;
     }
     if ((action->type == MOTION_ACTION_DRIVE_DISTANCE_HEADING) &&
-        (!(action->params.drive_distance_heading.distance_cm > 0.0f) ||
-         (action->params.drive_distance_heading.target_yaw_deg !=
-            action->params.drive_distance_heading.target_yaw_deg) ||
-         (action->params.drive_distance_heading.target_yaw_deg < -180.0f) ||
-         (action->params.drive_distance_heading.target_yaw_deg > 180.0f) ||
+        ((action->params.drive_distance_heading.distance_cm !=
+            action->params.drive_distance_heading.distance_cm) ||
+         (action->params.drive_distance_heading.distance_cm == 0.0f) ||
+         (!action->params.drive_distance_heading.lock_current_yaw_on_start &&
+          ((action->params.drive_distance_heading.target_yaw_deg !=
+                action->params.drive_distance_heading.target_yaw_deg) ||
+           (action->params.drive_distance_heading.target_yaw_deg < -180.0f) ||
+           (action->params.drive_distance_heading.target_yaw_deg > 180.0f))) ||
          (action->params.drive_distance_heading.normalized_command <= 0) ||
          (action->params.drive_distance_heading.normalized_command >
             MOTION_NORMALIZED_COMMAND_MAX))) {

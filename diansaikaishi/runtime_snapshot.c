@@ -157,6 +157,8 @@ void RuntimeSnapshot_Update(uint32_t timestamp_ms)
         g_appRuntime.drive_distance_remaining_cm;
     g_snapshot.drive_distance_command =
         g_appRuntime.drive_distance_command;
+    g_snapshot.drive_distance_direction =
+        g_appRuntime.drive_distance_direction;
     g_snapshot.drive_distance_settle_elapsed_ms =
         g_appRuntime.drive_distance_settle_elapsed_ms;
     g_snapshot.drive_distance_heading_enabled =

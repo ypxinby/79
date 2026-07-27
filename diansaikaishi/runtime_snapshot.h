@@ -103,6 +103,7 @@ typedef struct {
     float drive_distance_travelled_cm;
     float drive_distance_remaining_cm;
     int16_t drive_distance_command;
+    int8_t drive_distance_direction;
     uint16_t drive_distance_settle_elapsed_ms;
     bool drive_distance_heading_enabled;
     bool drive_distance_heading_start_mismatch;

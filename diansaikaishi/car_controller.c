@@ -181,6 +181,7 @@ static void reset_drive_distance_runtime(void)
     g_appRuntime.drive_distance_travelled_cm = 0.0f;
     g_appRuntime.drive_distance_remaining_cm = 0.0f;
     g_appRuntime.drive_distance_command = 0;
+    g_appRuntime.drive_distance_direction = 0;
     g_appRuntime.drive_distance_settle_elapsed_ms = 0U;
     g_appRuntime.drive_distance_heading_enabled = false;
     g_appRuntime.drive_distance_heading_start_mismatch = false;
@@ -481,6 +482,14 @@ static void handle_turn_to_yaw(uint32_t elapsed_ms)
 
     error = Angle_Normalize180(g_appRuntime.yaw_turn_target_deg -
         Imu_GetYaw());
+    if ((abs_float(error) > 170.0f) &&
+        (((error < 0.0f) &&
+            (g_appRuntime.yaw_turn_direction_hint > 0)) ||
+         ((error > 0.0f) &&
+            (g_appRuntime.yaw_turn_direction_hint < 0)))) {
+        error = (float)g_appRuntime.yaw_turn_direction_hint *
+            abs_float(error);
+    }
     absError = abs_float(error);
     absGyro = abs_float(Imu_GetCorrectedGyroZDps());
     g_appRuntime.yaw_turn_error_deg = error;
@@ -582,6 +591,7 @@ static void handle_drive_distance(uint32_t elapsed_ms,
     const volatile WheelSpeedEstimatorRuntime *wheel =
         WheelSpeedEstimator_GetRuntime();
     int16_t command;
+    int16_t commandMagnitude;
     int16_t correction = 0;
     int16_t maximumCorrection;
     float leftSpeedAbs;
@@ -614,8 +624,9 @@ static void handle_drive_distance(uint32_t elapsed_ms,
     }
 
     g_appRuntime.drive_distance_travelled_cm =
-        wheel->center_distance_cm -
-        g_appRuntime.drive_distance_start_center_cm;
+        (float)g_appRuntime.drive_distance_direction *
+        (wheel->center_distance_cm -
+            g_appRuntime.drive_distance_start_center_cm);
     g_appRuntime.drive_distance_remaining_cm =
         g_appRuntime.drive_distance_target_cm -
         g_appRuntime.drive_distance_travelled_cm;
@@ -659,11 +670,14 @@ static void handle_drive_distance(uint32_t elapsed_ms,
     }
 
     command = g_appRuntime.drive_distance_command;
+    commandMagnitude = (command < 0) ? (int16_t)-command : command;
     if (g_appRuntime.drive_distance_remaining_cm <=
         g_appConfig.drive_distance_slow_zone_cm) {
         g_appRuntime.drive_distance_state = DRIVE_DISTANCE_STATE_SLOW;
-        if (command > g_appConfig.drive_distance_slow_command) {
-            command = g_appConfig.drive_distance_slow_command;
+        if (commandMagnitude > g_appConfig.drive_distance_slow_command) {
+            commandMagnitude = g_appConfig.drive_distance_slow_command;
+            command = (g_appRuntime.drive_distance_direction < 0) ?
+                (int16_t)-commandMagnitude : commandMagnitude;
         }
     } else {
         g_appRuntime.drive_distance_state = DRIVE_DISTANCE_STATE_DRIVE;
@@ -680,9 +694,10 @@ static void handle_drive_distance(uint32_t elapsed_ms,
         g_appRuntime.drive_distance_heading_error_deg =
             HeadingControl_GetRuntime()->heading_error_deg;
 
-        maximumCorrection = command;
-        if (maximumCorrection > (MOTOR_MAX_DUTY - command)) {
-            maximumCorrection = (int16_t)(MOTOR_MAX_DUTY - command);
+        maximumCorrection = commandMagnitude;
+        if (maximumCorrection > (MOTOR_MAX_DUTY - commandMagnitude)) {
+            maximumCorrection =
+                (int16_t)(MOTOR_MAX_DUTY - commandMagnitude);
         }
         if (maximumCorrection < 0) {
             maximumCorrection = 0;
@@ -731,6 +746,7 @@ void CarController_ResetRuntime(void)
     g_appRuntime.lap_cooldown_ms = 0;
     g_appRuntime.yaw_turn_target_deg = 0.0f;
     g_appRuntime.yaw_turn_error_deg = 0.0f;
+    g_appRuntime.yaw_turn_direction_hint = 0;
     g_appRuntime.yaw_turn_timeout_ms = 0U;
     g_appRuntime.drive_heading_target_yaw_deg = 0.0f;
     reset_drive_distance_runtime();
@@ -757,6 +773,7 @@ void CarController_ResetTransientState(void)
     g_appRuntime.drive_heading_command = 0;
     g_appRuntime.heading_imu_invalid_elapsed_ms = 0;
     g_appRuntime.yaw_turn_error_deg = 0.0f;
+    g_appRuntime.yaw_turn_direction_hint = 0;
     g_appRuntime.yaw_turn_timeout_ms = 0U;
     g_appRuntime.drive_heading_target_yaw_deg = 0.0f;
     reset_drive_distance_runtime();
@@ -846,6 +863,8 @@ void CarController_StartTurnToYawRelative(float angle_deg,
     g_appRuntime.yaw_turn_target_deg = Angle_Normalize180(
         Imu_GetYaw() + angle_deg);
     g_appRuntime.yaw_turn_error_deg = angle_deg;
+    g_appRuntime.yaw_turn_direction_hint =
+        (angle_deg > 0.0f) ? 1 : ((angle_deg < 0.0f) ? -1 : 0);
     g_appRuntime.yaw_turn_timeout_ms =
         (timeout_ms != 0U) ? timeout_ms :
         g_appConfig.yaw_turn_timeout_ms;
@@ -892,14 +911,19 @@ void CarController_StartDriveDistance(float distance_cm,
     stop_output();
     CarController_ResetTransientState();
     g_followTurnPolicy = CAR_TURN_POLICY_IGNORE;
-    g_appRuntime.drive_distance_target_cm = distance_cm;
-    g_appRuntime.drive_distance_remaining_cm = distance_cm;
-    g_appRuntime.drive_distance_command = clamp_i16(normalized_command,
-        1, MOTOR_MAX_DUTY);
+    g_appRuntime.drive_distance_direction =
+        (distance_cm < 0.0f) ? -1 : 1;
+    g_appRuntime.drive_distance_target_cm = abs_float(distance_cm);
+    g_appRuntime.drive_distance_remaining_cm =
+        g_appRuntime.drive_distance_target_cm;
+    g_appRuntime.drive_distance_command =
+        (int16_t)(g_appRuntime.drive_distance_direction *
+            clamp_i16(normalized_command, 1, MOTOR_MAX_DUTY));
     g_appRuntime.run_mode = TRACK_MODE_DRIVE_DISTANCE;
 
     wheel = WheelSpeedEstimator_GetRuntime();
-    if (!(distance_cm > 0.0f) || (normalized_command <= 0) ||
+    if ((distance_cm != distance_cm) || (distance_cm == 0.0f) ||
+        (normalized_command <= 0) ||
         !wheel->valid || wheel->stale || (wheel->error_flags != 0U)) {
         g_appRuntime.drive_distance_state = DRIVE_DISTANCE_STATE_ERROR;
     } else {
@@ -927,10 +951,14 @@ void CarController_StartDriveDistanceAtYaw(float distance_cm,
     CarController_ResetTransientState();
     g_followTurnPolicy = CAR_TURN_POLICY_IGNORE;
     g_appRuntime.drive_distance_heading_enabled = true;
-    g_appRuntime.drive_distance_target_cm = distance_cm;
-    g_appRuntime.drive_distance_remaining_cm = distance_cm;
-    g_appRuntime.drive_distance_command = clamp_i16(normalized_command,
-        1, MOTOR_MAX_DUTY);
+    g_appRuntime.drive_distance_direction =
+        (distance_cm < 0.0f) ? -1 : 1;
+    g_appRuntime.drive_distance_target_cm = abs_float(distance_cm);
+    g_appRuntime.drive_distance_remaining_cm =
+        g_appRuntime.drive_distance_target_cm;
+    g_appRuntime.drive_distance_command =
+        (int16_t)(g_appRuntime.drive_distance_direction *
+            clamp_i16(normalized_command, 1, MOTOR_MAX_DUTY));
     targetYawValid = (target_yaw_deg == target_yaw_deg) &&
         (target_yaw_deg >= -180.0f) && (target_yaw_deg <= 180.0f);
     g_appRuntime.drive_distance_target_yaw_deg = targetYawValid ?
@@ -941,7 +969,8 @@ void CarController_StartDriveDistanceAtYaw(float distance_cm,
     g_appRuntime.run_mode = TRACK_MODE_DRIVE_DISTANCE_HEADING;
 
     wheel = WheelSpeedEstimator_GetRuntime();
-    if (!(distance_cm > 0.0f) || !targetYawValid ||
+    if ((distance_cm != distance_cm) || (distance_cm == 0.0f) ||
+        !targetYawValid ||
         (normalized_command <= 0) || !wheel->valid || wheel->stale ||
         (wheel->error_flags != 0U) || !Imu_IsReady()) {
         g_appRuntime.drive_distance_state = DRIVE_DISTANCE_STATE_ERROR;

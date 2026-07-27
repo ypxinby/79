@@ -21,6 +21,8 @@ void BluetoothUart_Init(void);
 void BluetoothUart_Process(void);
 bool BluetoothUart_TryReadByte(uint8_t *byte);
 bool BluetoothUart_TryWriteByte(uint8_t byte);
+bool BluetoothUart_TryWriteBuffer(const uint8_t *data, uint16_t length);
+bool BluetoothUart_TryWriteString(const char *text);
 const volatile BluetoothUartRuntime *BluetoothUart_GetRuntime(void);
 
 #endif

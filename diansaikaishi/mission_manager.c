@@ -7,6 +7,12 @@
 #include "watchdog_monitor.h"
 
 static MissionRuntime g_missionRuntime;
+static const MissionDefinition *g_selectedDefinition;
+static MotionAction g_transientActions[2];
+static MissionDefinition g_transientDefinition;
+static bool g_transientActionActive;
+
+#define MISSION_ID_TRANSIENT_REMOTE    (254U)
 
 static void mission_stop_outputs(void)
 {
@@ -28,7 +34,7 @@ static uint16_t mission_get_current_registry_index(void)
     uint16_t count = MissionLibrary_GetCount();
 
     for (uint16_t i = 0; i < count; i++) {
-        if (MissionLibrary_GetByIndex(i) == g_missionRuntime.definition) {
+        if (MissionLibrary_GetByIndex(i) == g_selectedDefinition) {
             return i;
         }
     }
@@ -57,7 +63,9 @@ void MissionManager_Init(void)
 {
     MotionAction_Init();
 
-    g_missionRuntime.definition = MissionLibrary_GetByIndex(0U);
+    g_selectedDefinition = MissionLibrary_GetByIndex(0U);
+    g_missionRuntime.definition = g_selectedDefinition;
+    g_transientActionActive = false;
     g_missionRuntime.status = MISSION_STATUS_IDLE;
     g_missionRuntime.last_error_code = 0U;
     mission_reset_runtime_counters();
@@ -87,7 +95,9 @@ bool MissionManager_Select(uint8_t mission_id)
         return false;
     }
 
-    g_missionRuntime.definition = mission;
+    g_selectedDefinition = mission;
+    g_missionRuntime.definition = g_selectedDefinition;
+    g_transientActionActive = false;
     g_missionRuntime.last_error_code = 0U;
     mission_reset_runtime_counters();
     g_missionRuntime.status = MISSION_STATUS_READY;
@@ -155,11 +165,50 @@ bool MissionManager_Start(void)
     if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
         return false;
     }
-    if ((g_missionRuntime.definition == (const MissionDefinition *)0) ||
+    if ((g_selectedDefinition == (const MissionDefinition *)0) ||
         (g_missionRuntime.status == MISSION_STATUS_ERROR)) {
         return false;
     }
 
+    g_missionRuntime.definition = g_selectedDefinition;
+    g_transientActionActive = false;
+    mission_reset_runtime_counters();
+    g_missionRuntime.status = MISSION_STATUS_RUNNING;
+    g_missionRuntime.last_action_result = MOTION_RESULT_RUNNING;
+    CarState_Set(CAR_STATE_RUNNING);
+    return true;
+}
+
+bool MissionManager_StartTransientAction(const MotionAction *action)
+{
+    uint16_t error_code = 0U;
+
+    if ((action == (const MotionAction *)0) ||
+        EmergencyStop_IsActive() || WatchdogMonitor_HasTripped() ||
+        (g_missionRuntime.status == MISSION_STATUS_RUNNING) ||
+        (g_missionRuntime.status == MISSION_STATUS_PAUSED) ||
+        (g_missionRuntime.status == MISSION_STATUS_ERROR)) {
+        return false;
+    }
+
+    g_transientActions[0] = *action;
+    g_transientActions[1] = (MotionAction){0};
+    g_transientActions[1].type = MOTION_ACTION_STOP;
+    g_transientDefinition.mission_id = MISSION_ID_TRANSIENT_REMOTE;
+    g_transientDefinition.name = "REMOTE";
+    g_transientDefinition.actions = g_transientActions;
+    g_transientDefinition.action_count = 2U;
+    g_transientDefinition.control_profile_id = 0U;
+
+    if (!MissionLibrary_Validate(&g_transientDefinition, &error_code)) {
+        g_missionRuntime.last_error_code = error_code;
+        return false;
+    }
+
+    MotionAction_Init();
+    g_missionRuntime.definition = &g_transientDefinition;
+    g_transientActionActive = true;
+    g_missionRuntime.last_error_code = 0U;
     mission_reset_runtime_counters();
     g_missionRuntime.status = MISSION_STATUS_RUNNING;
     g_missionRuntime.last_action_result = MOTION_RESULT_RUNNING;
@@ -201,6 +250,8 @@ void MissionManager_Cancel(void)
     }
 
     MotionAction_Cancel();
+    g_transientActionActive = false;
+    g_missionRuntime.definition = g_selectedDefinition;
     g_missionRuntime.status = MISSION_STATUS_READY;
     mission_reset_runtime_counters();
     g_missionRuntime.last_action_result = MOTION_RESULT_CANCELLED;
@@ -211,6 +262,8 @@ void MissionManager_Reset(void)
 {
     mission_stop_outputs();
     MotionAction_Init();
+    g_transientActionActive = false;
+    g_missionRuntime.definition = g_selectedDefinition;
     g_missionRuntime.last_error_code = 0U;
     mission_reset_runtime_counters();
     g_missionRuntime.status = MISSION_STATUS_READY;
@@ -307,11 +360,11 @@ const MissionRuntime *MissionManager_GetRuntime(void)
 
 uint8_t MissionManager_GetSelectedMissionId(void)
 {
-    if (g_missionRuntime.definition == (const MissionDefinition *)0) {
+    if (g_selectedDefinition == (const MissionDefinition *)0) {
         return MISSION_ID_LEGACY;
     }
 
-    return g_missionRuntime.definition->mission_id;
+    return g_selectedDefinition->mission_id;
 }
 
 uint16_t MissionManager_GetSelectedMissionIndex(void)
@@ -332,6 +385,11 @@ void MissionManager_SetExternalHold(bool enable)
 bool MissionManager_IsExternallyHeld(void)
 {
     return g_missionRuntime.external_hold;
+}
+
+bool MissionManager_IsTransientAction(void)
+{
+    return g_transientActionActive;
 }
 
 void MissionManager_ReportExternalFailure(uint16_t error_code)

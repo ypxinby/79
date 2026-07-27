@@ -36,6 +36,7 @@ bool MissionManager_Select(uint8_t mission_id);
 bool MissionManager_SelectNext(void);
 bool MissionManager_SelectPrevious(void);
 bool MissionManager_Start(void);
+bool MissionManager_StartTransientAction(const MotionAction *action);
 void MissionManager_Pause(void);
 void MissionManager_Resume(void);
 void MissionManager_Cancel(void);
@@ -47,6 +48,7 @@ uint16_t MissionManager_GetSelectedMissionIndex(void);
 uint16_t MissionManager_GetMissionCount(void);
 void MissionManager_SetExternalHold(bool enable);
 bool MissionManager_IsExternallyHeld(void);
+bool MissionManager_IsTransientAction(void);
 void MissionManager_ReportExternalFailure(uint16_t error_code);
 
 #endif

@@ -1,4 +1,6 @@
 #include "menu.h"
+
+#include "app.h"
 #include "app_config.h"
 #include "app_features.h"
 #include "car_controller.h"
@@ -432,14 +434,7 @@ static void menu_handle_status_key(KeyEvent event)
             MissionManager_Cancel();
             break;
         case KEY3_LONG:
-            Fault_Clear();
-            WatchdogMonitor_Reset();
-            ObstacleAvoidance_Init();
-            CarController_ResetRuntime();
-            MissionManager_Reset();
-#if FEATURE_WHEEL_SPEED_CONTROL
-            MotorControl_Reset();
-#endif
+            (void)App_ResetToReady();
             g_oledPage = OLED_PAGE_STATUS;
             break;
         default:
@@ -492,7 +487,7 @@ void Menu_HandleKeyEvent(KeyEvent event)
 
     if (EmergencyStop_IsActive()) {
         if (event == KEY3_LONG) {
-            EmergencyStop_Reset();
+            (void)App_ResetToReady();
             g_oledPage = OLED_PAGE_STATUS;
         }
         return;

@@ -1,6 +1,7 @@
 #include "bluetooth_uart.h"
 
 #include "app_features.h"
+#include <string.h>
 
 #if FEATURE_BLUETOOTH_UART
 
@@ -8,9 +9,14 @@
 
 #define BLUETOOTH_UART_RX_RING_SIZE (128U)
 #define BLUETOOTH_UART_RX_RING_MASK (BLUETOOTH_UART_RX_RING_SIZE - 1U)
+#define BLUETOOTH_UART_TX_RING_SIZE (256U)
+#define BLUETOOTH_UART_TX_RING_MASK (BLUETOOTH_UART_TX_RING_SIZE - 1U)
 
 #if ((BLUETOOTH_UART_RX_RING_SIZE & BLUETOOTH_UART_RX_RING_MASK) != 0U)
 #error BLUETOOTH_UART_RX_RING_SIZE must be a power of two
+#endif
+#if ((BLUETOOTH_UART_TX_RING_SIZE & BLUETOOTH_UART_TX_RING_MASK) != 0U)
+#error BLUETOOTH_UART_TX_RING_SIZE must be a power of two
 #endif
 
 #ifndef UART_BLUETOOTH_INST
@@ -20,6 +26,9 @@
 static volatile uint8_t g_rxRing[BLUETOOTH_UART_RX_RING_SIZE];
 static volatile uint16_t g_rxHead;
 static volatile uint16_t g_rxTail;
+static volatile uint8_t g_txRing[BLUETOOTH_UART_TX_RING_SIZE];
+static volatile uint16_t g_txHead;
+static volatile uint16_t g_txTail;
 static BluetoothUartRuntime g_runtime;
 
 static bool bluetooth_uart_pinmux_is_valid(void)
@@ -65,9 +74,7 @@ static void bluetooth_uart_store_byte(uint8_t byte, bool polled)
     }
 
 #if FEATURE_BLUETOOTH_RX_ECHO
-    if (!BluetoothUart_TryWriteByte(byte)) {
-        bluetooth_uart_increment(&g_runtime.tx_drop_count);
-    }
+    (void)BluetoothUart_TryWriteByte(byte);
 #endif
 }
 
@@ -79,10 +86,36 @@ static void bluetooth_uart_drain_rx(bool polled)
     }
 }
 
+static void bluetooth_uart_drain_tx(void)
+{
+    while ((g_txTail != g_txHead) &&
+        !DL_UART_Main_isTXFIFOFull(UART_BLUETOOTH_INST)) {
+        DL_UART_Main_transmitData(UART_BLUETOOTH_INST,
+            g_txRing[g_txTail]);
+        g_txTail = (uint16_t)((g_txTail + 1U) &
+            BLUETOOTH_UART_TX_RING_MASK);
+        bluetooth_uart_increment(&g_runtime.tx_byte_count);
+    }
+}
+
+static uint16_t bluetooth_uart_tx_free(void)
+{
+    uint16_t head = g_txHead;
+    uint16_t tail = g_txTail;
+
+    if (head >= tail) {
+        return (uint16_t)(BLUETOOTH_UART_TX_RING_SIZE -
+            (head - tail) - 1U);
+    }
+    return (uint16_t)(tail - head - 1U);
+}
+
 void BluetoothUart_Init(void)
 {
     g_rxHead = 0U;
     g_rxTail = 0U;
+    g_txHead = 0U;
+    g_txTail = 0U;
     g_runtime.initialized = true;
     g_runtime.pinmux_valid = bluetooth_uart_pinmux_is_valid();
     g_runtime.rx_pin_high = false;
@@ -110,6 +143,13 @@ void BluetoothUart_Process(void)
     g_runtime.rx_pin_high =
         (DL_GPIO_readPins(GPIO_UART_BLUETOOTH_RX_PORT,
             GPIO_UART_BLUETOOTH_RX_PIN) != 0U);
+
+    interruptState = __get_PRIMASK();
+    __disable_irq();
+    bluetooth_uart_drain_tx();
+    if (interruptState == 0U) {
+        __enable_irq();
+    }
 
     if (DL_UART_Main_isRXFIFOEmpty(UART_BLUETOOTH_INST)) {
         return;
@@ -143,16 +183,56 @@ bool BluetoothUart_TryReadByte(uint8_t *byte)
 
 bool BluetoothUart_TryWriteByte(uint8_t byte)
 {
+    return BluetoothUart_TryWriteBuffer(&byte, 1U);
+}
+
+bool BluetoothUart_TryWriteBuffer(const uint8_t *data, uint16_t length)
+{
+    uint32_t interruptState;
+    uint16_t i;
+
     if (!g_runtime.initialized ||
-        DL_UART_Main_isTXFIFOFull(UART_BLUETOOTH_INST)) {
+        ((data == (const uint8_t *)0) && (length != 0U))) {
         return false;
     }
 
-    DL_UART_Main_transmitData(UART_BLUETOOTH_INST, byte);
-    if (g_runtime.tx_byte_count < UINT32_MAX) {
-        g_runtime.tx_byte_count++;
+    interruptState = __get_PRIMASK();
+    __disable_irq();
+    if (length > bluetooth_uart_tx_free()) {
+        for (i = 0U; i < length; i++) {
+            bluetooth_uart_increment(&g_runtime.tx_drop_count);
+        }
+        if (interruptState == 0U) {
+            __enable_irq();
+        }
+        return false;
+    }
+
+    for (i = 0U; i < length; i++) {
+        g_txRing[g_txHead] = data[i];
+        g_txHead = (uint16_t)((g_txHead + 1U) &
+            BLUETOOTH_UART_TX_RING_MASK);
+    }
+    bluetooth_uart_drain_tx();
+    if (interruptState == 0U) {
+        __enable_irq();
     }
     return true;
+}
+
+bool BluetoothUart_TryWriteString(const char *text)
+{
+    size_t length;
+
+    if (text == (const char *)0) {
+        return false;
+    }
+    length = strlen(text);
+    if (length > UINT16_MAX) {
+        return false;
+    }
+    return BluetoothUart_TryWriteBuffer((const uint8_t *)text,
+        (uint16_t)length);
 }
 
 const volatile BluetoothUartRuntime *BluetoothUart_GetRuntime(void)
@@ -195,6 +275,19 @@ bool BluetoothUart_TryReadByte(uint8_t *byte)
 bool BluetoothUart_TryWriteByte(uint8_t byte)
 {
     (void)byte;
+    return false;
+}
+
+bool BluetoothUart_TryWriteBuffer(const uint8_t *data, uint16_t length)
+{
+    (void)data;
+    (void)length;
+    return false;
+}
+
+bool BluetoothUart_TryWriteString(const char *text)
+{
+    (void)text;
     return false;
 }
 

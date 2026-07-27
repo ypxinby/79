@@ -1,6 +1,7 @@
 #ifndef APP_H
 #define APP_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 extern volatile uint8_t g_trackRaw;
@@ -15,5 +16,6 @@ extern volatile uint8_t g_trackTurnDebug;
 
 void App_Init(void);
 void App_Update_20ms(uint32_t elapsed_ms);
+bool App_ResetToReady(void);
 
 #endif

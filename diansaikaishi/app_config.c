@@ -101,6 +101,8 @@ void AppConfig_InitDefault(void)
         DRIVE_DISTANCE_SETTLE_MS_DEFAULT;
     g_appConfig.drive_distance_heading_start_error_limit_deg =
         DRIVE_DISTANCE_HEADING_START_ERROR_LIMIT_DEG_DEFAULT;
+    g_appConfig.motion_low_speed_cmps = MOTION_LOW_SPEED_CMPS_DEFAULT;
+    g_appConfig.motion_high_speed_cmps = MOTION_HIGH_SPEED_CMPS_DEFAULT;
 
     g_appConfig.servo_angle_deg = 90;
     g_appConfig.min_servo_angle_deg = 35;
@@ -334,6 +336,23 @@ void AppConfig_LimitAll(void)
         (g_appConfig.drive_distance_heading_start_error_limit_deg > 90.0f)) {
         g_appConfig.drive_distance_heading_start_error_limit_deg =
             DRIVE_DISTANCE_HEADING_START_ERROR_LIMIT_DEG_DEFAULT;
+    }
+    if ((g_appConfig.motion_low_speed_cmps !=
+            g_appConfig.motion_low_speed_cmps) ||
+        (g_appConfig.motion_low_speed_cmps <= 0.0f) ||
+        (g_appConfig.motion_low_speed_cmps >
+            g_appConfig.wheel_control_max_speed_cmps)) {
+        g_appConfig.motion_low_speed_cmps =
+            MOTION_LOW_SPEED_CMPS_DEFAULT;
+    }
+    if ((g_appConfig.motion_high_speed_cmps !=
+            g_appConfig.motion_high_speed_cmps) ||
+        (g_appConfig.motion_high_speed_cmps <
+            g_appConfig.motion_low_speed_cmps) ||
+        (g_appConfig.motion_high_speed_cmps >
+            g_appConfig.wheel_control_max_speed_cmps)) {
+        g_appConfig.motion_high_speed_cmps =
+            MOTION_HIGH_SPEED_CMPS_DEFAULT;
     }
     g_appConfig.servo_angle_deg =
         clamp_i16(g_appConfig.servo_angle_deg,

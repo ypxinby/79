@@ -326,7 +326,21 @@
         .params.drive_distance_heading = { \
             .distance_cm = (float)(distance), \
             .target_yaw_deg = (float)(target_yaw), \
-            .normalized_command = (int16_t)(command) \
+            .normalized_command = (int16_t)(command), \
+            .lock_current_yaw_on_start = false \
+        } \
+    }
+
+#define ACTION_DRIVE_DISTANCE_HOLD_CURRENT_YAW(distance, command, timeout) \
+    { \
+        .type = MOTION_ACTION_DRIVE_DISTANCE_HEADING, \
+        .timeout_ms = (uint32_t)(timeout), \
+        .max_retries = 0U, \
+        .params.drive_distance_heading = { \
+            .distance_cm = (float)(distance), \
+            .target_yaw_deg = 0.0f, \
+            .normalized_command = (int16_t)(command), \
+            .lock_current_yaw_on_start = true \
         } \
     }
 

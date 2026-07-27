@@ -1,6 +1,7 @@
 #ifndef MOTION_TYPES_H
 #define MOTION_TYPES_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #define MOTION_USE_GLOBAL_SPEED     ((int16_t)-1)
@@ -120,6 +121,7 @@ typedef struct {
             float distance_cm;
             float target_yaw_deg;
             int16_t normalized_command;
+            bool lock_current_yaw_on_start;
         } drive_distance_heading;
 
         struct {
