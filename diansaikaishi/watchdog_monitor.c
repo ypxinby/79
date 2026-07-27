@@ -3,6 +3,7 @@
 #include "app_features.h"
 #include "car_controller.h"
 #include "fault.h"
+#include "magnet.h"
 #include "mission_manager.h"
 #include "motor.h"
 
@@ -69,6 +70,7 @@ void WatchdogMonitor_Tick1msFromIsr(uint32_t now_ms)
     g_faultApplied = false;
 
     /* The main loop may be stalled, so final output must be stopped here. */
+    Magnet_ForceOff();
     Motor_Stop();
 }
 
@@ -93,6 +95,7 @@ void WatchdogMonitor_ApplyFaultIfNeeded(uint32_t now_ms)
     }
 
     g_faultPending = false;
+    Magnet_ForceOff();
     CarController_SetSafetyHold(true);
     MissionManager_ReportExternalFailure(
         (uint16_t)FAULT_CODE_APP_HEARTBEAT_TIMEOUT);
@@ -102,6 +105,7 @@ void WatchdogMonitor_ApplyFaultIfNeeded(uint32_t now_ms)
 
 void WatchdogMonitor_Reset(void)
 {
+    Magnet_ForceOff();
     g_status.heartbeat_seen = false;
     g_status.tripped = false;
     g_status.last_heartbeat_ms = g_lastTickMs;

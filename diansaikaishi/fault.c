@@ -1,5 +1,7 @@
 #include "fault.h"
 
+#include "magnet.h"
+
 static FaultRecord g_faultRecord;
 
 void Fault_Init(void)
@@ -17,6 +19,9 @@ void Fault_Raise(FaultCode code, uint16_t detail, uint16_t context,
     if (code == FAULT_CODE_NONE) {
         return;
     }
+
+    /* Every latched fault must de-energize the payload independently. */
+    Magnet_ForceOff();
 
     if ((g_faultRecord.code == FAULT_CODE_SOFTWARE_EMERGENCY_STOP) &&
         (code != FAULT_CODE_SOFTWARE_EMERGENCY_STOP)) {

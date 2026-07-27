@@ -16,6 +16,7 @@
 #include "heading_control.h"
 #include "imu.h"
 #include "key.h"
+#include "magnet.h"
 #include "menu.h"
 #include "mission_manager.h"
 #include "motor.h"
@@ -323,7 +324,7 @@ static bool app_remote_start_action(const MotionAction *action,
 static void app_remote_send_status(void)
 {
     const ObstacleFeedback *obstacle = ObstacleMonitor_GetFeedback();
-    char response[112];
+    char response[128];
     uint16_t length = 0U;
     const FaultRecord *fault = Fault_GetRecord();
 
@@ -354,6 +355,10 @@ static void app_remote_send_status(void)
         length = app_remote_append_text(response, length, sizeof(response),
             "NA");
     }
+    length = app_remote_append_text(response, length, sizeof(response),
+        ",MAG=");
+    length = app_remote_append_text(response, length, sizeof(response),
+        Magnet_IsOn() ? "ON" : "OFF");
     (void)app_remote_append_text(response, length, sizeof(response), "\r\n");
     app_remote_send(response);
 }
@@ -521,10 +526,34 @@ static void app_remote_handle_line(char *line)
         } else {
             app_remote_send("ERR,RESET\r\n");
         }
-    } else if ((strcmp(tokens[0], "MAGNET") == 0) && (count == 2U) &&
-        ((strcmp(tokens[1], "ON") == 0) ||
-         (strcmp(tokens[1], "OFF") == 0))) {
-        app_remote_send("ERR,MAGNET,NOT_IMPLEMENTED\r\n");
+    } else if (strcmp(tokens[0], "MAGNET") == 0) {
+        const MissionRuntime *mission = MissionManager_GetRuntime();
+        CarState car_state = CarState_Get();
+
+        if ((count != 2U) ||
+            ((strcmp(tokens[1], "ON") != 0) &&
+             (strcmp(tokens[1], "OFF") != 0))) {
+            app_remote_send("ERR,MAGNET,PARAM\r\n");
+        } else if (strcmp(tokens[1], "OFF") == 0) {
+            /* OFF is deliberately accepted in every application state. */
+            Magnet_ForceOff();
+            app_remote_send("ACK,MAGNET,OFF\r\n");
+        } else if (EmergencyStop_IsActive() ||
+            WatchdogMonitor_HasTripped() ||
+            (Fault_GetRecord()->code != FAULT_CODE_NONE) ||
+            (mission->status == MISSION_STATUS_ERROR) ||
+            (car_state == CAR_STATE_ERROR)) {
+            app_remote_send("ERR,MAGNET,SAFETY\r\n");
+        } else if ((mission->status == MISSION_STATUS_RUNNING) ||
+            (mission->status == MISSION_STATUS_PAUSED) ||
+            (car_state == CAR_STATE_RUNNING) ||
+            (car_state == CAR_STATE_PAUSED)) {
+            app_remote_send("ERR,MAGNET,BUSY\r\n");
+        } else if (!Magnet_Set(true)) {
+            app_remote_send("ERR,MAGNET,HARDWARE\r\n");
+        } else {
+            app_remote_send("ACK,MAGNET,ON\r\n");
+        }
     } else {
         app_remote_send("ERR,UNKNOWN\r\n");
     }
@@ -655,8 +684,21 @@ static void App_UpdateDebugAndUi(uint32_t timestamp_ms)
         g_keyEvent);
 }
 
+static void App_EnforceMagnetSafety(void)
+{
+    const MissionRuntime *mission = MissionManager_GetRuntime();
+
+    if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped() ||
+        (Fault_GetRecord()->code != FAULT_CODE_NONE) ||
+        (mission->status == MISSION_STATUS_ERROR) ||
+        (CarState_Get() == CAR_STATE_ERROR)) {
+        Magnet_ForceOff();
+    }
+}
+
 void App_Init(void)
 {
+    Magnet_Init();
     Fault_Init();
     EmergencyStop_Init();
     WatchdogMonitor_Init(SystemTime_GetMs());
@@ -704,6 +746,7 @@ void App_Init(void)
 
 bool App_ResetToReady(void)
 {
+    Magnet_ForceOff();
     Motor_Stop();
     if (EmergencyStop_IsActive()) {
         EmergencyStop_Reset();
@@ -735,6 +778,7 @@ void App_Update_20ms(uint32_t elapsed_ms)
     WheelSpeedEstimator_Update(elapsed_ms);
 #endif
     WatchdogMonitor_ApplyFaultIfNeeded(timestamp_ms);
+    App_EnforceMagnetSafety();
 #if ENABLE_IMU
     Imu_Update(elapsed_ms);
 #endif
@@ -771,6 +815,7 @@ void App_Update_20ms(uint32_t elapsed_ms)
         MotorControl_Update(elapsed_ms);
 #endif
         EmergencyStop_Enforce();
+        App_EnforceMagnetSafety();
 #if FEATURE_BLUETOOTH_UART
         app_remote_update_result();
 #endif
@@ -789,6 +834,9 @@ void App_Update_20ms(uint32_t elapsed_ms)
     MotorControl_Update(elapsed_ms);
 #endif
 #endif
+
+    /* Catch faults raised by this cycle before leaving the 20 ms task. */
+    App_EnforceMagnetSafety();
 
 #if FEATURE_BLUETOOTH_UART
     app_remote_update_result();

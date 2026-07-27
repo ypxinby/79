@@ -3,6 +3,7 @@
 #include "app_features.h"
 #include "car_controller.h"
 #include "fault.h"
+#include "magnet.h"
 #include "mission_manager.h"
 #include "motor.h"
 #include "motor_control.h"
@@ -21,6 +22,7 @@ void EmergencyStop_Init(void)
 void EmergencyStop_Trigger(void)
 {
     g_emergencyStopActive = true;
+    Magnet_ForceOff();
     Motor_Stop();
     CarController_SetSafetyHold(true);
     MissionManager_ReportExternalFailure(
@@ -35,6 +37,7 @@ void EmergencyStop_Enforce(void)
         return;
     }
 
+    Magnet_ForceOff();
     Motor_Stop();
     CarController_SetSafetyHold(true);
     MissionManager_SetExternalHold(true);
@@ -42,6 +45,7 @@ void EmergencyStop_Enforce(void)
 
 void EmergencyStop_Reset(void)
 {
+    Magnet_ForceOff();
     if (!g_emergencyStopActive) {
         return;
     }

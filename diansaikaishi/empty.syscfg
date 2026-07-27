@@ -225,9 +225,10 @@ GPIO12.associatedPins[0].$name           = "PITCH_STEP";
 GPIO12.associatedPins[0].assignedPin     = "4";
 GPIO12.associatedPins[0].initialValue    = "CLEARED";
 
-GPIO13.$name                             = "GPIO_GIMBAL_PITCH";
+/* 3.3 V high-level-trigger relay. PB5 low is the fail-safe OFF state. */
+GPIO13.$name                             = "GPIO_MAGNET_RELAY";
 GPIO13.port                              = "PORTB";
 GPIO13.associatedPins.create(1);
-GPIO13.associatedPins[0].$name           = "STEP";
+GPIO13.associatedPins[0].$name           = "RELAY_CTRL";
 GPIO13.associatedPins[0].assignedPin     = "5";
 GPIO13.associatedPins[0].initialValue    = "CLEARED";

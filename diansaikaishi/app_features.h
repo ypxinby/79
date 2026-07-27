@@ -18,6 +18,8 @@
 #define FEATURE_GIMBAL_OLED_TEST   (0)
 /* HC-06 on UART1: PB6 MCU TX -> module RXD; PB7 MCU RX <- module TXD. */
 #define FEATURE_BLUETOOTH_UART     (1)
+/* PB5 drives a 3.3 V high-level-trigger relay module for the 5 V magnet. */
+#define FEATURE_MAGNET_RELAY       (1)
 /* Bring-up aid: echo every received byte through HC-06. Disable this when the
  * application protocol takes ownership of Bluetooth TX. */
 #define FEATURE_BLUETOOTH_RX_ECHO  (0)
@@ -78,8 +80,16 @@
 #define ENABLE_HEADING_CONTROL     (1)
 #define ENABLE_IMU_ANGLE_TURN      (0)
 
+#if FEATURE_GIMBAL_OLED_TEST && !FEATURE_GIMBAL_MOTION_CONTROL
+#error Gimbal OLED test requires gimbal motion control and dedicated pins
+#endif
+
 #if FEATURE_GIMBAL_MOTION_CONTROL && FEATURE_BLUETOOTH_UART
 #error PB6/PB7 cannot be shared by gimbal motion and Bluetooth UART
+#endif
+
+#if FEATURE_GIMBAL_MOTION_CONTROL && FEATURE_MAGNET_RELAY
+#error PB5 cannot be shared by gimbal pitch STEP and the magnet relay
 #endif
 
 #if FEATURE_BLUETOOTH_RX_ECHO && !FEATURE_BLUETOOTH_UART
