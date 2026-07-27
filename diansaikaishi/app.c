@@ -49,6 +49,8 @@ volatile uint8_t g_trackTurnDebug;
 #define APP_REMOTE_RX_BUDGET            (64U)
 #define APP_REMOTE_DISTANCE_MAX_CM      (1000)
 #define APP_REMOTE_TIMEOUT_MAX_MS       (120000U)
+#define APP_REMOTE_TURN_BASE_TIMEOUT_MS (4000U)
+#define APP_REMOTE_TURN_PER_DEG_MS      (40U)
 /* Current +90 degree vehicle convention is treated as clockwise. */
 #define APP_REMOTE_CLOCKWISE_180_DEG    (180.0f)
 
@@ -116,6 +118,26 @@ static uint16_t app_remote_append_u32(char *buffer, uint16_t length,
     }
     buffer[length] = '\0';
     return length;
+}
+
+static uint16_t app_remote_append_float_tenth(char *buffer,
+    uint16_t length, uint16_t capacity, float value)
+{
+    char fraction[3] = {'.', '0', '\0'};
+    uint32_t scaled;
+
+    if ((value != value) || (value > 1000000.0f) ||
+        (value < -1000000.0f)) {
+        return app_remote_append_text(buffer, length, capacity, "NA");
+    }
+    if (value < 0.0f) {
+        length = app_remote_append_text(buffer, length, capacity, "-");
+        value = -value;
+    }
+    scaled = (uint32_t)(value * 10.0f + 0.5f);
+    length = app_remote_append_u32(buffer, length, capacity, scaled / 10U);
+    fraction[1] = (char)('0' + (scaled % 10U));
+    return app_remote_append_text(buffer, length, capacity, fraction);
 }
 
 static char app_remote_upper(char value)
@@ -250,6 +272,17 @@ static uint32_t app_remote_move_timeout_ms(int32_t distance_cm,
     return (timeout < 3000U) ? 3000U : timeout;
 }
 
+static uint32_t app_remote_turn_timeout_ms(int32_t magnitude_deg)
+{
+    uint32_t timeout = APP_REMOTE_TURN_BASE_TIMEOUT_MS +
+        (uint32_t)magnitude_deg * APP_REMOTE_TURN_PER_DEG_MS;
+
+    if (timeout < g_appConfig.yaw_turn_timeout_ms) {
+        timeout = g_appConfig.yaw_turn_timeout_ms;
+    }
+    return timeout;
+}
+
 static bool app_remote_start_action(const MotionAction *action,
     AppRemoteAction remote_action)
 {
@@ -350,7 +383,7 @@ static void app_remote_handle_turn(char **tokens, uint8_t count)
     }
 
     action.type = MOTION_ACTION_TURN_TO_YAW;
-    action.timeout_ms = (uint32_t)(2000 + magnitude * 30);
+    action.timeout_ms = app_remote_turn_timeout_ms(magnitude);
     action.max_retries = 0U;
     action.params.turn_to_yaw.angle_deg = (magnitude == 180) ?
         APP_REMOTE_CLOCKWISE_180_DEG : (float)angle;
@@ -452,7 +485,7 @@ static void app_remote_process_rx(void)
 static void app_remote_update_result(void)
 {
     const MissionRuntime *mission;
-    char response[48];
+    char response[96];
     uint16_t length = 0U;
 
     if (g_remoteAction == APP_REMOTE_ACTION_NONE) {
@@ -477,6 +510,26 @@ static void app_remote_update_result(void)
             ",");
         length = app_remote_append_u32(response, length, sizeof(response),
             mission->last_error_code);
+        if ((g_remoteAction == APP_REMOTE_ACTION_TURN) &&
+            (mission->last_error_code ==
+                (uint16_t)MOTION_ERROR_TURN_TIMEOUT)) {
+            length = app_remote_append_text(response, length,
+                sizeof(response), ",E=");
+            length = app_remote_append_float_tenth(response, length,
+                sizeof(response), g_appRuntime.yaw_turn_error_deg);
+            length = app_remote_append_text(response, length,
+                sizeof(response), ",Y=");
+            length = app_remote_append_float_tenth(response, length,
+                sizeof(response), Imu_GetYaw());
+            length = app_remote_append_text(response, length,
+                sizeof(response), ",G=");
+            length = app_remote_append_float_tenth(response, length,
+                sizeof(response), Imu_GetCorrectedGyroZDps());
+            length = app_remote_append_text(response, length,
+                sizeof(response), ",MS=");
+            length = app_remote_append_u32(response, length,
+                sizeof(response), mission->action_elapsed_ms);
+        }
         (void)app_remote_append_text(response, length, sizeof(response),
             "\r\n");
         app_remote_send(response);
