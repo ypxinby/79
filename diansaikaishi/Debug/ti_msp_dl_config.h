@@ -262,12 +262,12 @@ extern "C" {
 /* Defines for PITCH_STEP: GPIOB.4 with pinCMx 17 on package pin 52 */
 #define GPIO_GIMBAL_B_PITCH_STEP_PIN                             (DL_GPIO_PIN_4)
 #define GPIO_GIMBAL_B_PITCH_STEP_IOMUX                           (IOMUX_PINCM17)
-/* Port definition for Pin Group GPIO_GIMBAL_PITCH */
-#define GPIO_GIMBAL_PITCH_PORT                                           (GPIOB)
+/* Port definition for Pin Group GPIO_MAGNET_RELAY */
+#define GPIO_MAGNET_RELAY_PORT                                           (GPIOB)
 
-/* Defines for STEP: GPIOB.5 with pinCMx 18 on package pin 53 */
-#define GPIO_GIMBAL_PITCH_STEP_PIN                               (DL_GPIO_PIN_5)
-#define GPIO_GIMBAL_PITCH_STEP_IOMUX                             (IOMUX_PINCM18)
+/* Defines for RELAY_CTRL: GPIOB.5 with pinCMx 18 on package pin 53 */
+#define GPIO_MAGNET_RELAY_RELAY_CTRL_PIN                         (DL_GPIO_PIN_5)
+#define GPIO_MAGNET_RELAY_RELAY_CTRL_IOMUX                       (IOMUX_PINCM18)
 
 /* clang-format on */
 

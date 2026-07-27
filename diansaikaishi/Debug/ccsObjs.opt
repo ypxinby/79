@@ -21,6 +21,7 @@
 "./imu.o"
 "./key.o"
 "./line_controller.o"
+"./magnet.o"
 "./menu.o"
 "./mission_library.o"
 "./mission_manager.o"

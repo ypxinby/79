@@ -32,6 +32,7 @@ C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/m0p/startup_system_files/ticlan
 ../imu.c \
 ../key.c \
 ../line_controller.c \
+../magnet.c \
 ../menu.c \
 ../mission_library.c \
 ../mission_manager.c \
@@ -90,6 +91,7 @@ C_DEPS += \
 ./imu.d \
 ./key.d \
 ./line_controller.d \
+./magnet.d \
 ./menu.d \
 ./mission_library.d \
 ./mission_manager.d \
@@ -143,6 +145,7 @@ OBJS += \
 ./imu.o \
 ./key.o \
 ./line_controller.o \
+./magnet.o \
 ./menu.o \
 ./mission_library.o \
 ./mission_manager.o \
@@ -198,6 +201,7 @@ OBJS__QUOTED += \
 "imu.o" \
 "key.o" \
 "line_controller.o" \
+"magnet.o" \
 "menu.o" \
 "mission_library.o" \
 "mission_manager.o" \
@@ -253,6 +257,7 @@ C_DEPS__QUOTED += \
 "imu.d" \
 "key.d" \
 "line_controller.d" \
+"magnet.d" \
 "menu.d" \
 "mission_library.d" \
 "mission_manager.d" \
@@ -308,6 +313,7 @@ C_SRCS__QUOTED += \
 "../imu.c" \
 "../key.c" \
 "../line_controller.c" \
+"../magnet.c" \
 "../menu.c" \
 "../mission_library.c" \
 "../mission_manager.c" \
