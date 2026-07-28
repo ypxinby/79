@@ -40,6 +40,7 @@ PLAN_RECOVERY_TIMEOUT_SECONDS = 1.5
 PLAN_MAX_ACTION_TIMEOUT_SECONDS = 600.0
 PLAN_RELIABLE_RETRY_SECONDS = 0.75
 PLAN_RELIABLE_MAX_SENDS = 3
+PLAN_HEARTBEAT_INTERVAL_SECONDS = 0.4
 COMMAND_SEQUENCE_MAX = 0xFFFFFFFF
 LINK_SETTLE_SECONDS = 0.5
 LINK_FRAME_CLEAR_SECONDS = 0.15
@@ -59,6 +60,7 @@ PLAN_ALLOWED_COMMANDS = {
     "WAIT",
 }
 PLAN_RELIABLE_COMMANDS = {"MOVE", "TURN", "MAGNET"}
+SERIAL_WRITE_LOCK = threading.Lock()
 
 
 @dataclass(frozen=True)
@@ -355,9 +357,44 @@ def send_bytes(port: serial.Serial, data: bytes) -> None:
         print("Nothing sent: payload is empty.")
         return
 
-    port.write(data)
-    port.flush()
+    with SERIAL_WRITE_LOCK:
+        port.write(data)
+        port.flush()
     print_tx(data)
+
+
+def send_heartbeat(port: serial.Serial) -> None:
+    with SERIAL_WRITE_LOCK:
+        port.write(b"HB\n")
+        port.flush()
+
+
+class PeriodicHeartbeat:
+    """Keep manually issued CMD motion safe while the console is open."""
+
+    def __init__(self, port: serial.Serial) -> None:
+        self.port = port
+        self.stop_event = threading.Event()
+        self.thread = threading.Thread(
+            target=self._run,
+            name="bluetooth-heartbeat",
+            daemon=True,
+        )
+
+    def start(self) -> None:
+        self.thread.start()
+
+    def stop(self) -> None:
+        self.stop_event.set()
+        self.thread.join(timeout=0.5)
+
+    def _run(self) -> None:
+        while not self.stop_event.wait(PLAN_HEARTBEAT_INTERVAL_SECONDS):
+            try:
+                send_heartbeat(self.port)
+            except serial.SerialException:
+                self.stop_event.set()
+                return
 
 
 def read_one_shot_reply(port: serial.Serial, wait_seconds: float = 1.0) -> None:
@@ -642,6 +679,26 @@ def wait_for_plan_line(
     return receiver.wait_line(remaining) if remaining > 0.0 else None
 
 
+def wait_for_plan_line_with_heartbeat(
+    port: serial.Serial,
+    receiver: SerialLineReceiver,
+    deadline: float,
+    next_heartbeat: float,
+) -> tuple[Optional[str], float]:
+    while time.monotonic() < deadline:
+        wait_deadline = min(deadline, next_heartbeat)
+        line = wait_for_plan_line(receiver, wait_deadline)
+        if line is not None:
+            return line, next_heartbeat
+        now = time.monotonic()
+        if now >= next_heartbeat and now < deadline:
+            send_heartbeat(port)
+            next_heartbeat = now + PLAN_HEARTBEAT_INTERVAL_SECONDS
+            continue
+        break
+    return None, next_heartbeat
+
+
 def request_status_snapshot(
     port: serial.Serial, receiver: SerialLineReceiver
 ) -> Optional[str]:
@@ -741,6 +798,61 @@ def recover_from_plan_timeout(
     return False, "completion could not be confirmed"
 
 
+def reply_requires_reset(line: str, command_name: str) -> bool:
+    upper = line.upper()
+    if any(
+        marker in upper
+        for marker in ("RESET_REQUIRED", "LINK_TIMEOUT", "LINK_LOST")
+    ):
+        return True
+    tokens = [token.strip() for token in upper.split(",")]
+    try:
+        command_index = tokens.index(command_name.upper())
+    except ValueError:
+        return False
+    return (
+        command_index + 1 < len(tokens)
+        and tokens[command_index + 1].isdigit()
+    )
+
+
+def recover_from_plan_error(
+    port: serial.Serial,
+    receiver: SerialLineReceiver,
+    command_name: str,
+    detail: str,
+) -> None:
+    upper = detail.upper()
+    protocol_rejection = any(
+        marker in upper
+        for marker in (
+            "BUSY",
+            "SEQ_CONFLICT",
+            "UNSUPPORTED",
+            "PARAM",
+            "ANGLE",
+            "SPEED_CONFIG",
+            "CACHE_EMPTY",
+        )
+    )
+    needs_reset = reply_requires_reset(detail, command_name)
+
+    if command_name in {"MOVE", "TURN"} and not protocol_rejection:
+        print("[PLAN] Motion error; enforcing STOP.")
+        send_recovery_command(port, receiver, "STOP", "ACK,STOP")
+    elif command_name == "MAGNET" and "HARDWARE" in upper:
+        print("[PLAN] Magnet hardware error; forcing MAGNET,OFF.")
+        send_recovery_command(
+            port, receiver, "MAGNET,OFF", "ACK,MAGNET,OFF"
+        )
+
+    request_status_snapshot(port, receiver)
+    if needs_reset:
+        print("[PLAN] Error requires RESET; resetting but not resuming plan.")
+        send_recovery_command(port, receiver, "RESET", "ACK,RESET")
+        request_status_snapshot(port, receiver)
+
+
 def execute_plan_step(
     port: serial.Serial,
     receiver: SerialLineReceiver,
@@ -824,6 +936,9 @@ def execute_plan_step(
     ack_received = False
     action_id = None
     send_count = 1
+    next_heartbeat = (
+        time.monotonic() + PLAN_HEARTBEAT_INTERVAL_SECONDS
+    )
     ack_deadline = min(
         action_deadline,
         time.monotonic()
@@ -834,7 +949,15 @@ def execute_plan_step(
         ),
     )
     while time.monotonic() < action_deadline:
-        line = wait_for_plan_line(receiver, ack_deadline)
+        if reliable:
+            line, next_heartbeat = wait_for_plan_line_with_heartbeat(
+                port,
+                receiver,
+                ack_deadline,
+                next_heartbeat,
+            )
+        else:
+            line = wait_for_plan_line(receiver, ack_deadline)
         if line is None:
             if (
                 reliable
@@ -869,6 +992,11 @@ def execute_plan_step(
                     f"timeout ({mcu_timeout:g}s)."
                 )
             print(f"[PLAN ACK] {line}")
+            if reliable:
+                print(
+                    "[PLAN] Link heartbeat active every "
+                    f"{PLAN_HEARTBEAT_INTERVAL_SECONDS:g}s."
+                )
             ack_received = True
             break
         print(f"[PLAN ACK IGNORE] {line}")
@@ -876,7 +1004,15 @@ def execute_plan_step(
         return False, "HOST_ACK_TIMEOUT", action_id
 
     while time.monotonic() < action_deadline:
-        line = wait_for_plan_line(receiver, action_deadline)
+        if reliable:
+            line, next_heartbeat = wait_for_plan_line_with_heartbeat(
+                port,
+                receiver,
+                action_deadline,
+                next_heartbeat,
+            )
+        else:
+            line = wait_for_plan_line(receiver, action_deadline)
         if line is None:
             break
         if reply_is_failure_for_sequence(line, sequence):
@@ -918,6 +1054,26 @@ def run_plan(
         if status is None:
             print("[PLAN] Cannot start without a STATUS sequence snapshot.")
             return False
+        fields = keyed_reply_fields(status)
+        if fields.get("CR") == "RUN":
+            print(
+                "[PLAN] A previous reliable command is still running; "
+                "sending STOP before this new plan."
+            )
+            send_recovery_command(port, receiver, "STOP", "ACK,STOP")
+            status = request_status_snapshot(port, receiver)
+            if status is None:
+                return False
+            fields = keyed_reply_fields(status)
+        if fields.get("RL") == "1":
+            print(
+                "[PLAN] Previous remote link timed out; RESET is required "
+                "before a new plan."
+            )
+            send_recovery_command(port, receiver, "RESET", "ACK,RESET")
+            status = request_status_snapshot(port, receiver)
+            if status is None:
+                return False
         try:
             next_sequence = next_sequence_from_status(status)
         except ValueError as exc:
@@ -968,7 +1124,9 @@ def run_plan(
                     next_sequence = advance_sequence(sequence)
                 continue
         else:
-            request_status_snapshot(port, receiver)
+            recover_from_plan_error(
+                port, receiver, command_name, detail
+            )
         print("[PLAN] Queue aborted; no later action was sent.")
         return False
 
@@ -998,8 +1156,8 @@ def print_help() -> None:
         "Commands:\n"
         "  test              Send PING and expect PONG\n"
         "  cmd <command>     Send one MCU command followed by LF\n"
-        "                    e.g. cmd MOVE,50,LOW or cmd TURN,-45\n"
         "                    reliable: cmd CMD,17,MOVE,50,LOW\n"
+        "                    manual legacy: cmd TURN,-45\n"
         "  run <plan.txt>    Run timed actions; MOVE/TURN/MAGNET get CMD IDs\n"
         "  check <plan.txt>  Validate a timed action plan without running it\n"
         "                    plan line format: <timeout_seconds> <command>\n"
@@ -1015,7 +1173,9 @@ def print_help() -> None:
 
 def interactive_console(port: serial.Serial) -> None:
     receiver = SerialLineReceiver(port)
+    heartbeat = PeriodicHeartbeat(port)
     receiver.start()
+    heartbeat.start()
     print_help()
 
     try:
@@ -1065,6 +1225,7 @@ def interactive_console(port: serial.Serial) -> None:
         except serial.SerialException as exc:
             print(f"[PLAN RECOVERY ERROR] {exc}")
     finally:
+        heartbeat.stop()
         receiver.stop()
 
 

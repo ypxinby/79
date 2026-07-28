@@ -55,6 +55,7 @@ volatile uint8_t g_trackTurnDebug;
 #define APP_REMOTE_TURN_BASE_TIMEOUT_MS (4000U)
 #define APP_REMOTE_TURN_PER_DEG_MS      (40U)
 #define APP_REMOTE_PARTIAL_TIMEOUT_MS   (100U)
+#define APP_REMOTE_LINK_TIMEOUT_MS      (1500U)
 /* Current +90 degree vehicle convention is treated as clockwise. */
 #define APP_REMOTE_CLOCKWISE_180_DEG    (180.0f)
 
@@ -117,6 +118,9 @@ static char g_remoteDispatchPayload[APP_REMOTE_LINE_MAX + 1U];
 static char g_remoteDispatchCommand[APP_REMOTE_COMMAND_NAME_MAX];
 static bool g_remoteActionSequenced;
 static uint32_t g_remoteActionSequence;
+static uint32_t g_remoteLastContactMs;
+static bool g_remoteLinkLost;
+static uint32_t g_remoteLinkTimeoutCount;
 
 static uint16_t app_remote_append_text(char *buffer, uint16_t length,
     uint16_t capacity, const char *text);
@@ -168,6 +172,11 @@ static const char *app_remote_command_result_name(
         return "CANCEL";
     }
     return "NONE";
+}
+
+static void app_remote_note_contact(void)
+{
+    g_remoteLastContactMs = SystemTime_GetMs();
 }
 
 static void app_remote_store_result(AppRemoteResult result,
@@ -645,6 +654,10 @@ static bool app_remote_start_action(const MotionAction *action,
 {
     const MissionRuntime *mission = MissionManager_GetRuntime();
 
+    if (g_remoteLinkLost) {
+        app_remote_send("ERR,LINK_LOST\r\n");
+        return false;
+    }
     if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped() ||
         (mission->status == MISSION_STATUS_ERROR)) {
         app_remote_send("ERR,RESET_REQUIRED\r\n");
@@ -669,6 +682,9 @@ static bool app_remote_start_action(const MotionAction *action,
     g_remoteActionSequenced = g_remoteSequenceDispatch;
     g_remoteActionSequence = g_remoteSequenceDispatch ?
         g_remoteDispatchSequence : 0U;
+    if (g_remoteActionSequenced) {
+        app_remote_note_contact();
+    }
     return true;
 }
 
@@ -707,7 +723,8 @@ static void app_remote_send_status(void)
     const ObstacleFeedback *obstacle = ObstacleMonitor_GetFeedback();
     const volatile BluetoothUartRuntime *bluetooth =
         BluetoothUart_GetRuntime();
-    char response[224];
+    /* Keep room for every diagnostic counter at UINT32_MAX plus RL/LT. */
+    char response[256];
     uint16_t length = 0U;
     const FaultRecord *fault = Fault_GetRecord();
 
@@ -795,6 +812,14 @@ static void app_remote_send_status(void)
         ",CR=");
     length = app_remote_append_text(response, length, sizeof(response),
         app_remote_command_result_name(g_remoteCommandCache.result));
+    length = app_remote_append_text(response, length, sizeof(response),
+        ",RL=");
+    length = app_remote_append_u32(response, length, sizeof(response),
+        g_remoteLinkLost ? 1U : 0U);
+    length = app_remote_append_text(response, length, sizeof(response),
+        ",LT=");
+    length = app_remote_append_u32(response, length, sizeof(response),
+        g_remoteLinkTimeoutCount);
     (void)app_remote_append_text(response, length, sizeof(response), "\r\n");
     app_remote_send(response);
 }
@@ -917,7 +942,11 @@ static void app_remote_handle_turn(char **tokens, uint8_t count)
 static void app_remote_dispatch_tokens(char **tokens, uint8_t count)
 {
     if ((strcmp(tokens[0], "PING") == 0) && (count == 1U)) {
+        app_remote_note_contact();
         app_remote_send("PONG\r\n");
+    } else if ((strcmp(tokens[0], "HB") == 0) && (count == 1U)) {
+        /* One-way heartbeat: deliberately no reply traffic. */
+        app_remote_note_contact();
     } else if ((strcmp(tokens[0], "STATUS") == 0) && (count == 1U)) {
         app_remote_send_status();
     } else if ((strcmp(tokens[0], "MOTOR") == 0) && (count == 1U)) {
@@ -964,7 +993,7 @@ static void app_remote_dispatch_tokens(char **tokens, uint8_t count)
             /* OFF is deliberately accepted in every application state. */
             Magnet_ForceOff();
             app_remote_send("ACK,MAGNET,OFF\r\n");
-        } else if (EmergencyStop_IsActive() ||
+        } else if (g_remoteLinkLost || EmergencyStop_IsActive() ||
             WatchdogMonitor_HasTripped() ||
             (Fault_GetRecord()->code != FAULT_CODE_NONE) ||
             (mission->status == MISSION_STATUS_ERROR) ||
@@ -1021,6 +1050,7 @@ static void app_remote_handle_sequenced(char **tokens, uint8_t count)
     command = tokens[2];
     app_remote_build_command_payload(tokens, count, payload,
         sizeof(payload));
+    app_remote_note_contact();
 
     if (g_remoteCommandCache.valid &&
         (g_remoteCommandCache.sequence == sequence)) {
@@ -1150,6 +1180,51 @@ static void app_remote_process_rx(void)
         g_remoteLine[g_remoteLineLength++] = (char)byte;
         g_remoteLineLastByteMs = now;
     }
+}
+
+static void app_remote_enforce_link_watchdog(void)
+{
+    char response[96];
+    uint16_t length = 0U;
+    uint32_t duration_ms;
+
+    if (!g_remoteActionSequenced ||
+        ((SystemTime_GetMs() - g_remoteLastContactMs) <
+            APP_REMOTE_LINK_TIMEOUT_MS)) {
+        return;
+    }
+
+    duration_ms = SystemTime_GetMs() - g_remoteActionStartMs;
+    CarController_Stop();
+    MissionManager_Cancel();
+    app_remote_store_result(APP_REMOTE_RESULT_ERROR, 0U, duration_ms);
+    g_remoteLinkLost = true;
+    if (g_remoteLinkTimeoutCount < UINT32_MAX) {
+        g_remoteLinkTimeoutCount++;
+    }
+
+    response[0] = '\0';
+    length = app_remote_append_text(response, length, sizeof(response),
+        "ERR,");
+    length = app_remote_append_text(response, length, sizeof(response),
+        app_remote_action_name(g_remoteAction));
+    length = app_remote_append_text(response, length, sizeof(response),
+        ",LINK_TIMEOUT,ID=");
+    length = app_remote_append_u32(response, length, sizeof(response),
+        g_remoteActionId);
+    length = app_remote_append_text(response, length, sizeof(response),
+        ",MS=");
+    length = app_remote_append_u32(response, length, sizeof(response),
+        duration_ms);
+    (void)app_remote_append_text(response, length, sizeof(response),
+        "\r\n");
+    app_remote_send_action_result(response, APP_REMOTE_COMMAND_ERROR);
+
+    g_remoteAction = APP_REMOTE_ACTION_NONE;
+    g_remoteActionStartMs = 0U;
+    g_remoteActionId = 0U;
+    g_remoteActionSequenced = false;
+    g_remoteActionSequence = 0U;
 }
 
 static void app_remote_update_result(void)
@@ -1369,6 +1444,9 @@ void App_Init(void)
     g_remoteDispatchCommand[0] = '\0';
     g_remoteActionSequenced = false;
     g_remoteActionSequence = 0U;
+    g_remoteLastContactMs = SystemTime_GetMs();
+    g_remoteLinkLost = false;
+    g_remoteLinkTimeoutCount = 0U;
 #endif
 }
 
@@ -1398,6 +1476,8 @@ bool App_ResetToReady(void)
     g_remoteActionId = 0U;
     g_remoteActionSequenced = false;
     g_remoteActionSequence = 0U;
+    g_remoteLastContactMs = SystemTime_GetMs();
+    g_remoteLinkLost = false;
     g_remoteGear = APP_MOTION_GEAR_LOW;
 #endif
     return !EmergencyStop_IsActive() && !WatchdogMonitor_HasTripped() &&
@@ -1419,6 +1499,7 @@ void App_Update_20ms(uint32_t elapsed_ms)
 #endif
 #if FEATURE_BLUETOOTH_UART
     app_remote_process_rx();
+    app_remote_enforce_link_watchdog();
 #endif
 
     Ultrasonic_Update_20ms();
