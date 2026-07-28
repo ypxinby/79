@@ -38,6 +38,10 @@ BLUETOOTH_ADDRESS_PATTERN = re.compile(
 PLAN_ACK_TIMEOUT_SECONDS = 2.0
 PLAN_RECOVERY_TIMEOUT_SECONDS = 1.5
 PLAN_MAX_ACTION_TIMEOUT_SECONDS = 600.0
+LINK_SETTLE_SECONDS = 0.5
+LINK_FRAME_CLEAR_SECONDS = 0.15
+LINK_PING_TIMEOUT_SECONDS = 1.0
+LINK_SYNC_ATTEMPTS = 3
 PLAN_ALLOWED_COMMANDS = {
     "PING",
     "STATUS",
@@ -369,6 +373,65 @@ def read_one_shot_reply(port: serial.Serial, wait_seconds: float = 1.0) -> None:
         )
 
 
+def synchronize_serial_link(port: serial.Serial) -> bool:
+    """Clear an old SPP fragment and require a clean PING/PONG exchange."""
+
+    print("[LINK] Waiting for the HC-06 SPP channel to settle...")
+    time.sleep(LINK_SETTLE_SECONDS)
+    port.reset_input_buffer()
+
+    # A blank line terminates any fragment still buffered by the MCU. Its
+    # possible startup reply is deliberately discarded before PING.
+    port.write(b"\n")
+    port.flush()
+    time.sleep(LINK_FRAME_CLEAR_SECONDS)
+    port.reset_input_buffer()
+
+    for attempt in range(1, LINK_SYNC_ATTEMPTS + 1):
+        line_buffer = bytearray()
+        send_bytes(port, b"PING\n")
+        deadline = time.monotonic() + LINK_PING_TIMEOUT_SECONDS
+
+        while time.monotonic() < deadline:
+            data = port.read(128)
+            if not data:
+                continue
+            print(
+                f"[RX {len(data)} B] HEX={data.hex(' ').upper()} "
+                f"TEXT={printable_text(data)!r}"
+            )
+            for byte in data:
+                if byte in (0x0A, 0x0D):
+                    if not line_buffer:
+                        continue
+                    line = line_buffer.decode(
+                        "ascii", errors="replace"
+                    ).strip()
+                    line_buffer.clear()
+                    if reply_has_prefix(line, "PONG"):
+                        print(f"[LINK] Synchronized on attempt {attempt}.")
+                        return True
+                    if line:
+                        print(f"[LINK IGNORE] {line}")
+                elif len(line_buffer) < 512:
+                    line_buffer.append(byte)
+                else:
+                    line_buffer.clear()
+
+        if attempt < LINK_SYNC_ATTEMPTS:
+            print(f"[LINK] No PONG on attempt {attempt}; retrying...")
+            port.reset_input_buffer()
+            port.write(b"\n")
+            port.flush()
+            time.sleep(LINK_FRAME_CLEAR_SECONDS)
+            port.reset_input_buffer()
+
+    print(
+        f"[LINK] Synchronization failed after {LINK_SYNC_ATTEMPTS} attempts."
+    )
+    return False
+
+
 def plan_command_name(command: str) -> str:
     return command.split(",", 1)[0].strip().upper()
 
@@ -457,7 +520,8 @@ def print_plan(steps: list[PlanStep]) -> None:
 def reply_is_failure(line: str) -> bool:
     upper = line.upper()
     return (
-        upper in {"BUSY", "CANCELLED"}
+        upper == "BUSY"
+        or upper.startswith("CANCELLED")
         or upper.startswith("ERR,")
     )
 
@@ -489,6 +553,40 @@ def mcu_timeout_from_ack(line: str) -> Optional[float]:
     return int(match.group(1), 10) / 1000.0
 
 
+def command_id_from_reply(line: str) -> Optional[int]:
+    match = re.search(r"(?:^|,)ID=(\d+)(?:,|$)", line.upper())
+    if not match:
+        return None
+    return int(match.group(1), 10)
+
+
+def keyed_reply_fields(line: str) -> dict[str, str]:
+    fields: dict[str, str] = {}
+    for token in line.split(","):
+        key, separator, value = token.partition("=")
+        if separator:
+            fields[key.strip().upper()] = value.strip().upper()
+    return fields
+
+
+def status_result_for_action(
+    line: str, command_name: str, action_id: Optional[int]
+) -> Optional[str]:
+    if action_id is None or not reply_has_prefix(line, "STATUS"):
+        return None
+    fields = keyed_reply_fields(line)
+    try:
+        last_id = int(fields.get("LID", ""), 10)
+    except ValueError:
+        return None
+    if (
+        last_id != action_id
+        or fields.get("LA") != command_name.upper()
+    ):
+        return None
+    return fields.get("LR")
+
+
 def wait_for_plan_line(
     receiver: SerialLineReceiver, deadline: float
 ) -> Optional[str]:
@@ -498,7 +596,7 @@ def wait_for_plan_line(
 
 def request_status_snapshot(
     port: serial.Serial, receiver: SerialLineReceiver
-) -> None:
+) -> Optional[str]:
     print("[PLAN] Requesting STATUS snapshot...")
     receiver.clear_lines()
     send_bytes(port, b"STATUS\n")
@@ -509,9 +607,10 @@ def request_status_snapshot(
             break
         if reply_has_prefix(line, "STATUS"):
             print(f"[PLAN STATUS] {line}")
-            return
+            return line
         print(f"[PLAN STATUS IGNORE] {line}")
     print("[PLAN STATUS] No STATUS reply received.")
+    return None
 
 
 def send_recovery_command(
@@ -538,9 +637,13 @@ def recover_from_plan_timeout(
     port: serial.Serial,
     receiver: SerialLineReceiver,
     command_name: str,
-) -> None:
+    action_id: Optional[int],
+) -> tuple[bool, str]:
     if command_name in {"MOVE", "TURN"}:
-        print("[PLAN] Action timed out; sending STOP and aborting the queue.")
+        print(
+            "[PLAN] Action timed out; sending STOP before checking the "
+            "cached result."
+        )
         send_recovery_command(port, receiver, "STOP", "ACK,STOP")
     elif command_name == "MAGNET":
         print(
@@ -550,14 +653,24 @@ def recover_from_plan_timeout(
         send_recovery_command(
             port, receiver, "MAGNET,OFF", "ACK,MAGNET,OFF"
         )
-    request_status_snapshot(port, receiver)
+    status = request_status_snapshot(port, receiver)
+    if status is not None:
+        result = status_result_for_action(status, command_name, action_id)
+        if result == "DONE":
+            return True, f"STATUS confirmed {command_name},ID={action_id} DONE"
+        if result is not None:
+            print(
+                f"[PLAN] STATUS reports {command_name},ID={action_id} "
+                f"result={result}."
+            )
+    return False, "completion could not be confirmed"
 
 
 def execute_plan_step(
     port: serial.Serial,
     receiver: SerialLineReceiver,
     step: PlanStep,
-) -> tuple[bool, str]:
+) -> tuple[bool, str, Optional[int]]:
     command_name = plan_command_name(step.command)
     if command_name == "WAIT":
         wait_seconds = parse_wait_milliseconds(step.command) / 1000.0
@@ -565,8 +678,8 @@ def execute_plan_step(
         started = time.monotonic()
         time.sleep(wait_seconds)
         if (time.monotonic() - started) > step.timeout_seconds:
-            return False, "HOST_TIMEOUT"
-        return True, "WAIT complete"
+            return False, "HOST_TIMEOUT", None
+        return True, "WAIT complete", None
 
     receiver.clear_lines()
     send_bytes(port, step.command.encode("ascii") + b"\n")
@@ -579,11 +692,11 @@ def execute_plan_step(
             if line is None:
                 break
             if reply_is_failure(line):
-                return False, line
+                return False, line, None
             if reply_has_prefix(line, expected):
-                return True, line
+                return True, line, None
             print(f"[PLAN IGNORE] {line}")
-        return False, "HOST_TIMEOUT"
+        return False, "HOST_TIMEOUT", None
 
     ack_deadline = min(
         action_deadline, time.monotonic() + PLAN_ACK_TIMEOUT_SECONDS
@@ -591,15 +704,17 @@ def execute_plan_step(
     ack_prefix = "ACK," + command_name
     done_prefix = "DONE," + command_name
     ack_received = False
+    action_id = None
     while time.monotonic() < ack_deadline:
         line = wait_for_plan_line(receiver, ack_deadline)
         if line is None:
             break
         if reply_is_failure(line):
-            return False, line
+            return False, line, action_id
         if reply_has_prefix(line, done_prefix):
-            return True, line
+            return True, line, command_id_from_reply(line)
         if reply_has_prefix(line, ack_prefix):
+            action_id = command_id_from_reply(line)
             mcu_timeout = mcu_timeout_from_ack(line)
             if (
                 mcu_timeout is not None
@@ -614,18 +729,29 @@ def execute_plan_step(
             break
         print(f"[PLAN ACK IGNORE] {line}")
     if not ack_received:
-        return False, "HOST_ACK_TIMEOUT"
+        return False, "HOST_ACK_TIMEOUT", action_id
 
     while time.monotonic() < action_deadline:
         line = wait_for_plan_line(receiver, action_deadline)
         if line is None:
             break
         if reply_is_failure(line):
-            return False, line
+            return False, line, action_id
         if reply_has_prefix(line, done_prefix):
-            return True, line
+            reply_id = command_id_from_reply(line)
+            if (
+                action_id is None
+                or reply_id is None
+                or reply_id == action_id
+            ):
+                return True, line, action_id
+            print(
+                f"[PLAN DONE IGNORE] stale ID={reply_id}, "
+                f"expected ID={action_id}"
+            )
+            continue
         print(f"[PLAN DONE IGNORE] {line}")
-    return False, "HOST_TIMEOUT"
+    return False, "HOST_TIMEOUT", action_id
 
 
 def run_plan(
@@ -639,7 +765,9 @@ def run_plan(
             f"[PLAN {index}/{len(steps)}] timeout={step.timeout_seconds:g}s "
             f"command={step.command}"
         )
-        succeeded, detail = execute_plan_step(port, receiver, step)
+        succeeded, detail, action_id = execute_plan_step(
+            port, receiver, step
+        )
         if succeeded:
             print(f"[PLAN {index}] OK: {detail}")
             continue
@@ -647,7 +775,12 @@ def run_plan(
         print(f"[PLAN {index}] FAILED: {detail}")
         command_name = plan_command_name(step.command)
         if detail in {"HOST_TIMEOUT", "HOST_ACK_TIMEOUT"}:
-            recover_from_plan_timeout(port, receiver, command_name)
+            recovered, recovery_detail = recover_from_plan_timeout(
+                port, receiver, command_name, action_id
+            )
+            if recovered:
+                print(f"[PLAN {index}] RECOVERED: {recovery_detail}")
+                continue
         else:
             request_status_snapshot(port, receiver)
         print("[PLAN] Queue aborted; no later action was sent.")
@@ -880,6 +1013,18 @@ def main() -> int:
             dsrdtr=False,
         ) as port:
             print(f"Connected: {port.name}")
+            framed_session = (
+                args.command is not None
+                or plan_steps is not None
+                or (args.send is None and args.hex_data is None)
+            )
+            if framed_session and not synchronize_serial_link(port):
+                print(
+                    "Connection opened, but the MCU command channel did "
+                    "not answer PING.",
+                    file=sys.stderr,
+                )
+                return 1
             if args.send is not None:
                 send_bytes(port, args.send.encode("utf-8"))
             elif args.command is not None:

@@ -96,6 +96,14 @@ static void bluetooth_uart_drain_tx(void)
             BLUETOOTH_UART_TX_RING_MASK);
         bluetooth_uart_increment(&g_runtime.tx_byte_count);
     }
+
+    if (g_txTail == g_txHead) {
+        DL_UART_Main_disableInterrupt(UART_BLUETOOTH_INST,
+            DL_UART_MAIN_INTERRUPT_TX);
+    } else {
+        DL_UART_Main_enableInterrupt(UART_BLUETOOTH_INST,
+            DL_UART_MAIN_INTERRUPT_TX);
+    }
 }
 
 static uint16_t bluetooth_uart_tx_free(void)
@@ -127,6 +135,8 @@ void BluetoothUart_Init(void)
     g_runtime.tx_byte_count = 0U;
     g_runtime.tx_drop_count = 0U;
 
+    DL_UART_Main_disableInterrupt(UART_BLUETOOTH_INST,
+        DL_UART_MAIN_INTERRUPT_TX);
     NVIC_ClearPendingIRQ(UART_BLUETOOTH_INST_INT_IRQN);
     NVIC_EnableIRQ(UART_BLUETOOTH_INST_INT_IRQN);
 }
@@ -247,6 +257,9 @@ void UART_BLUETOOTH_INST_IRQHandler(void)
     switch (DL_UART_Main_getPendingInterrupt(UART_BLUETOOTH_INST)) {
         case DL_UART_MAIN_IIDX_RX:
             bluetooth_uart_drain_rx(false);
+            break;
+        case DL_UART_MAIN_IIDX_TX:
+            bluetooth_uart_drain_tx();
             break;
         default:
             break;

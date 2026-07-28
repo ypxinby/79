@@ -56,7 +56,7 @@ UART2.profile = "CONFIG_PROFILE_1";
 UART2.targetBaudRate = 9600;
 UART2.enableInternalLoopback = false;
 UART2.enabledInterrupts = ["RX"];
-UART2.enableFIFO = false;
+UART2.enableFIFO = true;
 UART2.peripheral.txPin.$assign = "PB6";
 UART2.peripheral.rxPin.$assign = "PB7";
 
