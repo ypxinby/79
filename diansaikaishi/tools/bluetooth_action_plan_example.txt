@@ -1,0 +1,16 @@
+# Timed HC-06 action plan.
+# Format: <host timeout seconds> <MCU command>
+# WARNING: MOVE/TURN physically move the vehicle. Clear the test area first.
+
+2 PING
+2 STATUS
+2 RESET
+2 SPEED,LOW
+6 MOVE,30,LOW
+8 TURN,45
+6 MOVE,-30,LOW
+2 MAGNET,ON
+1 WAIT,500
+2 MAGNET,OFF
+2 STOP
+2 STATUS

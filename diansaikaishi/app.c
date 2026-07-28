@@ -71,6 +71,7 @@ static uint8_t g_remoteLineLength;
 static bool g_remoteDiscardLine;
 static AppMotionGear g_remoteGear = APP_MOTION_GEAR_LOW;
 static AppRemoteAction g_remoteAction;
+static uint32_t g_remoteActionStartMs;
 
 static const char *app_remote_action_name(AppRemoteAction action)
 {
@@ -318,7 +319,34 @@ static bool app_remote_start_action(const MotionAction *action,
         return false;
     }
     g_remoteAction = remote_action;
+    g_remoteActionStartMs = SystemTime_GetMs();
     return true;
+}
+
+static void app_remote_send_action_ack(const char *action_name,
+    const char *detail, uint32_t timeout_ms)
+{
+    char response[48];
+    uint16_t length = 0U;
+
+    response[0] = '\0';
+    length = app_remote_append_text(response, length, sizeof(response),
+        "ACK,");
+    length = app_remote_append_text(response, length, sizeof(response),
+        action_name);
+    if ((detail != (const char *)0) && (*detail != '\0')) {
+        length = app_remote_append_text(response, length, sizeof(response),
+            ",");
+        length = app_remote_append_text(response, length, sizeof(response),
+            detail);
+    }
+    length = app_remote_append_text(response, length, sizeof(response),
+        ",T=");
+    length = app_remote_append_u32(response, length, sizeof(response),
+        timeout_ms);
+    (void)app_remote_append_text(response, length, sizeof(response),
+        "\r\n");
+    app_remote_send(response);
 }
 
 static void app_remote_send_status(void)
@@ -359,6 +387,15 @@ static void app_remote_send_status(void)
         ",MAG=");
     length = app_remote_append_text(response, length, sizeof(response),
         Magnet_IsOn() ? "ON" : "OFF");
+    length = app_remote_append_text(response, length, sizeof(response),
+        ",A=");
+    length = app_remote_append_text(response, length, sizeof(response),
+        app_remote_action_name(g_remoteAction));
+    length = app_remote_append_text(response, length, sizeof(response),
+        ",AE=");
+    length = app_remote_append_u32(response, length, sizeof(response),
+        (g_remoteAction == APP_REMOTE_ACTION_NONE) ? 0U :
+            (SystemTime_GetMs() - g_remoteActionStartMs));
     (void)app_remote_append_text(response, length, sizeof(response), "\r\n");
     app_remote_send(response);
 }
@@ -444,8 +481,9 @@ static void app_remote_handle_move(char **tokens, uint8_t count)
     action.params.drive_distance_heading.lock_current_yaw_on_start = true;
     if (app_remote_start_action(&action, APP_REMOTE_ACTION_MOVE)) {
         g_remoteGear = gear;
-        app_remote_send((gear == APP_MOTION_GEAR_HIGH) ?
-            "ACK,MOVE,HIGH\r\n" : "ACK,MOVE,LOW\r\n");
+        app_remote_send_action_ack("MOVE",
+            (gear == APP_MOTION_GEAR_HIGH) ? "HIGH" : "LOW",
+            action.timeout_ms);
     }
 }
 
@@ -472,7 +510,8 @@ static void app_remote_handle_turn(char **tokens, uint8_t count)
         APP_REMOTE_CLOCKWISE_180_DEG : (float)angle;
     action.params.turn_to_yaw.speed_override = MOTION_USE_GLOBAL_SPEED;
     if (app_remote_start_action(&action, APP_REMOTE_ACTION_TURN)) {
-        app_remote_send("ACK,TURN\r\n");
+        app_remote_send_action_ack("TURN", (const char *)0,
+            action.timeout_ms);
     }
 }
 
@@ -512,15 +551,18 @@ static void app_remote_handle_line(char *line)
         }
     } else if ((strcmp(tokens[0], "STOP") == 0) && (count == 1U)) {
         g_remoteAction = APP_REMOTE_ACTION_NONE;
+        g_remoteActionStartMs = 0U;
         CarController_Stop();
         MissionManager_Cancel();
         app_remote_send("ACK,STOP\r\n");
     } else if ((strcmp(tokens[0], "ESTOP") == 0) && (count == 1U)) {
         g_remoteAction = APP_REMOTE_ACTION_NONE;
+        g_remoteActionStartMs = 0U;
         EmergencyStop_Trigger();
         app_remote_send("ACK,ESTOP\r\n");
     } else if ((strcmp(tokens[0], "RESET") == 0) && (count == 1U)) {
         g_remoteAction = APP_REMOTE_ACTION_NONE;
+        g_remoteActionStartMs = 0U;
         if (App_ResetToReady()) {
             app_remote_send("ACK,RESET\r\n");
         } else {
@@ -606,10 +648,15 @@ static void app_remote_update_result(void)
             "DONE,");
         length = app_remote_append_text(response, length, sizeof(response),
             app_remote_action_name(g_remoteAction));
+        length = app_remote_append_text(response, length, sizeof(response),
+            ",MS=");
+        length = app_remote_append_u32(response, length, sizeof(response),
+            SystemTime_GetMs() - g_remoteActionStartMs);
         (void)app_remote_append_text(response, length, sizeof(response),
             "\r\n");
         app_remote_send(response);
         g_remoteAction = APP_REMOTE_ACTION_NONE;
+        g_remoteActionStartMs = 0U;
     } else if (mission->status == MISSION_STATUS_ERROR) {
         length = app_remote_append_text(response, length, sizeof(response),
             "ERR,");
@@ -634,18 +681,20 @@ static void app_remote_update_result(void)
                 sizeof(response), ",G=");
             length = app_remote_append_float_tenth(response, length,
                 sizeof(response), Imu_GetCorrectedGyroZDps());
-            length = app_remote_append_text(response, length,
-                sizeof(response), ",MS=");
-            length = app_remote_append_u32(response, length,
-                sizeof(response), mission->action_elapsed_ms);
         }
+        length = app_remote_append_text(response, length, sizeof(response),
+            ",MS=");
+        length = app_remote_append_u32(response, length, sizeof(response),
+            SystemTime_GetMs() - g_remoteActionStartMs);
         (void)app_remote_append_text(response, length, sizeof(response),
             "\r\n");
         app_remote_send(response);
         g_remoteAction = APP_REMOTE_ACTION_NONE;
+        g_remoteActionStartMs = 0U;
     } else if (!MissionManager_IsTransientAction()) {
         app_remote_send("CANCELLED\r\n");
         g_remoteAction = APP_REMOTE_ACTION_NONE;
+        g_remoteActionStartMs = 0U;
     }
 }
 #endif
@@ -741,6 +790,7 @@ void App_Init(void)
     g_remoteDiscardLine = false;
     g_remoteGear = APP_MOTION_GEAR_LOW;
     g_remoteAction = APP_REMOTE_ACTION_NONE;
+    g_remoteActionStartMs = 0U;
 #endif
 }
 
@@ -763,6 +813,7 @@ bool App_ResetToReady(void)
     }
 #if FEATURE_BLUETOOTH_UART
     g_remoteAction = APP_REMOTE_ACTION_NONE;
+    g_remoteActionStartMs = 0U;
     g_remoteGear = APP_MOTION_GEAR_LOW;
 #endif
     return !EmergencyStop_IsActive() && !WatchdogMonitor_HasTripped() &&
