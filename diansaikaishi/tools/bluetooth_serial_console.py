@@ -38,6 +38,9 @@ BLUETOOTH_ADDRESS_PATTERN = re.compile(
 PLAN_ACK_TIMEOUT_SECONDS = 2.0
 PLAN_RECOVERY_TIMEOUT_SECONDS = 1.5
 PLAN_MAX_ACTION_TIMEOUT_SECONDS = 600.0
+PLAN_RELIABLE_RETRY_SECONDS = 0.75
+PLAN_RELIABLE_MAX_SENDS = 3
+COMMAND_SEQUENCE_MAX = 0xFFFFFFFF
 LINK_SETTLE_SECONDS = 0.5
 LINK_FRAME_CLEAR_SECONDS = 0.15
 LINK_PING_TIMEOUT_SECONDS = 1.0
@@ -55,6 +58,7 @@ PLAN_ALLOWED_COMMANDS = {
     "MAGNET",
     "WAIT",
 }
+PLAN_RELIABLE_COMMANDS = {"MOVE", "TURN", "MAGNET"}
 
 
 @dataclass(frozen=True)
@@ -587,6 +591,50 @@ def status_result_for_action(
     return fields.get("LR")
 
 
+def sequenced_reply_prefix(
+    kind: str, sequence: int, command_name: str
+) -> str:
+    return f"{kind},{sequence},{command_name}"
+
+
+def reply_is_failure_for_sequence(
+    line: str, sequence: Optional[int]
+) -> bool:
+    if sequence is None:
+        return reply_is_failure(line)
+    return reply_has_prefix(line, f"ERR,{sequence}") or reply_has_prefix(
+        line, f"CANCELLED,{sequence}"
+    )
+
+
+def reliable_wire_command(command: str, sequence: int) -> str:
+    return f"CMD,{sequence},{command}"
+
+
+def next_sequence_from_status(line: str) -> int:
+    fields = keyed_reply_fields(line)
+    if "CS" not in fields:
+        raise ValueError(
+            "STATUS has no CS field; flash the firmware with CMD support"
+        )
+    try:
+        cached_sequence = int(fields["CS"], 10)
+    except ValueError as exc:
+        raise ValueError("STATUS returned an invalid CS field") from exc
+    if not 0 <= cached_sequence <= COMMAND_SEQUENCE_MAX:
+        raise ValueError("STATUS returned an out-of-range CS field")
+    if fields.get("CR") == "RUN":
+        raise ValueError(
+            f"3507 still has CMD,{cached_sequence} running; send STOP "
+            "and inspect STATUS before starting a new plan"
+        )
+    return 1 if cached_sequence == COMMAND_SEQUENCE_MAX else cached_sequence + 1
+
+
+def advance_sequence(sequence: int) -> int:
+    return 1 if sequence == COMMAND_SEQUENCE_MAX else sequence + 1
+
+
 def wait_for_plan_line(
     receiver: SerialLineReceiver, deadline: float
 ) -> Optional[str]:
@@ -638,6 +686,8 @@ def recover_from_plan_timeout(
     receiver: SerialLineReceiver,
     command_name: str,
     action_id: Optional[int],
+    sequence: Optional[int],
+    wire_command: Optional[str],
 ) -> tuple[bool, str]:
     if command_name in {"MOVE", "TURN"}:
         print(
@@ -653,6 +703,31 @@ def recover_from_plan_timeout(
         send_recovery_command(
             port, receiver, "MAGNET,OFF", "ACK,MAGNET,OFF"
         )
+    if (
+        command_name in {"MOVE", "TURN"}
+        and sequence is not None
+        and wire_command is not None
+    ):
+        print(
+            f"[PLAN] Re-sending CMD,{sequence} only to read its cached "
+            "final result."
+        )
+        receiver.clear_lines()
+        send_bytes(port, wire_command.encode("ascii") + b"\n")
+        deadline = time.monotonic() + PLAN_RECOVERY_TIMEOUT_SECONDS
+        done_prefix = sequenced_reply_prefix(
+            "DONE", sequence, command_name
+        )
+        while time.monotonic() < deadline:
+            line = wait_for_plan_line(receiver, deadline)
+            if line is None:
+                break
+            if reply_has_prefix(line, done_prefix):
+                return True, f"cached {line}"
+            if reply_is_failure_for_sequence(line, sequence):
+                print(f"[PLAN RECOVERY RESULT] {line}")
+                break
+            print(f"[PLAN RECOVERY IGNORE] {line}")
     status = request_status_snapshot(port, receiver)
     if status is not None:
         result = status_result_for_action(status, command_name, action_id)
@@ -670,6 +745,7 @@ def execute_plan_step(
     port: serial.Serial,
     receiver: SerialLineReceiver,
     step: PlanStep,
+    sequence: Optional[int] = None,
 ) -> tuple[bool, str, Optional[int]]:
     command_name = plan_command_name(step.command)
     if command_name == "WAIT":
@@ -681,35 +757,103 @@ def execute_plan_step(
             return False, "HOST_TIMEOUT", None
         return True, "WAIT complete", None
 
+    reliable = sequence is not None
+    wire_command = (
+        reliable_wire_command(step.command, sequence)
+        if sequence is not None
+        else step.command
+    )
     receiver.clear_lines()
-    send_bytes(port, step.command.encode("ascii") + b"\n")
+    send_bytes(port, wire_command.encode("ascii") + b"\n")
     action_deadline = time.monotonic() + step.timeout_seconds
 
     if command_name not in {"MOVE", "TURN"}:
-        expected = immediate_reply_prefix(command_name)
+        expected = (
+            sequenced_reply_prefix("ACK", sequence, command_name)
+            if sequence is not None
+            else immediate_reply_prefix(command_name)
+        )
+        send_count = 1
+        reply_deadline = (
+            min(
+                action_deadline,
+                time.monotonic() + PLAN_RELIABLE_RETRY_SECONDS,
+            )
+            if reliable
+            else action_deadline
+        )
         while time.monotonic() < action_deadline:
-            line = wait_for_plan_line(receiver, action_deadline)
+            line = wait_for_plan_line(receiver, reply_deadline)
             if line is None:
+                if (
+                    reliable
+                    and send_count < PLAN_RELIABLE_MAX_SENDS
+                    and time.monotonic() < action_deadline
+                ):
+                    send_count += 1
+                    print(
+                        f"[PLAN RETRY] No reply; re-sending CMD,{sequence} "
+                        f"({send_count}/{PLAN_RELIABLE_MAX_SENDS})."
+                    )
+                    send_bytes(
+                        port, wire_command.encode("ascii") + b"\n"
+                    )
+                    reply_deadline = min(
+                        action_deadline,
+                        time.monotonic() + PLAN_RELIABLE_RETRY_SECONDS,
+                    )
+                    continue
                 break
-            if reply_is_failure(line):
+            if reply_is_failure_for_sequence(line, sequence):
                 return False, line, None
             if reply_has_prefix(line, expected):
                 return True, line, None
             print(f"[PLAN IGNORE] {line}")
         return False, "HOST_TIMEOUT", None
 
-    ack_deadline = min(
-        action_deadline, time.monotonic() + PLAN_ACK_TIMEOUT_SECONDS
+    ack_prefix = (
+        sequenced_reply_prefix("ACK", sequence, command_name)
+        if sequence is not None
+        else "ACK," + command_name
     )
-    ack_prefix = "ACK," + command_name
-    done_prefix = "DONE," + command_name
+    done_prefix = (
+        sequenced_reply_prefix("DONE", sequence, command_name)
+        if sequence is not None
+        else "DONE," + command_name
+    )
     ack_received = False
     action_id = None
-    while time.monotonic() < ack_deadline:
+    send_count = 1
+    ack_deadline = min(
+        action_deadline,
+        time.monotonic()
+        + (
+            PLAN_RELIABLE_RETRY_SECONDS
+            if reliable
+            else PLAN_ACK_TIMEOUT_SECONDS
+        ),
+    )
+    while time.monotonic() < action_deadline:
         line = wait_for_plan_line(receiver, ack_deadline)
         if line is None:
+            if (
+                reliable
+                and send_count < PLAN_RELIABLE_MAX_SENDS
+                and time.monotonic() < action_deadline
+            ):
+                send_count += 1
+                print(
+                    f"[PLAN RETRY] No ACK; re-sending CMD,{sequence} "
+                    f"({send_count}/{PLAN_RELIABLE_MAX_SENDS})."
+                )
+                send_bytes(port, wire_command.encode("ascii") + b"\n")
+                ack_deadline = min(
+                    action_deadline,
+                    time.monotonic() + PLAN_RELIABLE_RETRY_SECONDS,
+                )
+                continue
             break
-        if reply_is_failure(line):
+        if reply_is_failure_for_sequence(line, sequence):
             return False, line, action_id
         if reply_has_prefix(line, done_prefix):
             return True, line, command_id_from_reply(line)
@@ -735,7 +879,7 @@ def execute_plan_step(
         line = wait_for_plan_line(receiver, action_deadline)
         if line is None:
             break
-        if reply_is_failure(line):
+        if reply_is_failure_for_sequence(line, sequence):
             return False, line, action_id
         if reply_has_prefix(line, done_prefix):
             reply_id = command_id_from_reply(line)
@@ -750,6 +894,9 @@ def execute_plan_step(
                 f"expected ID={action_id}"
             )
             continue
+        if reply_has_prefix(line, ack_prefix):
+            print(f"[PLAN ACK REPEAT] {line}")
+            continue
         print(f"[PLAN DONE IGNORE] {line}")
     return False, "HOST_TIMEOUT", action_id
 
@@ -759,27 +906,66 @@ def run_plan(
     receiver: SerialLineReceiver,
     steps: list[PlanStep],
 ) -> bool:
+    uses_reliable_commands = any(
+        plan_command_name(step.command) in PLAN_RELIABLE_COMMANDS
+        for step in steps
+    )
+    next_sequence = 1
+
+    if uses_reliable_commands:
+        print("[PLAN] Synchronizing the reliable command sequence...")
+        status = request_status_snapshot(port, receiver)
+        if status is None:
+            print("[PLAN] Cannot start without a STATUS sequence snapshot.")
+            return False
+        try:
+            next_sequence = next_sequence_from_status(status)
+        except ValueError as exc:
+            print(f"[PLAN] Cannot start reliable commands: {exc}")
+            return False
+        print(f"[PLAN] First reliable command sequence: {next_sequence}")
+
     print(f"[PLAN] Starting {len(steps)} action(s).")
     for index, step in enumerate(steps, start=1):
+        command_name = plan_command_name(step.command)
+        sequence = (
+            next_sequence
+            if command_name in PLAN_RELIABLE_COMMANDS
+            else None
+        )
         print(
             f"[PLAN {index}/{len(steps)}] timeout={step.timeout_seconds:g}s "
             f"command={step.command}"
+            + (f" sequence={sequence}" if sequence is not None else "")
         )
         succeeded, detail, action_id = execute_plan_step(
-            port, receiver, step
+            port, receiver, step, sequence
         )
         if succeeded:
             print(f"[PLAN {index}] OK: {detail}")
+            if sequence is not None:
+                next_sequence = advance_sequence(sequence)
             continue
 
         print(f"[PLAN {index}] FAILED: {detail}")
-        command_name = plan_command_name(step.command)
         if detail in {"HOST_TIMEOUT", "HOST_ACK_TIMEOUT"}:
+            wire_command = (
+                reliable_wire_command(step.command, sequence)
+                if sequence is not None
+                else None
+            )
             recovered, recovery_detail = recover_from_plan_timeout(
-                port, receiver, command_name, action_id
+                port,
+                receiver,
+                command_name,
+                action_id,
+                sequence,
+                wire_command,
             )
             if recovered:
                 print(f"[PLAN {index}] RECOVERED: {recovery_detail}")
+                if sequence is not None:
+                    next_sequence = advance_sequence(sequence)
                 continue
         else:
             request_status_snapshot(port, receiver)
@@ -813,7 +999,8 @@ def print_help() -> None:
         "  test              Send PING and expect PONG\n"
         "  cmd <command>     Send one MCU command followed by LF\n"
         "                    e.g. cmd MOVE,50,LOW or cmd TURN,-45\n"
-        "  run <plan.txt>    Run timed actions sequentially; abort on timeout/ERR\n"
+        "                    reliable: cmd CMD,17,MOVE,50,LOW\n"
+        "  run <plan.txt>    Run timed actions; MOVE/TURN/MAGNET get CMD IDs\n"
         "  check <plan.txt>  Validate a timed action plan without running it\n"
         "                    plan line format: <timeout_seconds> <command>\n"
         "                    e.g. 8 MOVE,50,LOW\n"

@@ -46,8 +46,10 @@ volatile uint8_t g_trackTurnDebug;
 
 #if FEATURE_BLUETOOTH_UART
 #define APP_REMOTE_LINE_MAX             (63U)
-#define APP_REMOTE_TOKEN_MAX            (4U)
+#define APP_REMOTE_TOKEN_MAX            (6U)
 #define APP_REMOTE_RX_BUDGET            (64U)
+#define APP_REMOTE_COMMAND_NAME_MAX     (8U)
+#define APP_REMOTE_COMMAND_RESPONSE_MAX (160U)
 #define APP_REMOTE_DISTANCE_MAX_CM      (1000)
 #define APP_REMOTE_TIMEOUT_MAX_MS       (120000U)
 #define APP_REMOTE_TURN_BASE_TIMEOUT_MS (4000U)
@@ -74,6 +76,25 @@ typedef enum {
     APP_REMOTE_RESULT_CANCELLED
 } AppRemoteResult;
 
+typedef enum {
+    APP_REMOTE_COMMAND_NONE = 0,
+    APP_REMOTE_COMMAND_RUNNING,
+    APP_REMOTE_COMMAND_ACK,
+    APP_REMOTE_COMMAND_DONE,
+    APP_REMOTE_COMMAND_ERROR,
+    APP_REMOTE_COMMAND_CANCELLED
+} AppRemoteCommandResult;
+
+typedef struct {
+    bool valid;
+    uint32_t sequence;
+    char payload[APP_REMOTE_LINE_MAX + 1U];
+    char command[APP_REMOTE_COMMAND_NAME_MAX];
+    AppRemoteCommandResult result;
+    char acknowledgement[APP_REMOTE_COMMAND_RESPONSE_MAX];
+    char final_response[APP_REMOTE_COMMAND_RESPONSE_MAX];
+} AppRemoteCommandCache;
+
 static char g_remoteLine[APP_REMOTE_LINE_MAX + 1U];
 static uint8_t g_remoteLineLength;
 static bool g_remoteDiscardLine;
@@ -89,6 +110,19 @@ static AppRemoteResult g_remoteLastResult;
 static uint32_t g_remoteLastActionId;
 static uint32_t g_remoteLastDurationMs;
 static uint16_t g_remoteLastErrorCode;
+static AppRemoteCommandCache g_remoteCommandCache;
+static bool g_remoteSequenceDispatch;
+static uint32_t g_remoteDispatchSequence;
+static char g_remoteDispatchPayload[APP_REMOTE_LINE_MAX + 1U];
+static char g_remoteDispatchCommand[APP_REMOTE_COMMAND_NAME_MAX];
+static bool g_remoteActionSequenced;
+static uint32_t g_remoteActionSequence;
+
+static uint16_t app_remote_append_text(char *buffer, uint16_t length,
+    uint16_t capacity, const char *text);
+static uint16_t app_remote_append_u32(char *buffer, uint16_t length,
+    uint16_t capacity, uint32_t value);
+static void app_remote_cache_cancelled_action(uint32_t duration_ms);
 
 static const char *app_remote_action_name(AppRemoteAction action)
 {
@@ -115,6 +149,27 @@ static const char *app_remote_result_name(AppRemoteResult result)
     return "NONE";
 }
 
+static const char *app_remote_command_result_name(
+    AppRemoteCommandResult result)
+{
+    if (result == APP_REMOTE_COMMAND_RUNNING) {
+        return "RUN";
+    }
+    if (result == APP_REMOTE_COMMAND_ACK) {
+        return "ACK";
+    }
+    if (result == APP_REMOTE_COMMAND_DONE) {
+        return "DONE";
+    }
+    if (result == APP_REMOTE_COMMAND_ERROR) {
+        return "ERR";
+    }
+    if (result == APP_REMOTE_COMMAND_CANCELLED) {
+        return "CANCEL";
+    }
+    return "NONE";
+}
+
 static void app_remote_store_result(AppRemoteResult result,
     uint16_t error_code, uint32_t duration_ms)
 {
@@ -128,22 +183,23 @@ static void app_remote_store_result(AppRemoteResult result,
 static void app_remote_cancel_current_action(void)
 {
     if (g_remoteAction != APP_REMOTE_ACTION_NONE) {
+        uint32_t duration_ms = SystemTime_GetMs() -
+            g_remoteActionStartMs;
+
         app_remote_store_result(APP_REMOTE_RESULT_CANCELLED, 0U,
-            SystemTime_GetMs() - g_remoteActionStartMs);
+            duration_ms);
+        app_remote_cache_cancelled_action(duration_ms);
     }
     g_remoteAction = APP_REMOTE_ACTION_NONE;
     g_remoteActionStartMs = 0U;
     g_remoteActionId = 0U;
+    g_remoteActionSequenced = false;
+    g_remoteActionSequence = 0U;
 }
 
 static const char *app_remote_gear_name(AppMotionGear gear)
 {
     return (gear == APP_MOTION_GEAR_HIGH) ? "HIGH" : "LOW";
-}
-
-static void app_remote_send(const char *text)
-{
-    (void)BluetoothUart_TryWriteString(text);
 }
 
 static uint16_t app_remote_append_text(char *buffer, uint16_t length,
@@ -172,6 +228,215 @@ static uint16_t app_remote_append_u32(char *buffer, uint16_t length,
     }
     buffer[length] = '\0';
     return length;
+}
+
+static void app_remote_copy_text(char *destination, uint16_t capacity,
+    const char *source)
+{
+    uint16_t index = 0U;
+
+    if ((destination == (char *)0) || (capacity == 0U)) {
+        return;
+    }
+    if (source != (const char *)0) {
+        while ((source[index] != '\0') &&
+            ((uint16_t)(index + 1U) < capacity)) {
+            destination[index] = source[index];
+            index++;
+        }
+    }
+    destination[index] = '\0';
+}
+
+static bool app_remote_tail_starts_with_command(const char *tail,
+    const char *command)
+{
+    size_t length = strlen(command);
+
+    return (strncmp(tail, command, length) == 0) &&
+        ((tail[length] == ',') || (tail[length] == '\r') ||
+         (tail[length] == '\n') || (tail[length] == '\0'));
+}
+
+static void app_remote_build_sequenced_response(uint32_t sequence,
+    const char *command, const char *legacy, char *response,
+    uint16_t capacity)
+{
+    const char *prefix = (const char *)0;
+    const char *tail = legacy;
+    uint16_t length = 0U;
+    bool include_command = false;
+
+    response[0] = '\0';
+    if (strncmp(legacy, "ACK,", 4U) == 0) {
+        prefix = "ACK,";
+        tail = legacy + 4U;
+    } else if (strncmp(legacy, "DONE,", 5U) == 0) {
+        prefix = "DONE,";
+        tail = legacy + 5U;
+    } else if (strncmp(legacy, "ERR,", 4U) == 0) {
+        prefix = "ERR,";
+        tail = legacy + 4U;
+        include_command =
+            !app_remote_tail_starts_with_command(tail, command);
+    } else if (strncmp(legacy, "CANCELLED,", 10U) == 0) {
+        prefix = "CANCELLED,";
+        tail = legacy + 10U;
+    } else if (strcmp(legacy, "BUSY\r\n") == 0) {
+        prefix = "ERR,";
+        tail = "BUSY\r\n";
+        include_command = true;
+    }
+
+    if (prefix == (const char *)0) {
+        app_remote_copy_text(response, capacity, legacy);
+        return;
+    }
+    length = app_remote_append_text(response, length, capacity, prefix);
+    length = app_remote_append_u32(response, length, capacity, sequence);
+    length = app_remote_append_text(response, length, capacity, ",");
+    if (include_command) {
+        length = app_remote_append_text(response, length, capacity,
+            command);
+        length = app_remote_append_text(response, length, capacity, ",");
+    }
+    (void)app_remote_append_text(response, length, capacity, tail);
+}
+
+static void app_remote_send_raw(const char *text)
+{
+    (void)BluetoothUart_TryWriteString(text);
+}
+
+static void app_remote_commit_dispatch_metadata(void)
+{
+    g_remoteCommandCache.valid = true;
+    g_remoteCommandCache.sequence = g_remoteDispatchSequence;
+    app_remote_copy_text(g_remoteCommandCache.payload,
+        sizeof(g_remoteCommandCache.payload), g_remoteDispatchPayload);
+    app_remote_copy_text(g_remoteCommandCache.command,
+        sizeof(g_remoteCommandCache.command), g_remoteDispatchCommand);
+}
+
+static void app_remote_commit_dispatch_ack(const char *response)
+{
+    app_remote_commit_dispatch_metadata();
+    app_remote_copy_text(g_remoteCommandCache.acknowledgement,
+        sizeof(g_remoteCommandCache.acknowledgement), response);
+
+    if ((strcmp(g_remoteDispatchCommand, "MOVE") == 0) ||
+        (strcmp(g_remoteDispatchCommand, "TURN") == 0)) {
+        g_remoteCommandCache.result = APP_REMOTE_COMMAND_RUNNING;
+        g_remoteCommandCache.final_response[0] = '\0';
+    } else {
+        g_remoteCommandCache.result = APP_REMOTE_COMMAND_ACK;
+        app_remote_copy_text(g_remoteCommandCache.final_response,
+            sizeof(g_remoteCommandCache.final_response), response);
+    }
+}
+
+static void app_remote_commit_dispatch_error(const char *response)
+{
+    app_remote_commit_dispatch_metadata();
+    g_remoteCommandCache.result = APP_REMOTE_COMMAND_ERROR;
+    g_remoteCommandCache.acknowledgement[0] = '\0';
+    app_remote_copy_text(g_remoteCommandCache.final_response,
+        sizeof(g_remoteCommandCache.final_response), response);
+}
+
+static void app_remote_send(const char *text)
+{
+    char response[APP_REMOTE_COMMAND_RESPONSE_MAX];
+
+    if (!g_remoteSequenceDispatch) {
+        app_remote_send_raw(text);
+        return;
+    }
+    app_remote_build_sequenced_response(g_remoteDispatchSequence,
+        g_remoteDispatchCommand, text, response, sizeof(response));
+    if (strncmp(response, "ACK,", 4U) == 0) {
+        app_remote_commit_dispatch_ack(response);
+    } else if (strncmp(response, "ERR,", 4U) == 0) {
+        app_remote_commit_dispatch_error(response);
+    }
+    app_remote_send_raw(response);
+}
+
+static void app_remote_send_sequence_error(uint32_t sequence,
+    const char *command, const char *reason)
+{
+    char response[80];
+    uint16_t length = 0U;
+
+    response[0] = '\0';
+    length = app_remote_append_text(response, length, sizeof(response),
+        "ERR,");
+    length = app_remote_append_u32(response, length, sizeof(response),
+        sequence);
+    length = app_remote_append_text(response, length, sizeof(response),
+        ",");
+    length = app_remote_append_text(response, length, sizeof(response),
+        command);
+    length = app_remote_append_text(response, length, sizeof(response),
+        ",");
+    length = app_remote_append_text(response, length, sizeof(response),
+        reason);
+    (void)app_remote_append_text(response, length, sizeof(response),
+        "\r\n");
+    app_remote_send_raw(response);
+}
+
+static void app_remote_send_action_result(const char *legacy,
+    AppRemoteCommandResult result)
+{
+    char response[APP_REMOTE_COMMAND_RESPONSE_MAX];
+
+    if (!g_remoteActionSequenced) {
+        app_remote_send_raw(legacy);
+        return;
+    }
+    app_remote_build_sequenced_response(g_remoteActionSequence,
+        app_remote_action_name(g_remoteAction), legacy, response,
+        sizeof(response));
+    if (g_remoteCommandCache.valid &&
+        (g_remoteCommandCache.sequence == g_remoteActionSequence)) {
+        g_remoteCommandCache.result = result;
+        app_remote_copy_text(g_remoteCommandCache.final_response,
+            sizeof(g_remoteCommandCache.final_response), response);
+    }
+    app_remote_send_raw(response);
+}
+
+static void app_remote_cache_cancelled_action(uint32_t duration_ms)
+{
+    char legacy[80];
+    char response[APP_REMOTE_COMMAND_RESPONSE_MAX];
+    uint16_t length = 0U;
+
+    if (!g_remoteActionSequenced || !g_remoteCommandCache.valid ||
+        (g_remoteCommandCache.sequence != g_remoteActionSequence)) {
+        return;
+    }
+    legacy[0] = '\0';
+    length = app_remote_append_text(legacy, length, sizeof(legacy),
+        "CANCELLED,");
+    length = app_remote_append_text(legacy, length, sizeof(legacy),
+        app_remote_action_name(g_remoteAction));
+    length = app_remote_append_text(legacy, length, sizeof(legacy),
+        ",ID=");
+    length = app_remote_append_u32(legacy, length, sizeof(legacy),
+        g_remoteActionId);
+    length = app_remote_append_text(legacy, length, sizeof(legacy),
+        ",MS=");
+    length = app_remote_append_u32(legacy, length, sizeof(legacy),
+        duration_ms);
+    (void)app_remote_append_text(legacy, length, sizeof(legacy), "\r\n");
+    app_remote_build_sequenced_response(g_remoteActionSequence,
+        app_remote_action_name(g_remoteAction), legacy, response,
+        sizeof(response));
+    g_remoteCommandCache.result = APP_REMOTE_COMMAND_CANCELLED;
+    app_remote_copy_text(g_remoteCommandCache.final_response,
+        sizeof(g_remoteCommandCache.final_response), response);
 }
 
 static uint16_t app_remote_append_i32(char *buffer, uint16_t length,
@@ -287,6 +552,30 @@ static bool app_remote_parse_i32(const char *text, int32_t *value)
     return true;
 }
 
+static bool app_remote_parse_u32(const char *text, uint32_t *value)
+{
+    uint32_t parsed = 0U;
+
+    if ((text == (const char *)0) || (value == (uint32_t *)0) ||
+        (*text < '0') || (*text > '9')) {
+        return false;
+    }
+    while ((*text >= '0') && (*text <= '9')) {
+        uint32_t digit = (uint32_t)(*text - '0');
+
+        if (parsed > (UINT32_MAX - digit) / 10U) {
+            return false;
+        }
+        parsed = parsed * 10U + digit;
+        text++;
+    }
+    if ((*text != '\0') || (parsed == 0U)) {
+        return false;
+    }
+    *value = parsed;
+    return true;
+}
+
 static bool app_remote_parse_gear(const char *text, AppMotionGear *gear)
 {
     if ((strcmp(text, "LOW") == 0) || (strcmp(text, "25") == 0)) {
@@ -377,6 +666,9 @@ static bool app_remote_start_action(const MotionAction *action,
     if (g_remoteNextActionId == 0U) {
         g_remoteNextActionId = 1U;
     }
+    g_remoteActionSequenced = g_remoteSequenceDispatch;
+    g_remoteActionSequence = g_remoteSequenceDispatch ?
+        g_remoteDispatchSequence : 0U;
     return true;
 }
 
@@ -415,7 +707,7 @@ static void app_remote_send_status(void)
     const ObstacleFeedback *obstacle = ObstacleMonitor_GetFeedback();
     const volatile BluetoothUartRuntime *bluetooth =
         BluetoothUart_GetRuntime();
-    char response[192];
+    char response[224];
     uint16_t length = 0U;
     const FaultRecord *fault = Fault_GetRecord();
 
@@ -491,6 +783,18 @@ static void app_remote_send_status(void)
         ",TD=");
     length = app_remote_append_u32(response, length, sizeof(response),
         bluetooth->tx_drop_count);
+    length = app_remote_append_text(response, length, sizeof(response),
+        ",CS=");
+    length = app_remote_append_u32(response, length, sizeof(response),
+        g_remoteCommandCache.valid ? g_remoteCommandCache.sequence : 0U);
+    length = app_remote_append_text(response, length, sizeof(response),
+        ",CC=");
+    length = app_remote_append_text(response, length, sizeof(response),
+        g_remoteCommandCache.valid ? g_remoteCommandCache.command : "NONE");
+    length = app_remote_append_text(response, length, sizeof(response),
+        ",CR=");
+    length = app_remote_append_text(response, length, sizeof(response),
+        app_remote_command_result_name(g_remoteCommandCache.result));
     (void)app_remote_append_text(response, length, sizeof(response), "\r\n");
     app_remote_send(response);
 }
@@ -610,20 +914,8 @@ static void app_remote_handle_turn(char **tokens, uint8_t count)
     }
 }
 
-static void app_remote_handle_line(char *line)
+static void app_remote_dispatch_tokens(char **tokens, uint8_t count)
 {
-    char *tokens[APP_REMOTE_TOKEN_MAX];
-    uint8_t count;
-
-    for (char *cursor = line; *cursor != '\0'; cursor++) {
-        *cursor = app_remote_upper(*cursor);
-    }
-    count = app_remote_split(line, tokens);
-    if (count == 0U) {
-        app_remote_send("ERR,FORMAT\r\n");
-        return;
-    }
-
     if ((strcmp(tokens[0], "PING") == 0) && (count == 1U)) {
         app_remote_send("PONG\r\n");
     } else if ((strcmp(tokens[0], "STATUS") == 0) && (count == 1U)) {
@@ -690,6 +982,110 @@ static void app_remote_handle_line(char *line)
         }
     } else {
         app_remote_send("ERR,UNKNOWN\r\n");
+    }
+}
+
+static bool app_remote_command_is_sequenced(const char *command)
+{
+    return (strcmp(command, "MOVE") == 0) ||
+        (strcmp(command, "TURN") == 0) ||
+        (strcmp(command, "MAGNET") == 0);
+}
+
+static void app_remote_build_command_payload(char **tokens, uint8_t count,
+    char *payload, uint16_t capacity)
+{
+    uint16_t length = 0U;
+
+    payload[0] = '\0';
+    for (uint8_t index = 2U; index < count; index++) {
+        if (index != 2U) {
+            length = app_remote_append_text(payload, length, capacity, ",");
+        }
+        length = app_remote_append_text(payload, length, capacity,
+            tokens[index]);
+    }
+}
+
+static void app_remote_handle_sequenced(char **tokens, uint8_t count)
+{
+    char payload[APP_REMOTE_LINE_MAX + 1U];
+    const char *command;
+    const char *cached_response;
+    uint32_t sequence;
+
+    if ((count < 4U) || !app_remote_parse_u32(tokens[1], &sequence)) {
+        app_remote_send_raw("ERR,CMD,FORMAT\r\n");
+        return;
+    }
+    command = tokens[2];
+    app_remote_build_command_payload(tokens, count, payload,
+        sizeof(payload));
+
+    if (g_remoteCommandCache.valid &&
+        (g_remoteCommandCache.sequence == sequence)) {
+        if (strcmp(g_remoteCommandCache.payload, payload) != 0) {
+            app_remote_send_sequence_error(sequence, command,
+                "SEQ_CONFLICT");
+            return;
+        }
+        cached_response =
+            (g_remoteCommandCache.result == APP_REMOTE_COMMAND_RUNNING) ?
+            g_remoteCommandCache.acknowledgement :
+            g_remoteCommandCache.final_response;
+        if (*cached_response != '\0') {
+            app_remote_send_raw(cached_response);
+        } else {
+            app_remote_send_sequence_error(sequence, command,
+                "CACHE_EMPTY");
+        }
+        return;
+    }
+
+    if (!app_remote_command_is_sequenced(command)) {
+        app_remote_send_sequence_error(sequence, command, "UNSUPPORTED");
+        return;
+    }
+
+    if (g_remoteCommandCache.valid &&
+        (g_remoteCommandCache.result == APP_REMOTE_COMMAND_RUNNING)) {
+        app_remote_send_sequence_error(sequence, command, "BUSY");
+        return;
+    }
+
+    g_remoteSequenceDispatch = true;
+    g_remoteDispatchSequence = sequence;
+    app_remote_copy_text(g_remoteDispatchPayload,
+        sizeof(g_remoteDispatchPayload), payload);
+    app_remote_copy_text(g_remoteDispatchCommand,
+        sizeof(g_remoteDispatchCommand), command);
+    for (uint8_t index = 2U; index < count; index++) {
+        tokens[index - 2U] = tokens[index];
+    }
+    app_remote_dispatch_tokens(tokens, (uint8_t)(count - 2U));
+    g_remoteSequenceDispatch = false;
+    g_remoteDispatchSequence = 0U;
+    g_remoteDispatchPayload[0] = '\0';
+    g_remoteDispatchCommand[0] = '\0';
+}
+
+static void app_remote_handle_line(char *line)
+{
+    char *tokens[APP_REMOTE_TOKEN_MAX];
+    uint8_t count;
+
+    for (char *cursor = line; *cursor != '\0'; cursor++) {
+        *cursor = app_remote_upper(*cursor);
+    }
+    count = app_remote_split(line, tokens);
+    if (count == 0U) {
+        app_remote_send("ERR,FORMAT\r\n");
+        return;
+    }
+    if (strcmp(tokens[0], "CMD") == 0) {
+        app_remote_handle_sequenced(tokens, count);
+    } else {
+        app_remote_dispatch_tokens(tokens, count);
     }
 }
 
@@ -784,10 +1180,13 @@ static void app_remote_update_result(void)
             duration_ms);
         (void)app_remote_append_text(response, length, sizeof(response),
             "\r\n");
-        app_remote_send(response);
+        app_remote_send_action_result(response,
+            APP_REMOTE_COMMAND_DONE);
         g_remoteAction = APP_REMOTE_ACTION_NONE;
         g_remoteActionStartMs = 0U;
         g_remoteActionId = 0U;
+        g_remoteActionSequenced = false;
+        g_remoteActionSequence = 0U;
     } else if (mission->status == MISSION_STATUS_ERROR) {
         duration_ms = SystemTime_GetMs() - g_remoteActionStartMs;
         app_remote_store_result(APP_REMOTE_RESULT_ERROR,
@@ -826,10 +1225,13 @@ static void app_remote_update_result(void)
             duration_ms);
         (void)app_remote_append_text(response, length, sizeof(response),
             "\r\n");
-        app_remote_send(response);
+        app_remote_send_action_result(response,
+            APP_REMOTE_COMMAND_ERROR);
         g_remoteAction = APP_REMOTE_ACTION_NONE;
         g_remoteActionStartMs = 0U;
         g_remoteActionId = 0U;
+        g_remoteActionSequenced = false;
+        g_remoteActionSequence = 0U;
     } else if (!MissionManager_IsTransientAction()) {
         duration_ms = SystemTime_GetMs() - g_remoteActionStartMs;
         app_remote_store_result(APP_REMOTE_RESULT_CANCELLED, 0U,
@@ -848,10 +1250,13 @@ static void app_remote_update_result(void)
             duration_ms);
         (void)app_remote_append_text(response, length, sizeof(response),
             "\r\n");
-        app_remote_send(response);
+        app_remote_send_action_result(response,
+            APP_REMOTE_COMMAND_CANCELLED);
         g_remoteAction = APP_REMOTE_ACTION_NONE;
         g_remoteActionStartMs = 0U;
         g_remoteActionId = 0U;
+        g_remoteActionSequenced = false;
+        g_remoteActionSequence = 0U;
     }
 }
 #endif
@@ -957,11 +1362,21 @@ void App_Init(void)
     g_remoteLastActionId = 0U;
     g_remoteLastDurationMs = 0U;
     g_remoteLastErrorCode = 0U;
+    memset(&g_remoteCommandCache, 0, sizeof(g_remoteCommandCache));
+    g_remoteSequenceDispatch = false;
+    g_remoteDispatchSequence = 0U;
+    g_remoteDispatchPayload[0] = '\0';
+    g_remoteDispatchCommand[0] = '\0';
+    g_remoteActionSequenced = false;
+    g_remoteActionSequence = 0U;
 #endif
 }
 
 bool App_ResetToReady(void)
 {
+#if FEATURE_BLUETOOTH_UART
+    app_remote_cancel_current_action();
+#endif
     Magnet_ForceOff();
     Motor_Stop();
     if (EmergencyStop_IsActive()) {
@@ -981,6 +1396,8 @@ bool App_ResetToReady(void)
     g_remoteAction = APP_REMOTE_ACTION_NONE;
     g_remoteActionStartMs = 0U;
     g_remoteActionId = 0U;
+    g_remoteActionSequenced = false;
+    g_remoteActionSequence = 0U;
     g_remoteGear = APP_MOTION_GEAR_LOW;
 #endif
     return !EmergencyStop_IsActive() && !WatchdogMonitor_HasTripped() &&
