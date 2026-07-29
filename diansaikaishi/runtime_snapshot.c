@@ -54,6 +54,8 @@ void RuntimeSnapshot_Update(uint32_t timestamp_ms)
     g_snapshot.run_mode = CarController_GetRunMode();
     g_snapshot.track_raw = g_appRuntime.sensor_raw;
     g_snapshot.track_error = g_appRuntime.line_error;
+    g_snapshot.line_follow_elapsed_ms =
+        g_appRuntime.line_follow_elapsed_ms;
     g_snapshot.line_control_v2_enabled = lineControl->enabled;
     g_snapshot.line_control_v2_config_valid = lineControl->config_valid;
     g_snapshot.line_control_v2_dt_valid = lineControl->dt_valid;

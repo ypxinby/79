@@ -26,6 +26,7 @@ typedef struct {
     TrackRunMode run_mode;
     uint8_t track_raw;
     int16_t track_error;
+    uint32_t line_follow_elapsed_ms;
     bool line_control_v2_enabled;
     bool line_control_v2_config_valid;
     bool line_control_v2_dt_valid;

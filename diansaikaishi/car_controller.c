@@ -251,6 +251,9 @@ static void handle_follow_line(uint32_t elapsed_ms)
     int32_t correction;
 #endif
 
+    g_appRuntime.line_follow_elapsed_ms = add_elapsed_u32(
+        g_appRuntime.line_follow_elapsed_ms, elapsed_ms);
+
 #if FEATURE_LINE_CONTROL_V2
     LineController_Update(elapsed_ms, g_appRuntime.sensor_raw,
         g_appConfig.line_control_v2_base_command,
@@ -783,6 +786,7 @@ void CarController_ResetRuntime(void)
     g_appRuntime.right_speed = 0;
     g_appRuntime.lost_count = 0;
     g_appRuntime.lost_elapsed_ms = 0;
+    g_appRuntime.line_follow_elapsed_ms = 0U;
     g_appRuntime.turn_elapsed_ms = 0;
     g_appRuntime.yaw_turn_stable_ms = 0;
     g_appRuntime.heading_straight_elapsed_ms = 0;
@@ -853,13 +857,17 @@ void CarController_StartSeekLine(void)
 }
 #endif
 
-void CarController_StartFollowLine(CarTurnHandlingPolicy turn_policy)
+static void start_follow_line(CarTurnHandlingPolicy turn_policy,
+    bool reset_elapsed)
 {
     if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
         stop_output();
         return;
     }
     CarController_ResetTransientState();
+    if (reset_elapsed) {
+        g_appRuntime.line_follow_elapsed_ms = 0U;
+    }
     g_followTurnPolicy = turn_policy;
     g_appRuntime.has_seen_line = 1;
     g_appRuntime.last_error = g_appRuntime.line_error;
@@ -942,6 +950,16 @@ void CarController_StartDriveHeading(float target_yaw_deg,
     HeadingControl_Enable(true);
     g_appRuntime.run_mode = TRACK_MODE_DRIVE_HEADING;
     CarState_Set(CAR_STATE_RUNNING);
+}
+
+void CarController_StartFollowLine(CarTurnHandlingPolicy turn_policy)
+{
+    start_follow_line(turn_policy, true);
+}
+
+void CarController_ResumeFollowLine(CarTurnHandlingPolicy turn_policy)
+{
+    start_follow_line(turn_policy, false);
 }
 
 void CarController_StartDriveDistance(float distance_cm,

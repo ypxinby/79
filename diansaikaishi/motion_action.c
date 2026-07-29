@@ -212,7 +212,8 @@ void MotionAction_Init(void)
     g_motionActionRuntime.waiting_for_imu = false;
 }
 
-bool MotionAction_Start(const MotionAction *action)
+static bool motion_action_start_internal(const MotionAction *action,
+    bool resume_current_action)
 {
     MotionAction_Init();
 
@@ -295,9 +296,15 @@ bool MotionAction_Start(const MotionAction *action)
 #endif
 
         case MOTION_ACTION_FOLLOW_LINE:
-            CarController_StartFollowLine(
-                motion_action_map_turn_policy(
-                    action->params.follow_line.turn_policy));
+            if (resume_current_action) {
+                CarController_ResumeFollowLine(
+                    motion_action_map_turn_policy(
+                        action->params.follow_line.turn_policy));
+            } else {
+                CarController_StartFollowLine(
+                    motion_action_map_turn_policy(
+                        action->params.follow_line.turn_policy));
+            }
             motion_action_set_result(MOTION_RESULT_RUNNING,
                 MOTION_ERROR_NONE);
             return true;
@@ -379,6 +386,16 @@ bool MotionAction_Start(const MotionAction *action)
                 MOTION_ERROR_INVALID_ACTION);
             return false;
     }
+}
+
+bool MotionAction_Start(const MotionAction *action)
+{
+    return motion_action_start_internal(action, false);
+}
+
+bool MotionAction_Resume(const MotionAction *action)
+{
+    return motion_action_start_internal(action, true);
 }
 
 MotionActionResult MotionAction_Update_20ms(uint32_t elapsed_ms)
@@ -674,7 +691,7 @@ bool MotionAction_ReapplyControllerTarget(void)
         return false;
     }
 
-    CarController_StartFollowLine(
+    CarController_ResumeFollowLine(
         motion_action_map_turn_policy(action->params.follow_line.turn_policy));
     return true;
 }

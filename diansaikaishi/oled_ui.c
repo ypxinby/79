@@ -159,6 +159,26 @@ static const char *mission_status_to_string(MissionStatus status)
     }
 }
 
+static void print_elapsed_mm_ss_t(uint32_t elapsed_ms)
+{
+    uint32_t total_tenths = elapsed_ms / 100U;
+    uint32_t minutes = total_tenths / 600U;
+    uint32_t seconds = (total_tenths / 10U) % 60U;
+    uint32_t tenths = total_tenths % 10U;
+
+    if (minutes < 10U) {
+        OLED_PrintChar('0');
+    }
+    print_uint64_decimal((uint64_t)minutes);
+    OLED_PrintChar(':');
+    if (seconds < 10U) {
+        OLED_PrintChar('0');
+    }
+    print_uint64_decimal((uint64_t)seconds);
+    OLED_PrintChar('.');
+    OLED_PrintChar((char)('0' + tenths));
+}
+
 static const char *motion_result_to_string(MotionActionResult result);
 
 #if FEATURE_OBSTACLE_SCANNER
@@ -685,6 +705,7 @@ static void print_sensor_page(uint8_t raw, uint8_t blackCount, int16_t error)
 {
 #if FEATURE_LINE_CONTROL_V2
     const LineControllerRuntime *line = LineController_GetRuntime();
+    const RuntimeSnapshot *snapshot = RuntimeSnapshot_Get();
     const char *state = "FOL";
     const char *stopReason = "-";
     char turnMark = 'U';
@@ -735,12 +756,10 @@ static void print_sensor_page(uint8_t raw, uint8_t blackCount, int16_t error)
     OLED_PrintInt16(line->right_target_command);
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("M:");
+    OLED_PrintString("T:");
+    print_elapsed_mm_ss_t(snapshot->line_follow_elapsed_ms);
+    OLED_PrintString(" M:");
     OLED_PrintChar(turnMark);
-    OLED_PrintString(" V:");
-    OLED_PrintInt16(line->turn_mark_valid ? 1 : 0);
-    OLED_PrintString(" N:");
-    OLED_PrintInt16((int16_t)line->active_count);
     OLED_PrintString(" R:");
     OLED_PrintString(stopReason);
 #else

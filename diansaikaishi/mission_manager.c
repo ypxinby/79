@@ -11,6 +11,7 @@ static const MissionDefinition *g_selectedDefinition;
 static MotionAction g_transientActions[2];
 static MissionDefinition g_transientDefinition;
 static bool g_transientActionActive;
+static bool g_resumeCurrentAction;
 
 #define MISSION_ID_TRANSIENT_REMOTE    (254U)
 
@@ -66,6 +67,7 @@ void MissionManager_Init(void)
     g_selectedDefinition = MissionLibrary_GetByIndex(0U);
     g_missionRuntime.definition = g_selectedDefinition;
     g_transientActionActive = false;
+    g_resumeCurrentAction = false;
     g_missionRuntime.status = MISSION_STATUS_IDLE;
     g_missionRuntime.last_error_code = 0U;
     mission_reset_runtime_counters();
@@ -98,6 +100,7 @@ bool MissionManager_Select(uint8_t mission_id)
     g_selectedDefinition = mission;
     g_missionRuntime.definition = g_selectedDefinition;
     g_transientActionActive = false;
+    g_resumeCurrentAction = false;
     g_missionRuntime.last_error_code = 0U;
     mission_reset_runtime_counters();
     g_missionRuntime.status = MISSION_STATUS_READY;
@@ -172,6 +175,7 @@ bool MissionManager_Start(void)
 
     g_missionRuntime.definition = g_selectedDefinition;
     g_transientActionActive = false;
+    g_resumeCurrentAction = false;
     mission_reset_runtime_counters();
     g_missionRuntime.status = MISSION_STATUS_RUNNING;
     g_missionRuntime.last_action_result = MOTION_RESULT_RUNNING;
@@ -208,6 +212,7 @@ bool MissionManager_StartTransientAction(const MotionAction *action)
     MotionAction_Init();
     g_missionRuntime.definition = &g_transientDefinition;
     g_transientActionActive = true;
+    g_resumeCurrentAction = false;
     g_missionRuntime.last_error_code = 0U;
     mission_reset_runtime_counters();
     g_missionRuntime.status = MISSION_STATUS_RUNNING;
@@ -224,6 +229,7 @@ void MissionManager_Pause(void)
 
     mission_stop_outputs();
     MotionAction_Init();
+    g_resumeCurrentAction = false;
     g_missionRuntime.status = MISSION_STATUS_PAUSED;
     CarState_Set(CAR_STATE_PAUSED);
 }
@@ -238,6 +244,7 @@ void MissionManager_Resume(void)
     }
 
     MotionAction_Init();
+    g_resumeCurrentAction = true;
     g_missionRuntime.status = MISSION_STATUS_RUNNING;
     g_missionRuntime.last_action_result = MOTION_RESULT_RUNNING;
     CarState_Set(CAR_STATE_RUNNING);
@@ -251,6 +258,7 @@ void MissionManager_Cancel(void)
 
     MotionAction_Cancel();
     g_transientActionActive = false;
+    g_resumeCurrentAction = false;
     g_missionRuntime.definition = g_selectedDefinition;
     g_missionRuntime.status = MISSION_STATUS_READY;
     mission_reset_runtime_counters();
@@ -263,6 +271,7 @@ void MissionManager_Reset(void)
     mission_stop_outputs();
     MotionAction_Init();
     g_transientActionActive = false;
+    g_resumeCurrentAction = false;
     g_missionRuntime.definition = g_selectedDefinition;
     g_missionRuntime.last_error_code = 0U;
     mission_reset_runtime_counters();
@@ -302,7 +311,15 @@ void MissionManager_Update_20ms(uint32_t elapsed_ms)
 
     action_runtime = MotionAction_GetRuntime();
     if ((action_runtime->action != action) || !action_runtime->started) {
-        if (!MotionAction_Start(action)) {
+        bool started;
+
+        if (g_resumeCurrentAction) {
+            started = MotionAction_Resume(action);
+        } else {
+            started = MotionAction_Start(action);
+        }
+        g_resumeCurrentAction = false;
+        if (!started) {
             action_runtime = MotionAction_GetRuntime();
             mission_finish_error(action_runtime->error_code);
             return;
@@ -329,6 +346,7 @@ void MissionManager_Update_20ms(uint32_t elapsed_ms)
         g_missionRuntime.current_action_index++;
         g_missionRuntime.current_retry_count = 0U;
         g_missionRuntime.action_elapsed_ms = 0U;
+        g_resumeCurrentAction = false;
         MotionAction_Init();
         return;
     }

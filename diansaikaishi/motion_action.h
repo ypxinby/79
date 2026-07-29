@@ -19,6 +19,7 @@ typedef struct {
 
 void MotionAction_Init(void);
 bool MotionAction_Start(const MotionAction *action);
+bool MotionAction_Resume(const MotionAction *action);
 MotionActionResult MotionAction_Update_20ms(uint32_t elapsed_ms);
 void MotionAction_Cancel(void);
 bool MotionAction_ReapplyControllerTarget(void);

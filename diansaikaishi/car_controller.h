@@ -65,6 +65,7 @@ typedef struct {
 
     uint8_t lost_count;
     uint16_t lost_elapsed_ms;
+    uint32_t line_follow_elapsed_ms;
     uint32_t turn_elapsed_ms;
     uint16_t yaw_turn_stable_ms;
     uint16_t heading_straight_elapsed_ms;
@@ -121,6 +122,7 @@ void CarController_Stop(void);
 void CarController_StartSeekLine(void);
 #endif
 void CarController_StartFollowLine(CarTurnHandlingPolicy turn_policy);
+void CarController_ResumeFollowLine(CarTurnHandlingPolicy turn_policy);
 #if FEATURE_LEGACY_MOTION_CONTROL
 void CarController_StartTurnLeft90(void);
 void CarController_StartTurnRight90(void);

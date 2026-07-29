@@ -18,8 +18,8 @@
 #define WHEEL_CONTROL_RIGHT_KI_DEFAULT            (1.0f)
 #define WHEEL_CONTROL_LEFT_KP_OVERSPEED_DEFAULT   (5.0f)
 #define WHEEL_CONTROL_RIGHT_KP_OVERSPEED_DEFAULT  (5.0f)
-#define WHEEL_CONTROL_LEFT_FF_GAIN_DEFAULT        (0.5f)
-#define WHEEL_CONTROL_RIGHT_FF_GAIN_DEFAULT       (0.5f)
+#define WHEEL_CONTROL_LEFT_FF_GAIN_DEFAULT        (0.6f)
+#define WHEEL_CONTROL_RIGHT_FF_GAIN_DEFAULT       (0.6f)
 #define WHEEL_CONTROL_LEFT_FF_GAIN_LEGACY         (1.0f)
 #define WHEEL_CONTROL_RIGHT_FF_GAIN_LEGACY        (1.0f)
 #define WHEEL_CONTROL_INTEGRAL_LIMIT_DEFAULT      (300.0f)
@@ -74,14 +74,14 @@
  * these are initial vehicle-test values and are intentionally independent of
  * the validated legacy track_kp/track_kd settings.
  */
-#define LINE_CONTROL_V2_BASE_COMMAND_DEFAULT             (220)
+#define LINE_CONTROL_V2_BASE_COMMAND_DEFAULT             (300)
 #define LINE_CONTROL_V2_LOST_TURN_COMMAND_DEFAULT        (280)
 #define LINE_LOST_SEARCH_MAX_MS_DEFAULT                  (2000U)
 #define LINE_CONTROL_V2_ERROR_FILTER_ALPHA_DEFAULT       (0.35f)
 #define LINE_CONTROL_V2_DERIV_FILTER_ALPHA_DEFAULT       (0.20f)
-#define LINE_CONTROL_V2_KP_DEFAULT                       (0.35f)
+#define LINE_CONTROL_V2_KP_DEFAULT                       (0.60f)
 #define LINE_CONTROL_V2_KD_DEFAULT                       (0.010f)
-#define LINE_CONTROL_V2_MAX_CORRECTION_DEFAULT           (120)
+#define LINE_CONTROL_V2_MAX_CORRECTION_DEFAULT           (260)
 #define LINE_CONTROL_V2_MIN_RUNNING_COMMAND_DEFAULT      (50)
 #define LINE_CONTROL_V2_MIN_DT_MS_DEFAULT                 (5U)
 #define LINE_CONTROL_V2_MAX_DT_MS_DEFAULT                 (100U)
