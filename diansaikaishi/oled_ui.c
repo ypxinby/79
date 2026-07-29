@@ -653,6 +653,26 @@ static void print_param_page(uint8_t keyEvent)
         OLED_PrintString("Z:");
         OLED_PrintInt16((int16_t)yaw->position_valid);
         OLED_PrintString(" K2:ON K3:OFF");
+    } else if (item == PARAM_BASE_SPEED) {
+        float speed_cmps =
+            ((float)g_appConfig.line_control_v2_base_command / 1000.0f) *
+            g_appConfig.wheel_control_max_speed_cmps;
+
+        OLED_PrintString("CM10:");
+        OLED_PrintInt16(clamp_display_float_i16(speed_cmps * 10.0f));
+        OLED_PrintString(" M:");
+        OLED_PrintInt16(g_appConfig.line_control_v2_max_correction);
+    } else if (item == PARAM_WHEEL_FEEDFORWARD) {
+        OLED_PrintString("X0.01 BOTH");
+    } else if (item == PARAM_KP) {
+        OLED_PrintString("X0.01 V2");
+    } else if (item == PARAM_KD) {
+        OLED_PrintString("X0.001 V2");
+    } else if (item == PARAM_MAX_CORRECTION) {
+        OLED_PrintString("SPD:");
+        OLED_PrintInt16(g_appConfig.line_control_v2_base_command);
+        OLED_PrintString(" C:");
+        OLED_PrintInt16(g_appRuntime.correction);
     } else {
         OLED_PrintString("C:");
         OLED_PrintInt16(g_appRuntime.correction);

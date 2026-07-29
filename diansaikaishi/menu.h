@@ -36,6 +36,7 @@ typedef enum {
 typedef enum {
     PARAM_TASK = 0,
     PARAM_BASE_SPEED,
+    PARAM_WHEEL_FEEDFORWARD,
     PARAM_KP,
     PARAM_KD,
     PARAM_MAX_CORRECTION,

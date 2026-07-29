@@ -11,6 +11,7 @@
 #include "gimbal_tracker.h"
 #include "gimbal_vision_pitch_tracker.h"
 #include "gimbal_vision_yaw_tracker.h"
+#include "line_controller.h"
 #include "mission_manager.h"
 #include "motor_control.h"
 #include "obstacle_avoidance.h"
@@ -20,8 +21,74 @@ static OledPage g_oledPage;
 static OledPage g_paramReturnPage;
 static ParamItem g_paramItem;
 
+#define MENU_LINE_BASE_MIN              (100)
+#define MENU_LINE_BASE_MAX              (500)
+#define MENU_LINE_KP_X100_MIN           (0)
+#define MENU_LINE_KP_X100_MAX           (200)
+#define MENU_LINE_KD_X1000_MIN          (0)
+#define MENU_LINE_KD_X1000_MAX          (100)
+#define MENU_WHEEL_FF_X100_MIN          (50)
+#define MENU_WHEEL_FF_X100_MAX          (80)
+
+static int16_t menu_clamp_i16(int16_t value, int16_t minimum,
+    int16_t maximum)
+{
+    if (value < minimum) {
+        return minimum;
+    }
+    if (value > maximum) {
+        return maximum;
+    }
+    return value;
+}
+
+static int16_t menu_float_to_scaled(float value, float scale)
+{
+    float scaled = value * scale;
+
+    if (scaled >= 0.0f) {
+        scaled += 0.5f;
+    } else {
+        scaled -= 0.5f;
+    }
+    return (int16_t)scaled;
+}
+
+static int16_t menu_common_feedforward_x100(void)
+{
+    float average = (g_appConfig.wheel_control_left_feedforward_gain +
+        g_appConfig.wheel_control_right_feedforward_gain) * 0.5f;
+
+    return menu_float_to_scaled(average, 100.0f);
+}
+
+static void menu_limit_line_tuning(void)
+{
+    int16_t kp_x100;
+    int16_t kd_x1000;
+
+    g_appConfig.line_control_v2_base_command = menu_clamp_i16(
+        g_appConfig.line_control_v2_base_command,
+        MENU_LINE_BASE_MIN, MENU_LINE_BASE_MAX);
+    g_appConfig.line_control_v2_max_correction = menu_clamp_i16(
+        g_appConfig.line_control_v2_max_correction, 0,
+        g_appConfig.line_control_v2_base_command);
+
+    kp_x100 = menu_clamp_i16(menu_float_to_scaled(
+        g_appConfig.line_control_v2_kp, 100.0f),
+        MENU_LINE_KP_X100_MIN, MENU_LINE_KP_X100_MAX);
+    kd_x1000 = menu_clamp_i16(menu_float_to_scaled(
+        g_appConfig.line_control_v2_kd, 1000.0f),
+        MENU_LINE_KD_X1000_MIN, MENU_LINE_KD_X1000_MAX);
+    g_appConfig.line_control_v2_kp = (float)kp_x100 / 100.0f;
+    g_appConfig.line_control_v2_kd = (float)kd_x1000 / 1000.0f;
+}
+
 static void menu_enter_param_page(ParamItem item, uint8_t select_item)
 {
+    if (CarState_Get() != CAR_STATE_READY) {
+        return;
+    }
     g_paramReturnPage = g_oledPage;
     if (select_item != 0U) {
         g_paramItem = item;
@@ -155,6 +222,9 @@ static void menu_disable_dual_vision_tracking(void)
 
 static void menu_adjust_param(int8_t direction, uint8_t fast)
 {
+    uint8_t line_tuning_changed = 0U;
+    uint8_t motor_tuning_changed = 0U;
+
     switch (g_paramItem) {
         case PARAM_TASK:
             if (direction > 0) {
@@ -164,16 +234,71 @@ static void menu_adjust_param(int8_t direction, uint8_t fast)
             }
             break;
         case PARAM_BASE_SPEED:
+#if FEATURE_LINE_CONTROL_V2
+            g_appConfig.line_control_v2_base_command +=
+                (int16_t)(direction * 10);
+            line_tuning_changed = 1U;
+#else
             g_appConfig.base_speed += (int16_t)(direction * 10);
+#endif
             break;
+        case PARAM_WHEEL_FEEDFORWARD:
+        {
+            int16_t feedforward_x100 = menu_common_feedforward_x100();
+
+            feedforward_x100 += (int16_t)(direction * 5);
+            feedforward_x100 = menu_clamp_i16(feedforward_x100,
+                MENU_WHEEL_FF_X100_MIN, MENU_WHEEL_FF_X100_MAX);
+            g_appConfig.wheel_control_left_feedforward_gain =
+                (float)feedforward_x100 / 100.0f;
+            g_appConfig.wheel_control_right_feedforward_gain =
+                (float)feedforward_x100 / 100.0f;
+            motor_tuning_changed = 1U;
+            break;
+        }
         case PARAM_KP:
+#if FEATURE_LINE_CONTROL_V2
+        {
+            int16_t kp_x100 = menu_float_to_scaled(
+                g_appConfig.line_control_v2_kp, 100.0f);
+
+            kp_x100 += (int16_t)(direction * 5);
+            kp_x100 = menu_clamp_i16(kp_x100,
+                MENU_LINE_KP_X100_MIN, MENU_LINE_KP_X100_MAX);
+            g_appConfig.line_control_v2_kp = (float)kp_x100 / 100.0f;
+            line_tuning_changed = 1U;
+            break;
+        }
+#else
             g_appConfig.track_kp += direction;
             break;
+#endif
         case PARAM_KD:
+#if FEATURE_LINE_CONTROL_V2
+        {
+            int16_t kd_x1000 = menu_float_to_scaled(
+                g_appConfig.line_control_v2_kd, 1000.0f);
+
+            kd_x1000 += direction;
+            kd_x1000 = menu_clamp_i16(kd_x1000,
+                MENU_LINE_KD_X1000_MIN, MENU_LINE_KD_X1000_MAX);
+            g_appConfig.line_control_v2_kd =
+                (float)kd_x1000 / 1000.0f;
+            line_tuning_changed = 1U;
+            break;
+        }
+#else
             g_appConfig.track_kd += direction;
             break;
+#endif
         case PARAM_MAX_CORRECTION:
+#if FEATURE_LINE_CONTROL_V2
+            g_appConfig.line_control_v2_max_correction +=
+                (int16_t)(direction * 10);
+            line_tuning_changed = 1U;
+#else
             g_appConfig.max_correction += (int16_t)(direction * 10);
+#endif
             break;
         case PARAM_SERVO_ANGLE:
             if (fast != 0U) {
@@ -196,6 +321,22 @@ static void menu_adjust_param(int8_t direction, uint8_t fast)
     }
 
     AppConfig_LimitAll();
+#if FEATURE_LINE_CONTROL_V2
+    if (line_tuning_changed != 0U) {
+        menu_limit_line_tuning();
+        LineController_ResetControlState();
+    }
+#else
+    (void)line_tuning_changed;
+#endif
+#if FEATURE_WHEEL_SPEED_CONTROL
+    if (motor_tuning_changed != 0U) {
+        MotorControl_Reset();
+    }
+#else
+    (void)motor_tuning_changed;
+#endif
+    (void)fast;
 }
 
 static void menu_handle_status_key(KeyEvent event)
@@ -523,6 +664,8 @@ const char *Menu_ParamItemToString(ParamItem item)
             return "TASK";
         case PARAM_BASE_SPEED:
             return "SPD";
+        case PARAM_WHEEL_FEEDFORWARD:
+            return "FF";
         case PARAM_KP:
             return "KP";
         case PARAM_KD:
@@ -544,13 +687,33 @@ int16_t Menu_GetParamValue(ParamItem item)
         case PARAM_TASK:
             return (int16_t)(MissionManager_GetSelectedMissionIndex() + 1U);
         case PARAM_BASE_SPEED:
+#if FEATURE_LINE_CONTROL_V2
+            return g_appConfig.line_control_v2_base_command;
+#else
             return g_appConfig.base_speed;
+#endif
+        case PARAM_WHEEL_FEEDFORWARD:
+            return menu_common_feedforward_x100();
         case PARAM_KP:
+#if FEATURE_LINE_CONTROL_V2
+            return menu_float_to_scaled(g_appConfig.line_control_v2_kp,
+                100.0f);
+#else
             return g_appConfig.track_kp;
+#endif
         case PARAM_KD:
+#if FEATURE_LINE_CONTROL_V2
+            return menu_float_to_scaled(g_appConfig.line_control_v2_kd,
+                1000.0f);
+#else
             return g_appConfig.track_kd;
+#endif
         case PARAM_MAX_CORRECTION:
+#if FEATURE_LINE_CONTROL_V2
+            return g_appConfig.line_control_v2_max_correction;
+#else
             return g_appConfig.max_correction;
+#endif
         case PARAM_SERVO_ANGLE:
             return g_appConfig.servo_angle_deg;
         case PARAM_GIMBAL_WORLD_LOCK:
