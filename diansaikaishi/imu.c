@@ -20,7 +20,8 @@
 #define MPU6050_GYRO_FS_SEL_MASK       (0x18U)
 #define MPU6050_GYRO_FS_SEL_SHIFT      (3U)
 #define MPU6050_GYRO_FS_SEL_REQUIRED   (1U)
-#define MPU6050_PWR_MGMT_WAKE          (0x00U)
+#define MPU6050_PWR_MGMT_DEVICE_RESET  (0x80U)
+#define MPU6050_PWR_MGMT_PLL_X_GYRO    (0x01U)
 #define MPU6050_SMPLRT_DIV_1KHZ_125HZ  (0x07U)
 
 #define MPU6050_GYRO_SCALE_250DPS      (131.0f)
@@ -32,9 +33,17 @@
 #define IMU_STARTUP_DELAY_CYCLES       (3200000U)
 #define IMU_WHO_AM_I_RETRY_COUNT       (20U)
 #define IMU_WHO_AM_I_RETRY_DELAY       (160000U)
+#define IMU_DEVICE_RESET_DELAY         (3200000U)
+#define IMU_CLOCK_SETTLE_DELAY         (3200000U)
 #define IMU_CONFIG_SETTLE_DELAY        (16000000U)
 #define IMU_CALIBRATION_DISCARD_COUNT  (50U)
 #define IMU_CALIBRATION_SAMPLE_DELAY   (160000U)
+#define IMU_CALIBRATION_RETRY_DELAY    (6400000U)
+#define IMU_CALIBRATION_RETRY_COUNT    (3U)
+#define IMU_CALIBRATION_VERIFY_COUNT   (20U)
+#define IMU_CALIBRATION_MAX_BIAS_DPS   (10.0f)
+#define IMU_CALIBRATION_MAX_SPAN_DPS   (5.0f)
+#define IMU_CALIBRATION_VERIFY_MAX_DPS (3.0f)
 
 #define IMU_ERROR_NONE                 (0U)
 #define IMU_ERROR_WHO_READ_68          (1U)
@@ -519,11 +528,20 @@ bool Imu_Init(void)
         return false;
     }
 
-    if (!mpu6050_write_reg(MPU6050_REG_PWR_MGMT_1, MPU6050_PWR_MGMT_WAKE)) {
+    if (!mpu6050_write_reg(MPU6050_REG_PWR_MGMT_1,
+            MPU6050_PWR_MGMT_DEVICE_RESET)) {
         g_imuRuntime.last_error_code = IMU_ERROR_PWR_WRITE;
         g_imuRuntime.read_error_count++;
         return false;
     }
+    imu_delay_cycles(IMU_DEVICE_RESET_DELAY);
+    if (!mpu6050_write_reg(MPU6050_REG_PWR_MGMT_1,
+            MPU6050_PWR_MGMT_PLL_X_GYRO)) {
+        g_imuRuntime.last_error_code = IMU_ERROR_PWR_WRITE;
+        g_imuRuntime.read_error_count++;
+        return false;
+    }
+    imu_delay_cycles(IMU_CLOCK_SETTLE_DELAY);
     if (!mpu6050_write_reg(MPU6050_REG_SMPLRT_DIV,
             MPU6050_SMPLRT_DIV_1KHZ_125HZ)) {
         g_imuRuntime.last_error_code = IMU_ERROR_SAMPLE_WRITE;
@@ -594,21 +612,15 @@ bool Imu_ReadRawGyroZ(int16_t *raw_gyro_z)
 #endif
 }
 
-bool Imu_CalibrateGyroBias(uint16_t sample_count)
+static bool imu_calibrate_gyro_bias_once(uint16_t sample_count)
 {
     int64_t sum = 0;
     uint16_t valid_count = 0;
     uint16_t min_valid_count;
-
-    if (!g_imuRuntime.initialized || (sample_count == 0U)) {
-        g_imuRuntime.calibrated = false;
-        g_imuRuntime.valid = false;
-        imu_clear_integration_history();
-        g_imuRuntime.last_error_code = IMU_ERROR_CALIBRATION;
-        return false;
-    }
-
-    imu_delay_cycles(IMU_CONFIG_SETTLE_DELAY);
+    int16_t min_raw = 32767;
+    int16_t max_raw = -32768;
+    float bias_dps;
+    float span_dps;
 
     for (uint16_t i = 0; i < IMU_CALIBRATION_DISCARD_COUNT; i++) {
         int16_t raw_gyro_z;
@@ -623,6 +635,12 @@ bool Imu_CalibrateGyroBias(uint16_t sample_count)
         if (Imu_ReadRawGyroZ(&raw_gyro_z)) {
             sum += raw_gyro_z;
             valid_count++;
+            if (raw_gyro_z < min_raw) {
+                min_raw = raw_gyro_z;
+            }
+            if (raw_gyro_z > max_raw) {
+                max_raw = raw_gyro_z;
+            }
         }
         imu_delay_cycles(IMU_CALIBRATION_SAMPLE_DELAY);
     }
@@ -630,6 +648,45 @@ bool Imu_CalibrateGyroBias(uint16_t sample_count)
     min_valid_count =
         (uint16_t)(sample_count - (sample_count / IMU_CALIBRATION_MIN_VALID_DIV));
     if (valid_count < min_valid_count) {
+        return false;
+    }
+
+    bias_dps = mpu6050_raw_gyro_to_dps(
+        (int16_t)(sum / valid_count));
+    span_dps = ((float)((int32_t)max_raw - (int32_t)min_raw)) /
+        g_imuRuntime.gyro_sensitivity_lsb_per_dps;
+    if ((imu_abs_float(bias_dps) > IMU_CALIBRATION_MAX_BIAS_DPS) ||
+        (span_dps > IMU_CALIBRATION_MAX_SPAN_DPS)) {
+        return false;
+    }
+
+    g_imuRuntime.gyro_bias_dps = bias_dps;
+    valid_count = 0U;
+    min_valid_count = (uint16_t)(IMU_CALIBRATION_VERIFY_COUNT -
+        (IMU_CALIBRATION_VERIFY_COUNT / IMU_CALIBRATION_MIN_VALID_DIV));
+    for (uint16_t i = 0; i < IMU_CALIBRATION_VERIFY_COUNT; i++) {
+        int16_t raw_gyro_z;
+
+        if (Imu_ReadRawGyroZ(&raw_gyro_z)) {
+            float corrected_dps =
+                mpu6050_raw_gyro_to_dps(raw_gyro_z) - bias_dps;
+
+            valid_count++;
+            if (imu_abs_float(corrected_dps) >
+                IMU_CALIBRATION_VERIFY_MAX_DPS) {
+                return false;
+            }
+        }
+        imu_delay_cycles(IMU_CALIBRATION_SAMPLE_DELAY);
+    }
+
+    return valid_count >= min_valid_count;
+}
+
+bool Imu_CalibrateGyroBias(uint16_t sample_count)
+{
+
+    if (!g_imuRuntime.initialized || (sample_count == 0U)) {
         g_imuRuntime.calibrated = false;
         g_imuRuntime.valid = false;
         imu_clear_integration_history();
@@ -637,17 +694,32 @@ bool Imu_CalibrateGyroBias(uint16_t sample_count)
         return false;
     }
 
-    g_imuRuntime.gyro_bias_dps =
-        mpu6050_raw_gyro_to_dps((int16_t)(sum / valid_count));
-    g_imuRuntime.calibrated = true;
-    g_imuRuntime.valid = false;
-    g_imuRuntime.stale = false;
-    g_imuRuntime.last_success_age_ms = 0U;
-    g_imuRuntime.consecutive_read_fail_count = 0U;
-    imu_clear_integration_history();
-    g_imuRuntime.last_error_code = IMU_ERROR_NONE;
+    imu_delay_cycles(IMU_CONFIG_SETTLE_DELAY);
 
-    return true;
+    for (uint8_t attempt = 0U;
+        attempt < IMU_CALIBRATION_RETRY_COUNT; attempt++) {
+        g_imuRuntime.gyro_bias_dps = 0.0f;
+        if (imu_calibrate_gyro_bias_once(sample_count)) {
+            g_imuRuntime.calibrated = true;
+            g_imuRuntime.valid = false;
+            g_imuRuntime.stale = false;
+            g_imuRuntime.last_success_age_ms = 0U;
+            g_imuRuntime.consecutive_read_fail_count = 0U;
+            imu_clear_integration_history();
+            g_imuRuntime.last_error_code = IMU_ERROR_NONE;
+            return true;
+        }
+        if ((attempt + 1U) < IMU_CALIBRATION_RETRY_COUNT) {
+            imu_delay_cycles(IMU_CALIBRATION_RETRY_DELAY);
+        }
+    }
+
+    g_imuRuntime.gyro_bias_dps = 0.0f;
+    g_imuRuntime.calibrated = false;
+    g_imuRuntime.valid = false;
+    imu_clear_integration_history();
+    g_imuRuntime.last_error_code = IMU_ERROR_CALIBRATION;
+    return false;
 }
 
 void Imu_Update(uint32_t elapsed_ms)
