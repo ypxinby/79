@@ -1574,6 +1574,75 @@ static void print_balance_vision_page(void)
             VisionReceiver_GetProtocolErrorCount());
     }
 }
+
+static uint16_t balance_rx_count_3digit(uint32_t value)
+{
+    return (value > 999U) ? 999U : (uint16_t)value;
+}
+
+static const char *balance_rx_event_to_string(VisionReceiverEvent event)
+{
+    switch (event) {
+        case VISION_RECEIVER_EVENT_TARGET:
+            return "OK";
+        case VISION_RECEIVER_EVENT_NO_TARGET:
+            return "NONE";
+        case VISION_RECEIVER_EVENT_NEW_SESSION:
+            return "NEW";
+        case VISION_RECEIVER_EVENT_DUPLICATE:
+            return "DUP";
+        case VISION_RECEIVER_EVENT_OLD_SEQUENCE:
+            return "OLD";
+        case VISION_RECEIVER_EVENT_LENGTH_ERROR:
+            return "LEN";
+        case VISION_RECEIVER_EVENT_CRC_ERROR:
+            return "CS";
+        case VISION_RECEIVER_EVENT_FIELD_ERROR:
+            return "FLD";
+        case VISION_RECEIVER_EVENT_DISCARDED:
+            return "DISC";
+        case VISION_RECEIVER_EVENT_WAITING:
+        default:
+            return "WAIT";
+    }
+}
+
+static void print_balance_vision_rx_debug_page(void)
+{
+    const VisionReceiverStatus *status = VisionReceiver_GetStatus();
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("VRX:");
+    OLED_PrintString(balance_rx_event_to_string(status->last_event));
+    OLED_PrintString(" A:");
+    OLED_PrintUInt16(balance_rx_count_3digit(
+        status->accepted_frame_count));
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("X:");
+    OLED_PrintUInt16(balance_rx_count_3digit(status->rx_byte_count));
+    OLED_PrintString(" F:");
+    OLED_PrintUInt16(balance_rx_count_3digit(status->parsed_frame_count));
+    OLED_PrintString(" D:");
+    OLED_PrintUInt16(balance_rx_count_3digit(
+        status->discarded_byte_count));
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("CS:");
+    OLED_PrintUInt16(balance_rx_count_3digit(status->crc_error_count));
+    OLED_PrintString(" E:");
+    OLED_PrintUInt16(balance_rx_count_3digit(status->field_error_count));
+    OLED_PrintString(" L:");
+    OLED_PrintUInt16(balance_rx_count_3digit(status->length_error_count));
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("O:");
+    OLED_PrintUInt16(balance_rx_count_3digit(status->ring_overflow_count));
+    OLED_PrintString(" U:");
+    OLED_PrintUInt16(balance_rx_count_3digit(status->duplicate_count));
+    OLED_PrintString(" Q:");
+    OLED_PrintUInt16(status->last_sequence);
+}
 #endif
 
 #if FEATURE_GIMBAL_OLED_TEST
@@ -2153,6 +2222,13 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
         case OLED_PAGE_BALANCE_VISION:
 #if FEATURE_BALANCE_VISION_MONITOR
             print_balance_vision_page();
+#else
+            print_status_page(raw, error, keyEvent);
+#endif
+            break;
+        case OLED_PAGE_VISION_RX_DEBUG:
+#if FEATURE_BALANCE_VISION_MONITOR
+            print_balance_vision_rx_debug_page();
 #else
             print_status_page(raw, error, keyEvent);
 #endif

@@ -136,10 +136,12 @@ static void menu_next_main_page(void)
     } else if (g_oledPage == OLED_PAGE_MOTOR_CONTROL_DETAIL) {
 #endif
         g_oledPage = OLED_PAGE_BALANCE_VISION;
+    } else if (g_oledPage == OLED_PAGE_BALANCE_VISION) {
+        g_oledPage = OLED_PAGE_VISION_RX_DEBUG;
 #endif
 #if FEATURE_BLUETOOTH_UART
 #if FEATURE_BALANCE_VISION_MONITOR
-    } else if (g_oledPage == OLED_PAGE_BALANCE_VISION) {
+    } else if (g_oledPage == OLED_PAGE_VISION_RX_DEBUG) {
 #elif FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
     } else if (g_oledPage == OLED_PAGE_BALANCE_STEPPER_TEST) {
 #else
@@ -168,10 +170,12 @@ static void menu_next_main_page(void)
     } else if (g_oledPage == OLED_PAGE_DISTANCE) {
 #endif
         g_oledPage = OLED_PAGE_BALANCE_VISION;
+    } else if (g_oledPage == OLED_PAGE_BALANCE_VISION) {
+        g_oledPage = OLED_PAGE_VISION_RX_DEBUG;
 #endif
 #if FEATURE_BLUETOOTH_UART
 #if FEATURE_BALANCE_VISION_MONITOR
-    } else if (g_oledPage == OLED_PAGE_BALANCE_VISION) {
+    } else if (g_oledPage == OLED_PAGE_VISION_RX_DEBUG) {
 #elif FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
     } else if (g_oledPage == OLED_PAGE_BALANCE_STEPPER_TEST) {
 #else
@@ -401,6 +405,12 @@ static void menu_handle_status_key(KeyEvent event)
 #endif
             default:
                 break;
+        }
+        return;
+    }
+    if (g_oledPage == OLED_PAGE_VISION_RX_DEBUG) {
+        if (event == KEY1_SHORT) {
+            menu_next_main_page();
         }
         return;
     }

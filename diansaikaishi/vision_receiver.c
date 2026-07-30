@@ -237,6 +237,7 @@ static void consume_byte(uint8_t byte, uint32_t localTimeMs)
         if (g_lineSize != 0U) {
             g_status.discarded_byte_count += g_lineSize;
             g_status.resync_count++;
+            g_status.last_event = VISION_RECEIVER_EVENT_DISCARDED;
         }
         g_line[0] = byte;
         g_lineSize = 1U;
@@ -244,6 +245,7 @@ static void consume_byte(uint8_t byte, uint32_t localTimeMs)
     }
     if (g_lineSize == 0U) {
         g_status.discarded_byte_count++;
+        g_status.last_event = VISION_RECEIVER_EVENT_DISCARDED;
         return;
     }
     if (g_lineSize >= (VISION_PROTOCOL_LINE_MAX_LENGTH - 1U)) {
