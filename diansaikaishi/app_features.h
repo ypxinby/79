@@ -28,6 +28,11 @@
 #define BALANCE_ENCODER_COUNTS_PER_REV          (4096)
 #define BALANCE_ENCODER_DIRECTION_SIGN          (1)
 #define BALANCE_ENCODER_SPEED_SAMPLE_MS         (10U)
+/* No physical switches are fitted. Calibrate ZERO/LOW/HIGH manually after
+ * every power-up, then enforce the encoder positions as software limits. */
+#define FEATURE_BALANCE_SOFT_LIMITS              (1)
+#define BALANCE_STEPPER_CAL_JOG_STEPS             (20)
+#define BALANCE_SOFT_LIMIT_MIN_SPAN_COUNTS        (64)
 /* HC-06 is retired. PB6/PB7 now belong to the balance-axis encoder;
  * PB2/PB3 UART_VISION remains the future K230/Raspberry Pi host link. */
 #define FEATURE_BLUETOOTH_UART     (0)
@@ -103,6 +108,20 @@
 
 #if FEATURE_BALANCE_ENCODER_CAPTURE && FEATURE_BLUETOOTH_UART
 #error Balance encoder and Bluetooth UART cannot own PB6/PB7 together
+#endif
+
+#if FEATURE_BALANCE_SOFT_LIMITS && \
+    (!FEATURE_BALANCE_ENCODER_CAPTURE || \
+     !FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST)
+#error Balance software limits require the balance encoder and stepper
+#endif
+
+#if BALANCE_STEPPER_CAL_JOG_STEPS <= 0
+#error BALANCE_STEPPER_CAL_JOG_STEPS must be positive
+#endif
+
+#if BALANCE_SOFT_LIMIT_MIN_SPAN_COUNTS <= 0
+#error BALANCE_SOFT_LIMIT_MIN_SPAN_COUNTS must be positive
 #endif
 
 #if (BALANCE_ENCODER_DIRECTION_SIGN != 1) && \

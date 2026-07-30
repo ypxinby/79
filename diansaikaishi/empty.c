@@ -9,6 +9,7 @@
 #include "app.h"
 #include "app_features.h"
 #include "balance_encoder.h"
+#include "balance_soft_limits.h"
 #include "bluetooth_uart.h"
 #include "encoder.h"
 #include "emergency_stop.h"
@@ -77,6 +78,9 @@ int main(void)
 #endif
 #if FEATURE_BALANCE_ENCODER_CAPTURE
     BalanceEncoder_Init();
+#endif
+#if FEATURE_BALANCE_SOFT_LIMITS
+    BalanceSoftLimits_Init();
 #endif
 #if FEATURE_BLUETOOTH_UART
     BluetoothUart_Init();
@@ -215,6 +219,9 @@ void SysTick_Handler(void)
     if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
         GimbalStepper_StopHold();
     } else {
+#if FEATURE_BALANCE_SOFT_LIMITS
+        BalanceSoftLimits_Enforce100usFromIsr();
+#endif
         GimbalStepper_Tick100us();
     }
 #endif

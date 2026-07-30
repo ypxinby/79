@@ -144,6 +144,11 @@ void BalanceEncoder_GetSnapshot(BalanceEncoderRuntime *snapshot)
     }
 }
 
+int32_t BalanceEncoder_GetCountAtomic(void)
+{
+    return g_runtime.count;
+}
+
 int32_t BalanceEncoder_CalculateSpeedRpmX10(int32_t sample_delta_count)
 {
 #if BALANCE_ENCODER_COUNTS_PER_REV > 0
@@ -231,6 +236,11 @@ void BalanceEncoder_GetSnapshot(BalanceEncoderRuntime *snapshot)
     if (snapshot != (BalanceEncoderRuntime *)0) {
         *snapshot = g_runtime;
     }
+}
+
+int32_t BalanceEncoder_GetCountAtomic(void)
+{
+    return g_runtime.count;
 }
 
 int32_t BalanceEncoder_CalculateSpeedRpmX10(int32_t sample_delta_count)

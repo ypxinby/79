@@ -4,6 +4,7 @@
 #include "app_config.h"
 #include "app_features.h"
 #include "balance_encoder.h"
+#include "balance_soft_limits.h"
 #include "car_controller.h"
 #include "car_state.h"
 #include "emergency_stop.h"
@@ -363,6 +364,40 @@ static void menu_handle_status_key(KeyEvent event)
 
 #if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
     if (g_oledPage == OLED_PAGE_BALANCE_STEPPER_TEST) {
+#if FEATURE_BALANCE_SOFT_LIMITS
+        if (BalanceSoftLimits_IsCalibrationActive() != 0U) {
+            switch (event) {
+                case KEY1_SHORT:
+                    break;
+                case KEY1_LONG:
+                    if (GimbalStepper_GetFeedback()->running != 0U) {
+                        GimbalStepper_StopHold();
+                    } else {
+                        (void)BalanceSoftLimits_CaptureCurrentStage();
+                    }
+                    break;
+                case KEY2_SHORT:
+                    GimbalStepper_SetStepHalfPeriodTicks(
+                        BALANCE_STEPPER_TEST_HALF_PERIOD_TICKS);
+                    GimbalStepper_MoveRelativeSteps(
+                        BALANCE_STEPPER_CAL_JOG_STEPS);
+                    break;
+                case KEY3_SHORT:
+                    GimbalStepper_SetStepHalfPeriodTicks(
+                        BALANCE_STEPPER_TEST_HALF_PERIOD_TICKS);
+                    GimbalStepper_MoveRelativeSteps(
+                        -BALANCE_STEPPER_CAL_JOG_STEPS);
+                    break;
+                case KEY3_LONG:
+                    GimbalStepper_StopHold();
+                    BalanceSoftLimits_AbortCalibration();
+                    break;
+                default:
+                    break;
+            }
+            return;
+        }
+#endif
         switch (event) {
             case KEY1_SHORT:
                 GimbalStepper_StopHold();
@@ -372,8 +407,12 @@ static void menu_handle_status_key(KeyEvent event)
                 if (GimbalStepper_GetFeedback()->running != 0U) {
                     GimbalStepper_StopHold();
                 } else {
+#if FEATURE_BALANCE_SOFT_LIMITS
+                    (void)BalanceSoftLimits_BeginAtCurrentAsZero();
+#else
                     (void)GimbalStepper_ConfirmZero();
                     BalanceEncoder_Reset();
+#endif
                 }
                 break;
             case KEY2_SHORT:
@@ -686,6 +725,9 @@ void Menu_HandleKeyEvent(KeyEvent event)
 #if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
             GimbalStepper_Release();
 #endif
+#if FEATURE_BALANCE_SOFT_LIMITS
+            BalanceSoftLimits_AbortCalibration();
+#endif
             (void)App_ResetToReady();
             g_oledPage = OLED_PAGE_STATUS;
         }
@@ -695,6 +737,9 @@ void Menu_HandleKeyEvent(KeyEvent event)
     if (event == KEY2_LONG) {
 #if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
         GimbalStepper_StopHold();
+#endif
+#if FEATURE_BALANCE_SOFT_LIMITS
+        BalanceSoftLimits_AbortCalibration();
 #endif
         EmergencyStop_Trigger();
         g_oledPage = OLED_PAGE_STATUS;

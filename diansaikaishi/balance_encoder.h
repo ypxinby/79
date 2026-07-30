@@ -20,6 +20,8 @@ void BalanceEncoder_Reset(void);
 void BalanceEncoder_HandleGpioInterrupt(void);
 void BalanceEncoder_SampleSpeed10msFromIsr(void);
 void BalanceEncoder_GetSnapshot(BalanceEncoderRuntime *snapshot);
+/* One aligned 32-bit read; safe for the 100 us software-limit guard. */
+int32_t BalanceEncoder_GetCountAtomic(void);
 uint8_t BalanceEncoder_CalculateFollowError(int64_t step_count,
     int32_t encoder_count, int32_t *error_count);
 int32_t BalanceEncoder_CalculateSpeedRpmX10(int32_t sample_delta_count);

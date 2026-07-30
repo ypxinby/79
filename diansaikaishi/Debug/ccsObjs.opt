@@ -2,6 +2,7 @@
 "./app.o"
 "./app_config.o"
 "./balance_encoder.o"
+"./balance_soft_limits.o"
 "./bluetooth_uart.o"
 "./car_controller.o"
 "./car_state.o"

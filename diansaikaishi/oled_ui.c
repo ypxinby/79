@@ -3,6 +3,7 @@
 #include "app_config.h"
 #include "app_features.h"
 #include "balance_encoder.h"
+#include "balance_soft_limits.h"
 #include "bluetooth_uart.h"
 #include "car_controller.h"
 #include "car_state.h"
@@ -71,6 +72,7 @@ static int16_t clamp_control_term_i16(float value)
     return (int16_t)value;
 }
 
+#if !FEATURE_BALANCE_SOFT_LIMITS || FEATURE_GIMBAL_OLED_TEST
 static void print_signed_x10(int16_t value)
 {
     int32_t signedValue = value;
@@ -85,6 +87,7 @@ static void print_signed_x10(int16_t value)
     OLED_PrintChar('.');
     OLED_PrintChar((char)('0' + (magnitude % 10U)));
 }
+#endif
 
 static void print_track_pattern_s1_to_s7(uint8_t pattern)
 {
@@ -812,21 +815,62 @@ static void print_sensor_page(uint8_t raw, uint8_t blackCount, int16_t error)
 }
 
 #if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
+#if FEATURE_BALANCE_SOFT_LIMITS
+static const char *balance_cal_stage_to_string(
+    BalanceSoftLimitCalibrationStage stage)
+{
+    switch (stage) {
+        case BALANCE_SOFT_LIMIT_CAL_LOW:
+            return "LOW";
+        case BALANCE_SOFT_LIMIT_CAL_HIGH:
+            return "HIGH";
+        case BALANCE_SOFT_LIMIT_CAL_COMPLETE:
+            return "DONE";
+        case BALANCE_SOFT_LIMIT_CAL_IDLE:
+        default:
+            return "IDLE";
+    }
+}
+
+static void print_balance_limit_value(uint8_t valid, int32_t value)
+{
+    if (valid != 0U) {
+        print_signed_total_tail((int64_t)value);
+    } else {
+        OLED_PrintString("NA");
+    }
+}
+#endif
+
 static void print_balance_stepper_test_page(void)
 {
     GimbalStepperFeedback stepper;
     BalanceEncoderRuntime encoder;
     int32_t follow_error;
+#if !FEATURE_BALANCE_SOFT_LIMITS
     int32_t speed_rpm_x10;
+#endif
     uint8_t error_valid;
     const char *state;
+#if FEATURE_BALANCE_SOFT_LIMITS
+    BalanceSoftLimitsRuntime limits;
+#endif
 
     GimbalStepper_GetFeedbackSnapshot(&stepper);
     BalanceEncoder_GetSnapshot(&encoder);
+#if FEATURE_BALANCE_SOFT_LIMITS
+    BalanceSoftLimits_GetSnapshot(&limits);
+    error_valid = BalanceEncoder_CalculateFollowError(
+        stepper.estimated_steps,
+        (limits.zero_valid != 0U) ? limits.current_logical_count :
+            encoder.count,
+        &follow_error);
+#else
     error_valid = BalanceEncoder_CalculateFollowError(
         stepper.estimated_steps, encoder.count, &follow_error);
     speed_rpm_x10 = BalanceEncoder_CalculateSpeedRpmX10(
         encoder.speed_sample_delta_count);
+#endif
 
     if (stepper.running != 0U) {
         state = "RUN";
@@ -836,6 +880,73 @@ static void print_balance_stepper_test_page(void)
         state = "REL";
     }
 
+#if FEATURE_BALANCE_SOFT_LIMITS
+    if (limits.calibration_active != 0U) {
+        OLED_SetCursor(0, 0);
+        OLED_PrintString("CAL:");
+        OLED_PrintString(balance_cal_stage_to_string(
+            limits.calibration_stage));
+        OLED_PrintChar(' ');
+        OLED_PrintString(state);
+
+        OLED_SetCursor(2, 0);
+        OLED_PrintString("POS:");
+        print_balance_limit_value(limits.zero_valid,
+            limits.current_logical_count);
+
+        OLED_SetCursor(4, 0);
+        OLED_PrintString("L:");
+        print_balance_limit_value(limits.low_valid,
+            limits.low_logical_count);
+        OLED_PrintString(" H:");
+        print_balance_limit_value(limits.high_valid,
+            limits.high_logical_count);
+
+        OLED_SetCursor(6, 0);
+        if (limits.error == BALANCE_SOFT_LIMIT_ERROR_RANGE) {
+            OLED_PrintString("ERR:RANGE K1=SET");
+        } else if (limits.calibration_stage ==
+            BALANCE_SOFT_LIMIT_CAL_COMPLETE) {
+            OLED_PrintString("K1=EXIT LIM=OK");
+        } else {
+            OLED_PrintString("K1=SET K3L=X");
+        }
+        return;
+    }
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("POS:");
+    print_balance_limit_value(limits.zero_valid,
+        limits.current_logical_count);
+    OLED_PrintChar(' ');
+    OLED_PrintString(state);
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("ENC:");
+    print_signed_total_tail((int64_t)encoder.count);
+    OLED_PrintString(" S:");
+    print_signed_total_tail(stepper.estimated_steps);
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("L:");
+    print_balance_limit_value(limits.low_valid,
+        limits.low_logical_count);
+    OLED_PrintString(" H:");
+    print_balance_limit_value(limits.high_valid,
+        limits.high_logical_count);
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("E:");
+    if (error_valid != 0U) {
+        print_signed_total_tail((int64_t)follow_error);
+    } else {
+        OLED_PrintString("NA");
+    }
+    OLED_PrintString(" IV:");
+    print_uint64_decimal((uint64_t)encoder.invalid_transition_count);
+    OLED_PrintString(" C:");
+    print_uint64_decimal((uint64_t)limits.clamp_count);
+#else
     OLED_SetCursor(0, 0);
     OLED_PrintString("ENC:");
     print_signed_total_tail((int64_t)encoder.count);
@@ -865,6 +976,7 @@ static void print_balance_stepper_test_page(void)
         encoder.speed_sample_delta_count));
     OLED_PrintString(" IV:");
     print_uint64_decimal((uint64_t)encoder.invalid_transition_count);
+#endif
 }
 #endif
 
