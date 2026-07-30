@@ -2,6 +2,7 @@
 #include "app.h"
 #include "app_config.h"
 #include "app_features.h"
+#include "balance_ball_control.h"
 #include "balance_encoder.h"
 #include "balance_position_control.h"
 #include "balance_soft_limits.h"
@@ -1467,13 +1468,10 @@ static void print_heading_page(void)
 
 #if FEATURE_BALANCE_VISION_MONITOR
 static const char *balance_vision_state_to_string(
-    const VisionBallAxisObservation *ball, uint32_t age_ms)
+    const VisionBallPositionObservation *ball, uint32_t age_ms)
 {
     if (ball->available == 0U) {
         return "WAIT";
-    }
-    if (ball->profile_valid == 0U) {
-        return "PROF";
     }
     if (age_ms > BALANCE_VISION_STALE_TIMEOUT_MS) {
         return "STALE";
@@ -1481,13 +1479,43 @@ static const char *balance_vision_state_to_string(
     return (ball->target_valid != 0U) ? "OK" : "NONE";
 }
 
+static const char *balance_ball_state_to_string(
+    BalanceBallControlState state)
+{
+    switch (state) {
+        case BALANCE_BALL_STATE_DISABLED:
+            return "OFF";
+        case BALANCE_BALL_STATE_WAIT_AXIS:
+            return "AXIS";
+        case BALANCE_BALL_STATE_WAIT_VISION:
+            return "VIS";
+        case BALANCE_BALL_STATE_ACTIVE:
+            return "ACT";
+        case BALANCE_BALL_STATE_RETURN_ZERO:
+            return "ZERO";
+        case BALANCE_BALL_STATE_VISION_LOST:
+            return "LOST";
+        case BALANCE_BALL_STATE_FAULT:
+        default:
+            return "FLT";
+    }
+}
+
 static void print_balance_vision_page(void)
 {
-    const VisionBallAxisObservation *ball =
-        VisionReceiver_GetBallAxisObservation();
+    const VisionBallPositionObservation *ball =
+        VisionReceiver_GetBallPositionObservation();
+    BalanceBallControlRuntime control;
     uint32_t now_ms = SystemTime_GetMs();
     uint32_t age_ms = (ball->available != 0U) ?
         (now_ms - ball->local_receive_timestamp_ms) : UINT32_MAX;
+    int16_t display_error_mm;
+    uint8_t display_valid = ((ball->target_valid != 0U) &&
+        (age_ms <= BALANCE_VISION_STALE_TIMEOUT_MS)) ? 1U : 0U;
+
+    BalanceBallControl_GetSnapshot(&control);
+    display_error_mm = clamp_display_i16(
+        (int32_t)control.target_mm - ball->position_mm);
 
     OLED_SetCursor(0, 0);
     OLED_PrintString("BALL:");
@@ -1500,30 +1528,38 @@ static void print_balance_vision_page(void)
     }
 
     OLED_SetCursor(2, 0);
-    OLED_PrintString("X:");
-    if ((ball->profile_valid != 0U) &&
-        (ball->target_valid != 0U)) {
-        OLED_PrintUInt16(ball->axis_position_px);
+    OLED_PrintString("P:");
+    if (display_valid != 0U) {
+        OLED_PrintInt16(ball->position_mm);
     } else {
         OLED_PrintString("NA");
     }
-    OLED_PrintString(" W:");
-    OLED_PrintUInt16(ball->axis_span_px);
+    OLED_PrintString(" T:");
+    OLED_PrintInt16(control.target_mm);
+    OLED_PrintString(" E:");
+    if (display_valid != 0U) {
+        OLED_PrintInt16(display_error_mm);
+    } else {
+        OLED_PrintString("NA");
+    }
 
     OLED_SetCursor(4, 0);
+    OLED_PrintString("V:");
+    OLED_PrintInt16(control.velocity_mm_s);
+    OLED_PrintString(" U:");
+    OLED_PrintInt16(clamp_display_i16(
+        control.commanded_offset_count));
+    OLED_PrintString(" ");
+    OLED_PrintString(balance_ball_state_to_string(control.state));
+
+    OLED_SetCursor(6, 0);
     OLED_PrintString("Q:");
     OLED_PrintUInt16(ball->sequence);
     OLED_PrintString(" C:");
     OLED_PrintUInt16(ball->confidence);
-
-    OLED_SetCursor(6, 0);
-    OLED_PrintString("N:");
-    print_uint64_decimal((uint64_t)ball->update_count);
-    OLED_PrintString(" E:");
+    OLED_PrintString(" R:");
     print_uint64_decimal((uint64_t)
         VisionReceiver_GetProtocolErrorCount());
-    OLED_PrintChar('/');
-    print_uint64_decimal((uint64_t)ball->profile_error_count);
 }
 #endif
 

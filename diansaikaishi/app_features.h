@@ -65,6 +65,22 @@
  * frame_height=1, target_center_y=0, target_center_x=axis position. */
 #define FEATURE_BALANCE_VISION_MONITOR               (1)
 #define BALANCE_VISION_STALE_TIMEOUT_MS              (100U)
+/* Static ball controller: K230 reports signed millimetres relative to O.
+ * The outer PD generates a small encoder-count offset around horizontal and
+ * the proven position loop remains the actuator inner loop. It never starts
+ * automatically; the BALL page K2 command is still required. */
+#define FEATURE_BALANCE_BALL_PD_CONTROL               (1)
+#define BALANCE_BALL_PD_MIN_CONFIDENCE                (200U)
+#define BALANCE_BALL_PD_VALID_FRAME_COUNT             (3U)
+#define BALANCE_BALL_PD_VISION_LOST_TIMEOUT_MS        (300U)
+#define BALANCE_BALL_PD_MAX_JUMP_MM                   (60U)
+#define BALANCE_BALL_PD_MAX_TARGET_ABS_MM             (500U)
+#define BALANCE_BALL_PD_KP_COUNTS_PER_MM_X100         (30)
+#define BALANCE_BALL_PD_KD_COUNTS_PER_MM_S_X100       (3)
+#define BALANCE_BALL_PD_TILT_SIGN                     (1)
+#define BALANCE_BALL_PD_MAX_OFFSET_PERCENT            (15U)
+#define BALANCE_BALL_PD_MAX_OFFSET_COUNTS             (64U)
+#define BALANCE_BALL_PD_TARGET_SLEW_COUNTS_PER_20MS   (4)
 /* Do not multiplex the retired $VPT/$VYT ASCII tuning console onto the K230
  * binary stream; accidental prefix matches must never generate UART replies. */
 #define FEATURE_VISION_TUNING_CONSOLE                (0)
@@ -211,6 +227,28 @@
 #if FEATURE_BALANCE_VISION_MONITOR && \
     (BALANCE_VISION_STALE_TIMEOUT_MS == 0U)
 #error Balance vision stale timeout must be positive
+#endif
+
+#if FEATURE_BALANCE_BALL_PD_CONTROL && \
+    (!FEATURE_BALANCE_VISION_MONITOR || \
+     !FEATURE_BALANCE_POSITION_CONTROL || \
+     !FEATURE_BALANCE_SOFT_LIMITS)
+#error Balance ball PD requires vision, position control and soft limits
+#endif
+
+#if FEATURE_BALANCE_BALL_PD_CONTROL && \
+    ((BALANCE_BALL_PD_VALID_FRAME_COUNT == 0U) || \
+     (BALANCE_BALL_PD_VISION_LOST_TIMEOUT_MS <= \
+        BALANCE_VISION_STALE_TIMEOUT_MS) || \
+     (BALANCE_BALL_PD_MAX_OFFSET_PERCENT == 0U) || \
+     (BALANCE_BALL_PD_MAX_OFFSET_PERCENT >= 50U))
+#error Balance ball PD safety configuration is invalid
+#endif
+
+#if FEATURE_BALANCE_BALL_PD_CONTROL && \
+    (BALANCE_BALL_PD_TILT_SIGN != 1) && \
+    (BALANCE_BALL_PD_TILT_SIGN != -1)
+#error Balance ball PD tilt sign must be 1 or -1
 #endif
 
 #if (BALANCE_ENCODER_DIRECTION_SIGN != 1) && \

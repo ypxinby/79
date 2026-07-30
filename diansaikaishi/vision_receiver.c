@@ -12,11 +12,11 @@
 static volatile uint8_t g_ring[VISION_RX_RING_SIZE];
 static volatile uint16_t g_ringHead;
 static volatile uint16_t g_ringTail;
-static uint8_t g_frame[VISION_PROTOCOL_FRAME_LENGTH_V1];
+static uint8_t g_frame[VISION_PROTOCOL_FRAME_LENGTH_V2];
 static uint8_t g_frameSize;
 static VisionReceiverStatus g_status;
 static VisionReceiverObservation g_observation;
-static VisionBallAxisObservation g_ballAxisObservation;
+static VisionBallPositionObservation g_ballPositionObservation;
 
 static uint16_t read_u16_le(const uint8_t *data)
 {
@@ -122,34 +122,16 @@ static void accept_packet(const VisionTargetPacket *packet,
     g_observation.local_receive_timestamp_ms = localTimeMs;
     g_observation.packet = *packet;
 
-    g_ballAxisObservation.available = 1U;
-    g_ballAxisObservation.local_receive_timestamp_ms = localTimeMs;
-    g_ballAxisObservation.update_count++;
-    g_ballAxisObservation.session_id = packet->session_id;
-    g_ballAxisObservation.sequence = packet->sequence;
-    g_ballAxisObservation.axis_span_px = packet->frame_width;
-    g_ballAxisObservation.confidence = packet->confidence;
-    g_ballAxisObservation.target_valid = 0U;
-
-    /* Balance V1 is intentionally one-dimensional. Keep the proven generic
-     * frame/parser, but accept only height=1 and Y=0 as a usable ball sample. */
-    if (packet->frame_height != 1U) {
-        g_ballAxisObservation.profile_valid = 0U;
-        g_ballAxisObservation.profile_error_count++;
-    } else if (targetValid != 0U) {
-        if (packet->target_center_y == 0U) {
-            g_ballAxisObservation.profile_valid = 1U;
-            g_ballAxisObservation.target_valid = 1U;
-            g_ballAxisObservation.axis_position_px =
-                packet->target_center_x;
-        } else {
-            g_ballAxisObservation.profile_valid = 0U;
-            g_ballAxisObservation.profile_error_count++;
-        }
-    } else {
-        g_ballAxisObservation.profile_valid = 1U;
-        g_ballAxisObservation.axis_position_px = 0U;
-    }
+    g_ballPositionObservation.available = 1U;
+    g_ballPositionObservation.target_valid = targetValid;
+    g_ballPositionObservation.local_receive_timestamp_ms = localTimeMs;
+    g_ballPositionObservation.update_count++;
+    g_ballPositionObservation.session_id = packet->session_id;
+    g_ballPositionObservation.sequence = packet->sequence;
+    g_ballPositionObservation.axis_span_mm = packet->frame_width;
+    g_ballPositionObservation.position_mm = (targetValid != 0U) ?
+        (int16_t)packet->target_center_x : 0;
+    g_ballPositionObservation.confidence = packet->confidence;
 
     if (targetValid != 0U) {
         g_status.target_frame_count++;
@@ -206,7 +188,7 @@ static void process_complete_frame(uint32_t localTimeMs)
 {
     VisionTargetPacket packet;
     VisionProtocolParseResult result =
-        VisionProtocol_ParseV1TargetFrame(g_frame, &packet);
+        VisionProtocol_ParseV2BallPositionFrame(g_frame, &packet);
 
     g_status.parsed_frame_count++;
     if (result == VISION_PROTOCOL_PARSE_OK) {
@@ -247,11 +229,11 @@ static void consume_byte(uint8_t byte, uint32_t localTimeMs)
 
     if (g_frameSize == 8U) {
         if (read_u16_le(&g_frame[6]) !=
-            VISION_PROTOCOL_PAYLOAD_LENGTH_V1) {
+            VISION_PROTOCOL_PAYLOAD_LENGTH_V2) {
             count_parse_error(VISION_PROTOCOL_PARSE_LENGTH_ERROR);
             resync_candidate();
         }
-    } else if (g_frameSize == VISION_PROTOCOL_FRAME_LENGTH_V1) {
+    } else if (g_frameSize == VISION_PROTOCOL_FRAME_LENGTH_V2) {
         process_complete_frame(localTimeMs);
     }
 }
@@ -263,8 +245,8 @@ void VisionReceiver_Init(void)
     g_frameSize = 0U;
     memset(&g_status, 0, sizeof(g_status));
     memset(&g_observation, 0, sizeof(g_observation));
-    memset(&g_ballAxisObservation, 0,
-        sizeof(g_ballAxisObservation));
+    memset(&g_ballPositionObservation, 0,
+        sizeof(g_ballPositionObservation));
     g_status.last_event = VISION_RECEIVER_EVENT_WAITING;
 }
 
@@ -307,9 +289,10 @@ const VisionReceiverObservation *VisionReceiver_GetObservation(void)
     return &g_observation;
 }
 
-const VisionBallAxisObservation *VisionReceiver_GetBallAxisObservation(void)
+const VisionBallPositionObservation *
+    VisionReceiver_GetBallPositionObservation(void)
 {
-    return &g_ballAxisObservation;
+    return &g_ballPositionObservation;
 }
 
 uint32_t VisionReceiver_GetProtocolErrorCount(void)

@@ -1,37 +1,23 @@
-# Vision Protocol Sender 使用说明
+# Ball Position Protocol V2发送工具
 
 脚本：`vision_protocol_sender.py`
 
-用途：
+用途：生成和发送K230滚球V2固定40字节帧，验证CRC、粘包、乱序、无目标和异常恢复。V2坐标为小球相对O点的带符号毫米值，不再使用图像像素。
 
-- 严格生成 Vision Target Protocol V1 固定 40 字节帧；
-- 离线输出 hex 或原始二进制数据；
-- 通过串口发送合法帧和异常字节流；
-- 在连接 MSPM0 前验证字段布局、CRC 和串口回环；
-- 不包含 MSPM0 UART Receiver 或云台控制代码。
+## 环境
 
-## 1. 环境
-
-离线模式只需要 Python 3.10+：
-
-```powershell
-python --version
-```
-
-串口发送需要 pyserial：
+离线生成只需要Python 3；串口发送还需要：
 
 ```powershell
 python -m pip install pyserial
 ```
 
-命令均从工程根目录运行。
+命令均从工程根目录执行。
 
-## 2. PC 端自验证
-
-### 2.1 固定向量和 CRC
+## 协议自检
 
 ```powershell
-python diansaikaishi\tools\vision_protocol_sender.py --mode self-test
+python .\diansaikaishi\tools\vision_protocol_sender.py --mode self-test
 ```
 
 预期：
@@ -39,260 +25,99 @@ python diansaikaishi\tools\vision_protocol_sender.py --mode self-test
 ```text
 SELF-TEST PASS
 header_size=8 payload_size=30 frame_size=40
-valid_crc=0xD14D
-no_target_crc=0xC75C
-mutated_target_center_x_crc=0x7969
+positive_50mm_crc=0x1749
+no_target_crc=0x2366
+negative_50mm_crc=0xAD86
 ```
 
-### 2.2 pyserial 虚拟回环
+## 正常坐标
+
+发送`+50mm`：
 
 ```powershell
-python diansaikaishi\tools\vision_protocol_sender.py `
-  --mode valid --port loop:// --loopback-verify --count 3
+python .\diansaikaishi\tools\vision_protocol_sender.py `
+  --mode ball-mm --port COM7 `
+  --span-mm 300 --position-mm 50 `
+  --confidence 900 --fps 50 --count 500
 ```
 
-每次写入应显示：
-
-```text
-loopback_verify=PASS bytes=40
-```
-
-### 2.3 USB 转串口物理回环
-
-1. USB 转串口模块使用 3.3V 电平；
-2. 将模块 TX 与 RX 短接；
-3. 使用实际 COM 口运行：
+发送`-50mm`：
 
 ```powershell
-python diansaikaishi\tools\vision_protocol_sender.py `
-  --mode alternating --port COM7 --loopback-verify --count 10 --fps 20
+python .\diansaikaishi\tools\vision_protocol_sender.py `
+  --mode ball-mm --port COM7 `
+  --span-mm 300 --position-mm -50 `
+  --confidence 900 --fps 50 --count 500
 ```
 
-连接 MSPM0 时不要使用 `--loopback-verify`，除非 MSPM0 专门实现了原样回显。
+`--span-mm 300`表示水管以O为中心的有效总长度是300mm，合法位置为`-150～+150mm`。
 
-## 3. 基本使用
-
-### 离线生成
-
-不传 `--port` 即为离线模式：
+## 无目标
 
 ```powershell
-python diansaikaishi\tools\vision_protocol_sender.py --mode valid
+python .\diansaikaishi\tools\vision_protocol_sender.py `
+  --mode ball-no-target --port COM7 `
+  --span-mm 300 --fps 50 --count 500
 ```
 
-每个逻辑帧输出：
+MSPM0应显示`BALL:NONE`，不得继续使用最后一次位置。
 
-```text
-session_id
-sequence
-flags
-timestamp_ms
-frame_hex
-帧内CRC
-重新计算的CRC
-CRC状态
-```
+## 离线与回环
 
-### 串口发送
+不带`--port`时只打印帧：
 
 ```powershell
-python diansaikaishi\tools\vision_protocol_sender.py `
-  --mode valid --port COM7 --baud 115200 --count 100 --fps 30
+python .\diansaikaishi\tools\vision_protocol_sender.py `
+  --mode ball-mm --span-mm 300 --position-mm 0
 ```
 
-### 保存 hex 和二进制流
+虚拟串口回环：
 
 ```powershell
-python diansaikaishi\tools\vision_protocol_sender.py `
-  --mode sticky `
-  --hex-file vision_sticky.txt `
-  --bin-file vision_sticky.bin
+python .\diansaikaishi\tools\vision_protocol_sender.py `
+  --mode ball-mm --port loop:// --loopback-verify `
+  --span-mm 300 --position-mm 20 --count 3
 ```
 
-`--hex-file` 保存每次串口写入的十六进制文本；`--bin-file` 保存实际串口字节流。
+## 异常模式
 
-## 4. 固定测试向量
+| mode | 用途 |
+| --- | --- |
+| `alternating` | 有目标/无目标交替 |
+| `half` | 一帧拆成两次发送 |
+| `truncated` | 残帧后恢复 |
+| `sticky` | 两帧粘在一次写入中 |
+| `noise` | 噪声和伪帧头恢复 |
+| `bad-crc` | CRC错误 |
+| `bad-length` | payload长度错误 |
+| `invalid-fields` | 坐标范围、flags或保留字段非法 |
+| `duplicate` | 重复sequence |
+| `old-sequence` | 乱序旧帧 |
+| `sequence-wrap` | 65535到0回绕 |
+| `source-restart` | K230新session恢复 |
 
-### 合法目标帧
+示例：
 
 ```powershell
-python diansaikaishi\tools\vision_protocol_sender.py `
-  --mode valid `
-  --session-id 0x12345678 `
-  --sequence 0 `
-  --timestamp-ms 1000 `
-  --count 1
+python .\diansaikaishi\tools\vision_protocol_sender.py --mode sticky
+python .\diansaikaishi\tools\vision_protocol_sender.py --mode bad-crc
+python .\diansaikaishi\tools\vision_protocol_sender.py --mode invalid-fields
+python .\diansaikaishi\tools\vision_protocol_sender.py --mode sequence-wrap
 ```
 
-预期：
+## 主要参数
 
-```text
-CRC = 0xD14D
-A5 5A 01 01 1F 00 1E 00 78 56 34 12 00 00 E8 03 00 00 80 02 E0 01 90 01 C8 00 6B 03 07 00 5E 01 96 00 64 00 64 00 4D D1
-```
+| 参数 | 含义 |
+| --- | --- |
+| `--port` | 实际串口，例如COM7；省略则离线 |
+| `--baud` | 默认115200 |
+| `--span-mm` | 水管有效总长度，1～5000mm |
+| `--position-mm` | 相对O点的带符号毫米位置 |
+| `--confidence` | 0～1000 |
+| `--fps` | 发送频率，推荐50Hz |
+| `--count` | 发送帧数 |
+| `--session-id` | 可选固定非零uint32 |
+| `--sequence` | 起始序号 |
+| `--restart-frames` | 启动标志帧数，默认3 |
 
-### 无目标帧
-
-```powershell
-python diansaikaishi\tools\vision_protocol_sender.py `
-  --mode no-target `
-  --session-id 0x12345678 `
-  --sequence 1 `
-  --timestamp-ms 1033 `
-  --restart-frames 0 `
-  --count 1
-```
-
-预期：
-
-```text
-CRC = 0xC75C
-A5 5A 01 01 00 00 1E 00 78 56 34 12 01 00 09 04 00 00 80 02 E0 01 FF FF FF FF 00 00 FF FF 00 00 00 00 00 00 00 00 5C C7
-```
-
-## 5. 测试模式
-
-| mode | 行为 | 用途 |
-| --- | --- | --- |
-| `self-test` | 不发送 | 固定向量、长度和 CRC 自检 |
-| `valid` | 合法目标帧 | 正常目标路径 |
-| `no-target` | 合法无目标帧 | LOST 与通信正常区分 |
-| `alternating` | valid/no-target 交替 | 目标出现和消失 |
-| `half` | 一帧拆成两次写入 | 半帧接收 |
-| `truncated` | 残帧后发送完整帧 | 残帧恢复 |
-| `sticky` | 两帧合并一次写入 | 粘包解析 |
-| `noise` | 噪声、伪帧头、合法帧 | 帧头重新同步 |
-| `bad-crc` | 改字段但保留旧 CRC | CRC 错误处理 |
-| `bad-length` | 错误长度但 CRC 正确 | 独立长度检查 |
-| `invalid-fields` | CRC 正确但字段非法 | 字段范围校验 |
-| `duplicate` | 相同 sequence 发送两次 | 重复帧过滤 |
-| `old-sequence` | 当前帧后发送旧帧 | 乱序过滤 |
-| `sequence-wrap` | 65534、65535、0、1 | uint16 回绕 |
-| `source-restart` | session_id 变化，sequence 从0开始 | 重启恢复 |
-
-## 6. 异常模式示例
-
-### 半帧
-
-```powershell
-python diansaikaishi\tools\vision_protocol_sender.py `
-  --mode half --split 13 --half-delay-ms 50
-```
-
-实际执行两次串口写入：前 13 字节和后 27 字节。
-
-### 截断帧
-
-```powershell
-python diansaikaishi\tools\vision_protocol_sender.py --mode truncated --split 13
-```
-
-先发送 13 字节残帧，再发送下一 sequence 的完整合法帧。
-
-### 粘包
-
-```powershell
-python diansaikaishi\tools\vision_protocol_sender.py --mode sticky
-```
-
-一次串口写入 80 字节：一个 valid 帧和一个 no-target 帧。
-
-### 随机噪声
-
-```powershell
-python diansaikaishi\tools\vision_protocol_sender.py `
-  --mode noise --noise-length 32 --seed 12345
-```
-
-### 错误 CRC
-
-```powershell
-python diansaikaishi\tools\vision_protocol_sender.py --mode bad-crc
-```
-
-输出应显示 `crc_state=BAD`。
-
-### 错误长度
-
-```powershell
-python diansaikaishi\tools\vision_protocol_sender.py `
-  --mode bad-length --bad-length 29
-```
-
-帧仍为 40 字节，CRC 与错误长度字段匹配，用于验证接收器独立检查 `payload_length == 30`。
-
-### 非法字段
-
-```powershell
-python diansaikaishi\tools\vision_protocol_sender.py --mode invalid-fields
-```
-
-依次生成：
-
-```text
-frame_width=0
-target_center_x==frame_width
-confidence=1001
-TARGET_VALID=0但HAS_BBOX=1
-flags保留bit非0
-session_id=0
-header reserved非0
-```
-
-### sequence 回绕与 source restart
-
-```powershell
-python diansaikaishi\tools\vision_protocol_sender.py --mode sequence-wrap
-python diansaikaishi\tools\vision_protocol_sender.py --mode source-restart
-```
-
-`source-restart` 先发送旧 session，再生成新的非零 session_id，并发送 sequence 0、1、2，三帧均设置 `SOURCE_RESTART`。
-
-## 7. CLI 参数
-
-| 参数 | 默认值 | 含义 |
-| --- | ---: | --- |
-| `--mode` | 必填 | 测试模式 |
-| `--port` | 无 | COM口或 `loop://`；不填为离线模式 |
-| `--baud` | 115200 | 波特率 |
-| `--loopback-verify` | 关闭 | 读取并核对串口回显 |
-| `--count` | 1 | 正常模式帧数 |
-| `--fps` | 20 | 发送频率 |
-| `--session-id` | 随机非零 | 固定会话ID，支持十进制或 `0x` |
-| `--sequence` | 0 | 起始 sequence |
-| `--timestamp-ms` | 程序运行时间 | 固定起始时间戳 |
-| `--restart-frames` | 3 | 开头设置 SOURCE_RESTART 的帧数 |
-| `--width` | 640 | 图像宽度 |
-| `--height` | 480 | 图像高度 |
-| `--x` | 400 | 目标中心 X |
-| `--y` | 200 | 目标中心 Y |
-| `--confidence` | 875 | 置信度 |
-| `--target-id` | 7 | 目标 ID |
-| `--bbox` | `350,150,100,100` | bbox：x,y,w,h |
-| `--split` | 13 | half/truncated 分割位置 |
-| `--half-delay-ms` | 50 | 半帧写入间隔 |
-| `--noise-length` | 16 | 噪声长度 |
-| `--seed` | 12345 | 噪声随机种子 |
-| `--bad-length` | 29 | 错误 payload_length |
-| `--hex-file` | 无 | 保存写入的 hex 文本 |
-| `--bin-file` | 无 | 保存原始二进制流 |
-
-查看完整内置帮助：
-
-```powershell
-python diansaikaishi\tools\vision_protocol_sender.py --help
-```
-
-## 8. 连接 MSPM0 前的验收
-
-```text
-1. self-test 显示 PASS
-2. 固定合法帧 CRC 为 D14D
-3. 固定无目标帧 CRC 为 C75C
-4. loop:// 回环验证通过
-5. USB转串口 TX/RX 物理回环通过
-6. hex和bin文件能够离线生成
-7. 所有测试模式运行无Python异常
-```
-
-完成以上验证只代表 PC 测试发送端正确，不代表已经实现 MSPM0 接收。下一阶段仍需单独实现非阻塞 UART、环形缓冲、协议解析和状态管理。
+连接MSPM0时不要使用`--loopback-verify`，除非下位机专门实现了原样回显。

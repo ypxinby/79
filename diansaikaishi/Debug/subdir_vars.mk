@@ -12,6 +12,7 @@ C_SRCS += \
 ../angle_utils.c \
 ../app.c \
 ../app_config.c \
+../balance_ball_control.c \
 ../balance_calibration_store.c \
 ../balance_encoder.c \
 ../balance_position_control.c \
@@ -75,6 +76,7 @@ C_DEPS += \
 ./angle_utils.d \
 ./app.d \
 ./app_config.d \
+./balance_ball_control.d \
 ./balance_calibration_store.d \
 ./balance_encoder.d \
 ./balance_position_control.d \
@@ -133,6 +135,7 @@ OBJS += \
 ./angle_utils.o \
 ./app.o \
 ./app_config.o \
+./balance_ball_control.o \
 ./balance_calibration_store.o \
 ./balance_encoder.o \
 ./balance_position_control.o \
@@ -193,6 +196,7 @@ OBJS__QUOTED += \
 "angle_utils.o" \
 "app.o" \
 "app_config.o" \
+"balance_ball_control.o" \
 "balance_calibration_store.o" \
 "balance_encoder.o" \
 "balance_position_control.o" \
@@ -253,6 +257,7 @@ C_DEPS__QUOTED += \
 "angle_utils.d" \
 "app.d" \
 "app_config.d" \
+"balance_ball_control.d" \
 "balance_calibration_store.d" \
 "balance_encoder.d" \
 "balance_position_control.d" \
@@ -313,6 +318,7 @@ C_SRCS__QUOTED += \
 "../angle_utils.c" \
 "../app.c" \
 "../app_config.c" \
+"../balance_ball_control.c" \
 "../balance_calibration_store.c" \
 "../balance_encoder.c" \
 "../balance_position_control.c" \

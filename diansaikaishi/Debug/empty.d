@@ -1,12 +1,12 @@
 # FIXED
 
-empty.o: ../empty.c ../app.h ../app_features.h ../balance_encoder.h \
- ../balance_soft_limits.h ../balance_calibration_store.h \
- ../bluetooth_uart.h ../encoder.h ../emergency_stop.h ../gimbal.h \
- ../gimbal_stepper.h ../gimbal_tracker.h ../gimbal_vision_adapter.h \
- ../vision_protocol.h ../gimbal_vision_pitch_tracker.h \
- ../gimbal_vision_yaw_tracker.h ../motor.h ../servo.h \
- ../scheduler_monitor.h \
+empty.o: ../empty.c ../app.h ../app_features.h ../balance_ball_control.h \
+ ../balance_encoder.h ../balance_soft_limits.h \
+ ../balance_calibration_store.h ../bluetooth_uart.h ../encoder.h \
+ ../emergency_stop.h ../gimbal.h ../gimbal_stepper.h \
+ ../gimbal_tracker.h ../gimbal_vision_adapter.h ../vision_protocol.h \
+ ../gimbal_vision_pitch_tracker.h ../gimbal_vision_yaw_tracker.h \
+ ../motor.h ../servo.h ../scheduler_monitor.h \
  ti_msp_dl_config.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/msp.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/DeviceFamily.h \
@@ -86,6 +86,7 @@ empty.o: ../empty.c ../app.h ../app_features.h ../balance_encoder.h \
  ../watchdog_monitor.h
 ../app.h:
 ../app_features.h:
+../balance_ball_control.h:
 ../balance_encoder.h:
 ../balance_soft_limits.h:
 ../balance_calibration_store.h:

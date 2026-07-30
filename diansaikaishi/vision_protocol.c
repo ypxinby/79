@@ -2,7 +2,7 @@
 
 #include <stddef.h>
 
-#define VISION_PROTOCOL_MAX_IMAGE_SIZE (8192U)
+#define VISION_PROTOCOL_MAX_AXIS_SPAN_MM (5000U)
 #define VISION_PROTOCOL_MAX_CONFIDENCE (1000U)
 
 static uint16_t read_u16_le(const uint8_t *data)
@@ -48,23 +48,24 @@ uint16_t VisionProtocol_Crc16CcittFalse(const uint8_t *data,
 static uint8_t fields_are_valid(const VisionTargetPacket *packet)
 {
     uint8_t targetValid;
-    uint8_t hasBbox;
-    uint8_t hasTargetId;
     uint8_t hasConfidence;
+    int32_t positionMm;
 
     if ((packet->session_id == 0U) ||
         (packet->frame_width == 0U) ||
-        (packet->frame_width > VISION_PROTOCOL_MAX_IMAGE_SIZE) ||
-        (packet->frame_height == 0U) ||
-        (packet->frame_height > VISION_PROTOCOL_MAX_IMAGE_SIZE)) {
+        (packet->frame_width > VISION_PROTOCOL_MAX_AXIS_SPAN_MM) ||
+        (packet->frame_height != 1U)) {
         return 0U;
     }
 
     targetValid = ((packet->flags & VISION_FLAG_TARGET_VALID) != 0U);
-    hasBbox = ((packet->flags & VISION_FLAG_HAS_BBOX) != 0U);
-    hasTargetId = ((packet->flags & VISION_FLAG_HAS_TARGET_ID) != 0U);
     hasConfidence =
         ((packet->flags & VISION_FLAG_HAS_CONFIDENCE) != 0U);
+
+    if ((packet->flags & (VISION_FLAG_HAS_BBOX |
+         VISION_FLAG_HAS_TARGET_ID)) != 0U) {
+        return 0U;
+    }
 
     if (targetValid == 0U) {
         if ((packet->flags & (VISION_FLAG_HAS_BBOX |
@@ -85,48 +86,28 @@ static uint8_t fields_are_valid(const VisionTargetPacket *packet)
         return 1U;
     }
 
-    if ((packet->target_center_x >= packet->frame_width) ||
-        (packet->target_center_y >= packet->frame_height)) {
-        return 0U;
-    }
-
-    if (hasConfidence != 0U) {
-        if (packet->confidence > VISION_PROTOCOL_MAX_CONFIDENCE) {
-            return 0U;
-        }
-    } else if (packet->confidence != 0U) {
-        return 0U;
-    }
-
-    if (hasTargetId != 0U) {
-        if (packet->target_id == 0xFFFFU) {
-            return 0U;
-        }
-    } else if (packet->target_id != 0xFFFFU) {
-        return 0U;
-    }
-
-    if (hasBbox != 0U) {
-        if ((packet->bbox_width == 0U) ||
-            (packet->bbox_height == 0U) ||
-            ((uint32_t)packet->bbox_x + packet->bbox_width >
-                packet->frame_width) ||
-            ((uint32_t)packet->bbox_y + packet->bbox_height >
-                packet->frame_height)) {
-            return 0U;
-        }
-    } else if ((packet->bbox_x != 0U) ||
+    if ((hasConfidence == 0U) ||
+        (packet->target_center_y != 0U) ||
+        (packet->confidence > VISION_PROTOCOL_MAX_CONFIDENCE) ||
+        (packet->target_id != 0xFFFFU) ||
+        (packet->bbox_x != 0U) ||
         (packet->bbox_y != 0U) ||
         (packet->bbox_width != 0U) ||
         (packet->bbox_height != 0U)) {
         return 0U;
     }
 
+    positionMm = (int32_t)(int16_t)packet->target_center_x;
+    if (((positionMm >= 0) ? positionMm : -positionMm) * 2 >
+        packet->frame_width) {
+        return 0U;
+    }
+
     return 1U;
 }
 
-VisionProtocolParseResult VisionProtocol_ParseV1TargetFrame(
-    const uint8_t frame[VISION_PROTOCOL_FRAME_LENGTH_V1],
+VisionProtocolParseResult VisionProtocol_ParseV2BallPositionFrame(
+    const uint8_t frame[VISION_PROTOCOL_FRAME_LENGTH_V2],
     VisionTargetPacket *packet)
 {
     uint16_t storedCrc;
@@ -139,7 +120,7 @@ VisionProtocolParseResult VisionProtocol_ParseV1TargetFrame(
         (frame[1] != VISION_PROTOCOL_MAGIC_1)) {
         return VISION_PROTOCOL_PARSE_MAGIC_ERROR;
     }
-    if (read_u16_le(&frame[6]) != VISION_PROTOCOL_PAYLOAD_LENGTH_V1) {
+    if (read_u16_le(&frame[6]) != VISION_PROTOCOL_PAYLOAD_LENGTH_V2) {
         return VISION_PROTOCOL_PARSE_LENGTH_ERROR;
     }
 
@@ -148,10 +129,10 @@ VisionProtocolParseResult VisionProtocol_ParseV1TargetFrame(
     if (storedCrc != computedCrc) {
         return VISION_PROTOCOL_PARSE_CRC_ERROR;
     }
-    if (frame[2] != VISION_PROTOCOL_VERSION_V1) {
+    if (frame[2] != VISION_PROTOCOL_VERSION_V2) {
         return VISION_PROTOCOL_PARSE_VERSION_ERROR;
     }
-    if (frame[3] != VISION_PROTOCOL_TYPE_TARGET_REPORT) {
+    if (frame[3] != VISION_PROTOCOL_TYPE_BALL_POSITION) {
         return VISION_PROTOCOL_PARSE_TYPE_ERROR;
     }
     if (frame[5] != 0U) {

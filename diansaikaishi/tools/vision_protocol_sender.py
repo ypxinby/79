@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Vision Target Protocol V1 PC test sender and offline frame generator."""
+"""Ball Position Protocol V2 PC test sender and frame generator."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from typing import Iterable, Optional, Sequence
 
 
 MAGIC = b"\xA5\x5A"
-VERSION = 0x01
+VERSION = 0x02
 MESSAGE_TYPE_TARGET_REPORT = 0x01
 PAYLOAD_LENGTH = 30
 FRAME_LENGTH = 40
@@ -38,14 +38,14 @@ PAYLOAD_STRUCT = struct.Struct("<IHIHHHHHHHHHH")
 CRC_STRUCT = struct.Struct("<H")
 
 FIXED_VALID_HEX = (
-    "A5 5A 01 01 1F 00 1E 00 78 56 34 12 00 00 E8 03 00 00 "
-    "80 02 E0 01 90 01 C8 00 6B 03 07 00 5E 01 96 00 64 00 "
-    "64 00 4D D1"
+    "A5 5A 02 01 09 00 1E 00 78 56 34 12 00 00 E8 03 00 00 "
+    "2C 01 01 00 32 00 00 00 84 03 FF FF 00 00 00 00 00 00 "
+    "00 00 49 17"
 )
 FIXED_NO_TARGET_HEX = (
-    "A5 5A 01 01 00 00 1E 00 78 56 34 12 01 00 09 04 00 00 "
-    "80 02 E0 01 FF FF FF FF 00 00 FF FF 00 00 00 00 00 00 "
-    "00 00 5C C7"
+    "A5 5A 02 01 00 00 1E 00 78 56 34 12 01 00 FC 03 00 00 "
+    "2C 01 01 00 FF FF FF FF 00 00 FF FF 00 00 00 00 00 00 "
+    "00 00 66 23"
 )
 
 
@@ -125,6 +125,10 @@ def _require_uint(name: str, value: int, bits: int) -> None:
         raise ValueError(f"{name} must be in 0..{maximum}, got {value}")
 
 
+def decode_i16(raw: int) -> int:
+    return raw if raw < 0x8000 else raw - 0x10000
+
+
 def validate_report(report: VisionTargetReport) -> None:
     for name, value, bits in (
         ("session_id", report.session_id, 32),
@@ -146,17 +150,18 @@ def validate_report(report: VisionTargetReport) -> None:
 
     if report.session_id == 0:
         raise ValueError("session_id must be non-zero")
-    if not 1 <= report.frame_width <= 8192:
-        raise ValueError("frame_width must be in 1..8192")
-    if not 1 <= report.frame_height <= 8192:
-        raise ValueError("frame_height must be in 1..8192")
+    if not 1 <= report.frame_width <= 5000:
+        raise ValueError("axis span must be in 1..5000 mm")
+    if report.frame_height != 1:
+        raise ValueError("V2 profile field frame_height must be 1")
     if report.flags & FLAG_RESERVED_MASK:
-        raise ValueError("flags bit5..bit7 must be zero in V1")
+        raise ValueError("flags bit5..bit7 must be zero in V2")
 
     target_valid = bool(report.flags & FLAG_TARGET_VALID)
-    has_bbox = bool(report.flags & FLAG_HAS_BBOX)
-    has_target_id = bool(report.flags & FLAG_HAS_TARGET_ID)
     has_confidence = bool(report.flags & FLAG_HAS_CONFIDENCE)
+
+    if report.flags & (FLAG_HAS_BBOX | FLAG_HAS_TARGET_ID):
+        raise ValueError("V2 ball frames do not carry bbox or target ID")
 
     if not target_valid:
         if report.flags & (FLAG_HAS_BBOX | FLAG_HAS_TARGET_ID | FLAG_HAS_CONFIDENCE):
@@ -171,32 +176,20 @@ def validate_report(report: VisionTargetReport) -> None:
             raise ValueError("no-target bbox fields must all be zero")
         return
 
-    if report.target_center_x >= report.frame_width:
-        raise ValueError("target_center_x must be less than frame_width")
-    if report.target_center_y >= report.frame_height:
-        raise ValueError("target_center_y must be less than frame_height")
-
-    if has_confidence:
-        if report.confidence > 1000:
-            raise ValueError("confidence must be in 0..1000")
-    elif report.confidence != 0:
-        raise ValueError("confidence must be 0 when HAS_CONFIDENCE=0")
-
-    if has_target_id:
-        if report.target_id == 0xFFFF:
-            raise ValueError("target_id 0xFFFF means no target ID")
-    elif report.target_id != 0xFFFF:
-        raise ValueError("target_id must be 0xFFFF when HAS_TARGET_ID=0")
-
-    if has_bbox:
-        if report.bbox_width == 0 or report.bbox_height == 0:
-            raise ValueError("bbox width and height must be non-zero")
-        if report.bbox_x + report.bbox_width > report.frame_width:
-            raise ValueError("bbox exceeds frame width")
-        if report.bbox_y + report.bbox_height > report.frame_height:
-            raise ValueError("bbox exceeds frame height")
-    elif any((report.bbox_x, report.bbox_y, report.bbox_width, report.bbox_height)):
-        raise ValueError("bbox fields must be zero when HAS_BBOX=0")
+    position_mm = decode_i16(report.target_center_x)
+    if not has_confidence:
+        raise ValueError("valid V2 ball frames require HAS_CONFIDENCE")
+    if report.target_center_y != 0:
+        raise ValueError("V2 reserved position field must be zero")
+    if not 0 <= report.confidence <= 1000:
+        raise ValueError("confidence must be in 0..1000")
+    if report.target_id != 0xFFFF:
+        raise ValueError("V2 target_id must be 0xFFFF")
+    if any((report.bbox_x, report.bbox_y,
+            report.bbox_width, report.bbox_height)):
+        raise ValueError("V2 bbox fields must all be zero")
+    if abs(position_mm) * 2 > report.frame_width:
+        raise ValueError("ball position exceeds half of axis span")
 
 
 def build_frame(
@@ -237,7 +230,7 @@ def build_frame(
     body = header + payload
     frame = body + CRC_STRUCT.pack(crc16_ccitt_false(body))
     if len(header) != 8 or len(payload) != 30 or len(frame) != FRAME_LENGTH:
-        raise AssertionError("Vision Target Protocol V1 frame size mismatch")
+        raise AssertionError("Ball Position Protocol V2 frame size mismatch")
     return frame
 
 
@@ -260,8 +253,7 @@ def make_valid_report(
     timestamp_ms: int,
     source_restart: bool,
 ) -> VisionTargetReport:
-    bbox_x, bbox_y, bbox_width, bbox_height = args.bbox
-    flags = FLAG_TARGET_VALID | FLAG_HAS_BBOX | FLAG_HAS_TARGET_ID | FLAG_HAS_CONFIDENCE
+    flags = FLAG_TARGET_VALID | FLAG_HAS_CONFIDENCE
     if source_restart:
         flags |= FLAG_SOURCE_RESTART
     return VisionTargetReport(
@@ -269,15 +261,15 @@ def make_valid_report(
         sequence=sequence & 0xFFFF,
         timestamp_ms=timestamp_ms & 0xFFFFFFFF,
         frame_width=args.width,
-        frame_height=args.height,
-        target_center_x=args.x,
-        target_center_y=args.y,
+        frame_height=1,
+        target_center_x=args.x & 0xFFFF,
+        target_center_y=0,
         confidence=args.confidence,
-        target_id=args.target_id,
-        bbox_x=bbox_x,
-        bbox_y=bbox_y,
-        bbox_width=bbox_width,
-        bbox_height=bbox_height,
+        target_id=0xFFFF,
+        bbox_x=0,
+        bbox_y=0,
+        bbox_width=0,
+        bbox_height=0,
         flags=flags,
     )
 
@@ -295,7 +287,7 @@ def make_no_target_report(
         sequence=sequence & 0xFFFF,
         timestamp_ms=timestamp_ms & 0xFFFFFFFF,
         frame_width=args.width,
-        frame_height=args.height,
+        frame_height=1,
         target_center_x=0xFFFF,
         target_center_y=0xFFFF,
         confidence=0,
@@ -308,7 +300,7 @@ def make_no_target_report(
     )
 
 
-def make_ball_1d_report(
+def make_ball_mm_report(
     args: argparse.Namespace,
     session_id: int,
     sequence: int,
@@ -322,7 +314,7 @@ def make_ball_1d_report(
     confidence = 0
     if valid:
         flags = FLAG_TARGET_VALID | FLAG_HAS_CONFIDENCE
-        center_x = args.x
+        center_x = args.x & 0xFFFF
         center_y = 0
         confidence = args.confidence
     if source_restart:
@@ -366,13 +358,13 @@ def normal_operations(
         sequence = (args.sequence + index) & 0xFFFF
         timestamp_ms = timestamp_for(args, index, start_time)
         restart = index < args.restart_frames
-        if args.mode in ("ball-1d", "ball-no-target"):
-            ball_valid = args.mode == "ball-1d"
-            report = make_ball_1d_report(
+        if args.mode in ("ball-mm", "ball-no-target"):
+            ball_valid = args.mode == "ball-mm"
+            report = make_ball_mm_report(
                 args, session_id, sequence, timestamp_ms, restart,
                 ball_valid,
             )
-            label = "ball-1d" if ball_valid else "ball-no-target"
+            label = "ball-mm" if ball_valid else "ball-no-target"
         elif args.mode == "valid" or (args.mode == "alternating" and index % 2 == 0):
             report = make_valid_report(args, session_id, sequence, timestamp_ms, restart)
             label = "valid"
@@ -661,6 +653,9 @@ def print_operation(operation: WriteOperation, connected: bool) -> None:
             f"session_id=0x{record.report.session_id:08X} "
             f"sequence={record.report.sequence} "
             f"flags=0x{record.report.flags:02X} "
+            f"span_mm={record.report.frame_width} "
+            f"position_mm="
+            f"{decode_i16(record.report.target_center_x) if (record.report.flags & FLAG_TARGET_VALID) else 'NA'} "
             f"timestamp_ms={record.report.timestamp_ms} "
             f"CRC=0x{appended_crc:04X} "
             f"computed=0x{expected_crc:04X} "
@@ -696,29 +691,29 @@ def run_self_test() -> None:
         session_id=0x12345678,
         sequence=0,
         timestamp_ms=1000,
-        frame_width=640,
-        frame_height=480,
-        target_center_x=400,
-        target_center_y=200,
-        confidence=875,
-        target_id=7,
-        bbox_x=350,
-        bbox_y=150,
-        bbox_width=100,
-        bbox_height=100,
-        flags=0x1F,
+        frame_width=300,
+        frame_height=1,
+        target_center_x=50,
+        target_center_y=0,
+        confidence=900,
+        target_id=0xFFFF,
+        bbox_x=0,
+        bbox_y=0,
+        bbox_width=0,
+        bbox_height=0,
+        flags=FLAG_TARGET_VALID | FLAG_HAS_CONFIDENCE,
     )
     valid_frame = build_frame(valid_report)
     expected_valid = bytes.fromhex(FIXED_VALID_HEX)
-    if valid_frame != expected_valid or stored_crc(valid_frame) != 0xD14D:
+    if valid_frame != expected_valid or stored_crc(valid_frame) != 0x1749:
         raise AssertionError("fixed valid vector mismatch")
 
     no_target_report = VisionTargetReport(
         session_id=0x12345678,
         sequence=1,
-        timestamp_ms=1033,
-        frame_width=640,
-        frame_height=480,
+        timestamp_ms=1020,
+        frame_width=300,
+        frame_height=1,
         target_center_x=0xFFFF,
         target_center_y=0xFFFF,
         confidence=0,
@@ -731,23 +726,20 @@ def run_self_test() -> None:
     )
     no_target_frame = build_frame(no_target_report)
     expected_no_target = bytes.fromhex(FIXED_NO_TARGET_HEX)
-    if no_target_frame != expected_no_target or stored_crc(no_target_frame) != 0xC75C:
+    if no_target_frame != expected_no_target or stored_crc(no_target_frame) != 0x2366:
         raise AssertionError("fixed no-target vector mismatch")
 
     corrupted = bytearray(valid_frame)
     corrupted[22] ^= 0x01
     if stored_crc(corrupted) == computed_crc(corrupted):
         raise AssertionError("bad CRC self-test did not fail")
-    if computed_crc(bytes(corrupted)) != 0x7969:
-        raise AssertionError("mutated vector CRC mismatch")
-
-    ball_1d = VisionTargetReport(
+    negative_position = VisionTargetReport(
         session_id=0x12345678,
-        sequence=0,
-        timestamp_ms=1000,
-        frame_width=640,
+        sequence=2,
+        timestamp_ms=1040,
+        frame_width=300,
         frame_height=1,
-        target_center_x=360,
+        target_center_x=(-50) & 0xFFFF,
         target_center_y=0,
         confidence=900,
         target_id=0xFFFF,
@@ -757,21 +749,21 @@ def run_self_test() -> None:
         bbox_height=0,
         flags=FLAG_TARGET_VALID | FLAG_HAS_CONFIDENCE,
     )
-    if stored_crc(build_frame(ball_1d)) != 0x9990:
-        raise AssertionError("ball 1D vector mismatch")
+    if stored_crc(build_frame(negative_position)) != 0xAD86:
+        raise AssertionError("negative millimetre vector mismatch")
 
     print("SELF-TEST PASS")
     print("header_size=8 payload_size=30 frame_size=40")
-    print("valid_crc=0xD14D")
+    print("positive_50mm_crc=0x1749")
     print(f"valid_hex={bytes_to_hex(valid_frame)}")
-    print("no_target_crc=0xC75C")
+    print("no_target_crc=0x2366")
     print(f"no_target_hex={bytes_to_hex(no_target_frame)}")
-    print("mutated_target_center_x_crc=0x7969")
+    print("negative_50mm_crc=0xAD86")
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Vision Target Protocol V1 serial sender and offline generator"
+        description="Ball Position Protocol V2 serial sender and offline generator"
     )
     parser.add_argument(
         "--mode",
@@ -781,9 +773,8 @@ def build_parser() -> argparse.ArgumentParser:
             "valid",
             "no-target",
             "alternating",
-            "ball-1d",
+            "ball-mm",
             "ball-no-target",
-            "pitch-reversal",
             "half",
             "truncated",
             "sticky",
@@ -805,19 +796,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="read back and compare every serial write (use loop:// or TX/RX short)",
     )
     parser.add_argument("--count", type=int, default=1, help="frame count for normal modes")
-    parser.add_argument("--fps", type=float, default=20.0)
+    parser.add_argument("--fps", type=float, default=50.0)
     parser.add_argument("--session-id", type=parse_int)
     parser.add_argument("--sequence", type=parse_int, default=0)
     parser.add_argument("--timestamp-ms", type=parse_int)
     parser.add_argument("--restart-frames", type=int, default=3)
 
-    parser.add_argument("--width", type=int, default=640)
-    parser.add_argument("--height", type=int, default=480)
-    parser.add_argument("--x", type=int, default=400)
-    parser.add_argument("--y", type=int, default=200)
-    parser.add_argument("--confidence", type=int, default=875)
-    parser.add_argument("--target-id", type=int, default=7)
-    parser.add_argument("--bbox", type=parse_bbox, default=(350, 150, 100, 100))
+    parser.add_argument("--span-mm", dest="width", type=int, default=300)
+    parser.add_argument("--position-mm", dest="x", type=int, default=0)
+    parser.add_argument("--confidence", type=int, default=900)
 
     parser.add_argument("--split", type=int, default=13)
     parser.add_argument("--half-delay-ms", type=int, default=50)
@@ -847,11 +834,14 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("--bad-length must fit uint16")
     if args.noise_length < 0:
         raise ValueError("--noise-length cannot be negative")
-    if args.mode == "pitch-reversal":
-        if args.height != 480:
-            raise ValueError("pitch-reversal requires --height 480")
-        if args.fps != round(args.fps):
-            raise ValueError("pitch-reversal requires an integer --fps")
+    if not 1 <= args.width <= 5000:
+        raise ValueError("--span-mm must be in 1..5000")
+    if not -32768 <= args.x <= 32767:
+        raise ValueError("--position-mm must fit int16")
+    if abs(args.x) * 2 > args.width:
+        raise ValueError("--position-mm must be within half --span-mm")
+    if not 0 <= args.confidence <= 1000:
+        raise ValueError("--confidence must be in 0..1000")
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -867,11 +857,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         start_time = time.monotonic()
         if args.mode in (
             "valid", "no-target", "alternating",
-            "ball-1d", "ball-no-target",
+            "ball-mm", "ball-no-target",
         ):
             operations = normal_operations(args, session_id, start_time)
-        elif args.mode == "pitch-reversal":
-            operations = pitch_reversal_operations(args, session_id, start_time)
         else:
             operations = abnormal_operations(args, session_id, start_time)
         execute_operations(args, operations)

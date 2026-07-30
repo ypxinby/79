@@ -8,6 +8,7 @@
 
 #include "app.h"
 #include "app_features.h"
+#include "balance_ball_control.h"
 #include "balance_encoder.h"
 #include "balance_soft_limits.h"
 #include "bluetooth_uart.h"
@@ -86,6 +87,9 @@ int main(void)
     BluetoothUart_Init();
 #endif
     VisionReceiver_Init();
+#if FEATURE_BALANCE_BALL_PD_CONTROL
+    BalanceBallControl_Init();
+#endif
 #if FEATURE_GIMBAL_MOTION_CONTROL
     GimbalVisionAdapter_Init();
 #endif

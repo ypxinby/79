@@ -4,6 +4,7 @@
 
 #include "app_config.h"
 #include "app_features.h"
+#include "balance_ball_control.h"
 #include "balance_soft_limits.h"
 #include "bluetooth_uart.h"
 #include "car_controller.h"
@@ -1496,6 +1497,9 @@ void App_Update_20ms(uint32_t elapsed_ms)
     } else {
         BalanceSoftLimits_Update20ms(elapsed_ms);
     }
+#endif
+#if FEATURE_BALANCE_BALL_PD_CONTROL
+    BalanceBallControl_Update20ms(timestamp_ms, elapsed_ms);
 #endif
 #if FEATURE_WHEEL_SPEED_ESTIMATOR
     WheelSpeedEstimator_Update(elapsed_ms);

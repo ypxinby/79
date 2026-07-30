@@ -3,6 +3,7 @@
 #include "app.h"
 #include "app_config.h"
 #include "app_features.h"
+#include "balance_ball_control.h"
 #include "balance_encoder.h"
 #include "balance_position_control.h"
 #include "balance_soft_limits.h"
@@ -385,8 +386,21 @@ static void menu_handle_status_key(KeyEvent event)
 
 #if FEATURE_BALANCE_VISION_MONITOR
     if (g_oledPage == OLED_PAGE_BALANCE_VISION) {
-        if (event == KEY1_SHORT) {
-            menu_next_main_page();
+        switch (event) {
+            case KEY1_SHORT:
+                menu_next_main_page();
+                break;
+#if FEATURE_BALANCE_BALL_PD_CONTROL
+            case KEY2_SHORT:
+                (void)BalanceBallControl_Enable(0);
+                break;
+            case KEY3_SHORT:
+            case KEY3_LONG:
+                BalanceBallControl_Disable();
+                break;
+#endif
+            default:
+                break;
         }
         return;
     }
@@ -818,6 +832,9 @@ void Menu_HandleKeyEvent(KeyEvent event)
 #if FEATURE_BALANCE_SOFT_LIMITS
             BalanceSoftLimits_AbortCalibration();
 #endif
+#if FEATURE_BALANCE_BALL_PD_CONTROL
+            BalanceBallControl_ForceStop();
+#endif
             (void)App_ResetToReady();
             g_oledPage = OLED_PAGE_STATUS;
         }
@@ -830,6 +847,9 @@ void Menu_HandleKeyEvent(KeyEvent event)
 #endif
 #if FEATURE_BALANCE_SOFT_LIMITS
         BalanceSoftLimits_AbortCalibration();
+#endif
+#if FEATURE_BALANCE_BALL_PD_CONTROL
+        BalanceBallControl_ForceStop();
 #endif
         EmergencyStop_Trigger();
         g_oledPage = OLED_PAGE_STATUS;

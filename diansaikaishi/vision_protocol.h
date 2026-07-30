@@ -5,10 +5,10 @@
 
 #define VISION_PROTOCOL_MAGIC_0              (0xA5U)
 #define VISION_PROTOCOL_MAGIC_1              (0x5AU)
-#define VISION_PROTOCOL_VERSION_V1           (0x01U)
-#define VISION_PROTOCOL_TYPE_TARGET_REPORT   (0x01U)
-#define VISION_PROTOCOL_PAYLOAD_LENGTH_V1    (30U)
-#define VISION_PROTOCOL_FRAME_LENGTH_V1      (40U)
+#define VISION_PROTOCOL_VERSION_V2           (0x02U)
+#define VISION_PROTOCOL_TYPE_BALL_POSITION   (0x01U)
+#define VISION_PROTOCOL_PAYLOAD_LENGTH_V2    (30U)
+#define VISION_PROTOCOL_FRAME_LENGTH_V2      (40U)
 
 #define VISION_FLAG_TARGET_VALID             (1U << 0)
 #define VISION_FLAG_HAS_BBOX                 (1U << 1)
@@ -49,8 +49,8 @@ typedef enum {
 
 uint16_t VisionProtocol_Crc16CcittFalse(const uint8_t *data,
     uint16_t length);
-VisionProtocolParseResult VisionProtocol_ParseV1TargetFrame(
-    const uint8_t frame[VISION_PROTOCOL_FRAME_LENGTH_V1],
+VisionProtocolParseResult VisionProtocol_ParseV2BallPositionFrame(
+    const uint8_t frame[VISION_PROTOCOL_FRAME_LENGTH_V2],
     VisionTargetPacket *packet);
 
 #endif
