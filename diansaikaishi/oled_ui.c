@@ -3,6 +3,7 @@
 #include "app_config.h"
 #include "app_features.h"
 #include "balance_encoder.h"
+#include "balance_position_control.h"
 #include "balance_soft_limits.h"
 #include "bluetooth_uart.h"
 #include "car_controller.h"
@@ -884,9 +885,65 @@ static const char *balance_test_error_to_string(
             return "LIM";
         case BALANCE_SOFT_LIMIT_TEST_ERROR_CANCELLED:
             return "CANCEL";
+        case BALANCE_SOFT_LIMIT_TEST_ERROR_CONTROL:
+            return "CTRL";
         case BALANCE_SOFT_LIMIT_TEST_ERROR_NONE:
         default:
             return "NONE";
+    }
+}
+
+static const char *balance_position_state_to_string(
+    BalancePositionState state)
+{
+    switch (state) {
+        case BALANCE_POSITION_STATE_MOVING:
+            return "RUN";
+        case BALANCE_POSITION_STATE_SETTLING:
+            return "SET";
+        case BALANCE_POSITION_STATE_HOLD:
+            return "HOLD";
+        case BALANCE_POSITION_STATE_FAULT:
+            return "FAULT";
+        case BALANCE_POSITION_STATE_IDLE:
+        default:
+            return "IDLE";
+    }
+}
+
+static const char *balance_position_fault_to_string(
+    BalancePositionFault fault)
+{
+    switch (fault) {
+        case BALANCE_POSITION_FAULT_SOFT_LIMIT:
+            return "LIMIT";
+        case BALANCE_POSITION_FAULT_TIMEOUT:
+            return "TIME";
+        case BALANCE_POSITION_FAULT_NO_FEEDBACK:
+            return "NOENC";
+        case BALANCE_POSITION_FAULT_FOLLOW_ERROR:
+            return "FOLLOW";
+        case BALANCE_POSITION_FAULT_DIRECTION:
+            return "DIR";
+        case BALANCE_POSITION_FAULT_NONE:
+        default:
+            return "NONE";
+    }
+}
+
+static const char *balance_oscillation_stage_to_string(
+    BalanceOscillationStage stage)
+{
+    switch (stage) {
+        case BALANCE_OSCILLATION_STAGE_TO_START:
+            return "START";
+        case BALANCE_OSCILLATION_STAGE_RUNNING:
+            return "RUN";
+        case BALANCE_OSCILLATION_STAGE_ERROR:
+            return "ERR";
+        case BALANCE_OSCILLATION_STAGE_IDLE:
+        default:
+            return "IDLE";
     }
 }
 
@@ -912,12 +969,14 @@ static void print_balance_stepper_test_page(void)
     const char *state;
 #if FEATURE_BALANCE_SOFT_LIMITS
     BalanceSoftLimitsRuntime limits;
+    BalancePositionRuntime position;
 #endif
 
     GimbalStepper_GetFeedbackSnapshot(&stepper);
     BalanceEncoder_GetSnapshot(&encoder);
 #if FEATURE_BALANCE_SOFT_LIMITS
     BalanceSoftLimits_GetSnapshot(&limits);
+    BalancePositionControl_GetSnapshot(&position);
 #else
     error_valid = BalanceEncoder_CalculateFollowError(
         stepper.estimated_steps, encoder.count, &follow_error);
@@ -1000,6 +1059,59 @@ static void print_balance_stepper_test_page(void)
         return;
     }
 
+    if (position.fault != BALANCE_POSITION_FAULT_NONE) {
+        OLED_SetCursor(0, 0);
+        OLED_PrintString("POS FAULT HOLD");
+
+        OLED_SetCursor(2, 0);
+        OLED_PrintString("F:");
+        OLED_PrintString(balance_position_fault_to_string(
+            position.fault));
+        OLED_PrintString(" P:");
+        print_signed_total_tail((int64_t)position.current_count);
+
+        OLED_SetCursor(4, 0);
+        OLED_PrintString("E:");
+        print_signed_total_tail((int64_t)position.position_error_count);
+        OLED_PrintString(" FE:");
+        print_signed_total_tail((int64_t)position.following_error_count);
+
+        OLED_SetCursor(6, 0);
+        OLED_PrintString("K3L=RESET");
+        return;
+    }
+
+    if (limits.oscillation_active != 0U) {
+        OLED_SetCursor(0, 0);
+        OLED_PrintString("OSC:");
+        OLED_PrintString(balance_oscillation_stage_to_string(
+            limits.oscillation_stage));
+        OLED_PrintString(" C:");
+        print_uint64_decimal(
+            (uint64_t)limits.oscillation_cycle_count);
+
+        OLED_SetCursor(2, 0);
+        OLED_PrintString("P:");
+        print_signed_total_tail((int64_t)limits.current_logical_count);
+        OLED_PrintString(" T:");
+        print_signed_total_tail(
+            (int64_t)limits.oscillation_target_logical_count);
+
+        OLED_SetCursor(4, 0);
+        OLED_PrintString("E:");
+        print_signed_total_tail((int64_t)position.position_error_count);
+        OLED_PrintString(" M:");
+        print_signed_total_tail(
+            (int64_t)limits.oscillation_max_error_count);
+
+        OLED_SetCursor(6, 0);
+        OLED_PrintString("R:");
+        print_uint64_decimal(
+            (uint64_t)position.commanded_step_rate_hz);
+        OLED_PrintString(" K1L=X");
+        return;
+    }
+
     if (limits.test_active != 0U) {
         OLED_SetCursor(0, 0);
         OLED_PrintString("TEST:");
@@ -1022,8 +1134,37 @@ static void print_balance_stepper_test_page(void)
 
         OLED_SetCursor(6, 0);
         OLED_PrintString("E:");
-        print_signed_total_tail((int64_t)limits.test_position_error_count);
+        print_signed_total_tail((int64_t)position.position_error_count);
+        OLED_PrintString(" R:");
+        print_uint64_decimal(
+            (uint64_t)position.commanded_step_rate_hz);
         OLED_PrintString(" K3L=X");
+        return;
+    }
+
+    if (position.busy != 0U) {
+        OLED_SetCursor(0, 0);
+        OLED_PrintString("POSCTRL:");
+        OLED_PrintString(balance_position_state_to_string(
+            position.state));
+
+        OLED_SetCursor(2, 0);
+        OLED_PrintString("P:");
+        print_signed_total_tail((int64_t)position.current_count);
+        OLED_PrintString(" T:");
+        print_signed_total_tail((int64_t)position.target_count);
+
+        OLED_SetCursor(4, 0);
+        OLED_PrintString("E:");
+        print_signed_total_tail((int64_t)position.position_error_count);
+        OLED_PrintString(" FE:");
+        print_signed_total_tail((int64_t)position.following_error_count);
+
+        OLED_SetCursor(6, 0);
+        OLED_PrintString("R:");
+        print_uint64_decimal(
+            (uint64_t)position.commanded_step_rate_hz);
+        OLED_PrintString(" K1L=X");
         return;
     }
 
@@ -1053,14 +1194,22 @@ static void print_balance_stepper_test_page(void)
 
     OLED_SetCursor(6, 0);
     if (limits.test_stage == BALANCE_SOFT_LIMIT_TEST_DONE) {
-        OLED_PrintString("TEST:OK K1L=AGAIN");
+        OLED_PrintString("TEST:OK K1L=OSC");
     } else if (limits.test_stage == BALANCE_SOFT_LIMIT_TEST_ERROR) {
         OLED_PrintString("TERR:");
         OLED_PrintString(balance_test_error_to_string(
             limits.test_error));
+        OLED_PrintString(" K1L=OSC");
+    } else if ((limits.oscillation_stage ==
+            BALANCE_OSCILLATION_STAGE_ERROR) &&
+        (limits.oscillation_error !=
+            BALANCE_SOFT_LIMIT_TEST_ERROR_CANCELLED)) {
+        OLED_PrintString("OERR:");
+        OLED_PrintString(balance_test_error_to_string(
+            limits.oscillation_error));
         OLED_PrintString(" K1L=GO");
     } else {
-        OLED_PrintString("K1L=TEST K3L=CAL");
+        OLED_PrintString("K1L=OSC K3L=CAL");
     }
 #else
     OLED_SetCursor(0, 0);

@@ -35,8 +35,16 @@ typedef enum {
     BALANCE_SOFT_LIMIT_TEST_ERROR_TIMEOUT,
     BALANCE_SOFT_LIMIT_TEST_ERROR_POSITION,
     BALANCE_SOFT_LIMIT_TEST_ERROR_CLAMPED,
-    BALANCE_SOFT_LIMIT_TEST_ERROR_CANCELLED
+    BALANCE_SOFT_LIMIT_TEST_ERROR_CANCELLED,
+    BALANCE_SOFT_LIMIT_TEST_ERROR_CONTROL
 } BalanceSoftLimitTestError;
+
+typedef enum {
+    BALANCE_OSCILLATION_STAGE_IDLE = 0,
+    BALANCE_OSCILLATION_STAGE_TO_START,
+    BALANCE_OSCILLATION_STAGE_RUNNING,
+    BALANCE_OSCILLATION_STAGE_ERROR
+} BalanceOscillationStage;
 
 typedef struct {
     int32_t zero_raw_count;
@@ -49,8 +57,14 @@ typedef struct {
     uint32_t flash_sequence;
     uint32_t test_elapsed_ms;
     uint32_t test_timeout_ms;
+    uint32_t oscillation_phase_ms;
+    uint32_t oscillation_cycle_count;
     int32_t test_target_logical_count;
     int32_t test_position_error_count;
+    int32_t oscillation_low_logical_count;
+    int32_t oscillation_high_logical_count;
+    int32_t oscillation_target_logical_count;
+    int32_t oscillation_max_error_count;
     int8_t last_clamp_direction;
     uint8_t zero_valid;
     uint8_t low_valid;
@@ -61,11 +75,14 @@ typedef struct {
     uint8_t zero_confirmation_required;
     uint8_t recalibration_armed;
     uint8_t test_active;
+    uint8_t oscillation_active;
     BalanceSoftLimitCalibrationStage calibration_stage;
     BalanceSoftLimitError error;
     BalanceCalibrationFlashStatus flash_status;
     BalanceSoftLimitTestStage test_stage;
     BalanceSoftLimitTestError test_error;
+    BalanceOscillationStage oscillation_stage;
+    BalanceSoftLimitTestError oscillation_error;
 } BalanceSoftLimitsRuntime;
 
 void BalanceSoftLimits_Init(void);
@@ -78,6 +95,15 @@ void BalanceSoftLimits_CancelRecalibration(void);
 uint8_t BalanceSoftLimits_StartTravelTest(void);
 void BalanceSoftLimits_CancelTravelTest(void);
 uint8_t BalanceSoftLimits_IsTravelTestActive(void);
+uint8_t BalanceSoftLimits_StartOscillationTest(void);
+void BalanceSoftLimits_CancelOscillationTest(void);
+uint8_t BalanceSoftLimits_IsOscillationTestActive(void);
+uint8_t BalanceSoftLimits_StartRelativePositionMoveSteps(
+    int32_t delta_steps);
+void BalanceSoftLimits_CancelPositionMove(void);
+uint8_t BalanceSoftLimits_IsPositionMoveActive(void);
+uint8_t BalanceSoftLimits_ResetPositionFault(void);
+void BalanceSoftLimits_StopMotion(void);
 void BalanceSoftLimits_Update20ms(uint32_t elapsed_ms);
 void BalanceSoftLimits_Enforce100usFromIsr(void);
 void BalanceSoftLimits_GetSnapshot(BalanceSoftLimitsRuntime *snapshot);

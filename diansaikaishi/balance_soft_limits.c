@@ -4,6 +4,7 @@
 
 #include "app_features.h"
 #include "balance_encoder.h"
+#include "balance_position_control.h"
 #include "gimbal_stepper.h"
 #include "ti_msp_dl_config.h"
 
@@ -12,7 +13,6 @@
 static volatile BalanceSoftLimitsRuntime g_runtime;
 static BalanceCalibrationStoredLimits g_storedLimits;
 static uint8_t g_storedLimitsValid;
-static uint32_t g_testStartClampCount;
 
 static int32_t clamp_i64_to_i32(int64_t value)
 {
@@ -23,14 +23,6 @@ static int32_t clamp_i64_to_i32(int64_t value)
         return INT32_MIN;
     }
     return (int32_t)value;
-}
-
-static uint32_t add_u32_saturating(uint32_t value, uint32_t addend)
-{
-    if (addend > (UINT32_MAX - value)) {
-        return UINT32_MAX;
-    }
-    return value + addend;
 }
 
 static int32_t logical_position_from_raw(int32_t raw_count)
@@ -70,7 +62,19 @@ static void clear_test_runtime(void)
     g_runtime.test_timeout_ms = 0U;
     g_runtime.test_target_logical_count = 0;
     g_runtime.test_position_error_count = 0;
-    g_testStartClampCount = g_runtime.clamp_count;
+}
+
+static void clear_oscillation_runtime(void)
+{
+    g_runtime.oscillation_active = 0U;
+    g_runtime.oscillation_stage = BALANCE_OSCILLATION_STAGE_IDLE;
+    g_runtime.oscillation_error = BALANCE_SOFT_LIMIT_TEST_ERROR_NONE;
+    g_runtime.oscillation_phase_ms = 0U;
+    g_runtime.oscillation_cycle_count = 0U;
+    g_runtime.oscillation_low_logical_count = 0;
+    g_runtime.oscillation_high_logical_count = 0;
+    g_runtime.oscillation_target_logical_count = 0;
+    g_runtime.oscillation_max_error_count = 0;
 }
 
 void BalanceSoftLimits_Init(void)
@@ -88,6 +92,8 @@ void BalanceSoftLimits_Init(void)
     g_runtime.error = BALANCE_SOFT_LIMIT_ERROR_NONE;
     restore_stored_limit_display();
     clear_test_runtime();
+    clear_oscillation_runtime();
+    BalancePositionControl_Init();
 }
 
 uint8_t BalanceSoftLimits_BeginAtCurrentAsZero(void)
@@ -96,7 +102,8 @@ uint8_t BalanceSoftLimits_BeginAtCurrentAsZero(void)
     int32_t raw_count;
     uint8_t start_full_calibration;
 
-    if (GimbalStepper_GetFeedback()->running != 0U) {
+    if ((GimbalStepper_GetFeedback()->running != 0U) ||
+        (BalancePositionControl_HasFault() != 0U)) {
         g_runtime.error = BALANCE_SOFT_LIMIT_ERROR_RUNNING;
         return 0U;
     }
@@ -121,6 +128,7 @@ uint8_t BalanceSoftLimits_BeginAtCurrentAsZero(void)
     g_runtime.recalibration_armed = 0U;
     g_runtime.error = BALANCE_SOFT_LIMIT_ERROR_NONE;
     clear_test_runtime();
+    clear_oscillation_runtime();
 
     if (start_full_calibration != 0U) {
         g_runtime.low_logical_count = 0;
@@ -143,6 +151,7 @@ uint8_t BalanceSoftLimits_BeginAtCurrentAsZero(void)
     }
 
     GimbalStepper_StopHold();
+    BalancePositionControl_Cancel();
     return 1U;
 }
 
@@ -239,6 +248,7 @@ uint8_t BalanceSoftLimits_CaptureCurrentStage(void)
 
 void BalanceSoftLimits_AbortCalibration(void)
 {
+    BalancePositionControl_Cancel();
     GimbalStepper_Release();
     g_runtime.zero_valid = 0U;
     g_runtime.limits_valid = 0U;
@@ -249,6 +259,7 @@ void BalanceSoftLimits_AbortCalibration(void)
     g_runtime.error = BALANCE_SOFT_LIMIT_ERROR_NONE;
     restore_stored_limit_display();
     clear_test_runtime();
+    clear_oscillation_runtime();
 }
 
 uint8_t BalanceSoftLimits_IsCalibrationActive(void)
@@ -261,11 +272,15 @@ uint8_t BalanceSoftLimits_ArmRecalibration(void)
     if ((GimbalStepper_GetFeedback()->running != 0U) ||
         (g_runtime.calibration_active != 0U) ||
         (g_runtime.test_active != 0U) ||
+        (g_runtime.oscillation_active != 0U) ||
+        (BalancePositionControl_HasFault() != 0U) ||
+        (BalancePositionControl_IsBusy() != 0U) ||
         (g_runtime.limits_valid == 0U) ||
         (g_runtime.zero_valid == 0U)) {
         return 0U;
     }
 
+    BalancePositionControl_Cancel();
     GimbalStepper_Release();
     g_runtime.zero_valid = 0U;
     g_runtime.limits_valid = 0U;
@@ -273,11 +288,13 @@ uint8_t BalanceSoftLimits_ArmRecalibration(void)
     g_runtime.recalibration_armed = 1U;
     g_runtime.error = BALANCE_SOFT_LIMIT_ERROR_NONE;
     clear_test_runtime();
+    clear_oscillation_runtime();
     return 1U;
 }
 
 void BalanceSoftLimits_CancelRecalibration(void)
 {
+    BalancePositionControl_Cancel();
     GimbalStepper_Release();
     g_runtime.zero_valid = 0U;
     g_runtime.limits_valid = 0U;
@@ -286,69 +303,35 @@ void BalanceSoftLimits_CancelRecalibration(void)
     g_runtime.error = BALANCE_SOFT_LIMIT_ERROR_NONE;
     restore_stored_limit_display();
     clear_test_runtime();
+    clear_oscillation_runtime();
 }
 
-static int32_t test_count_delta_to_steps(int32_t delta_count)
-{
-    int64_t scaled = (int64_t)delta_count *
-        BALANCE_STEPPER_COMMAND_STEPS_PER_REV;
-    int32_t steps;
-
-    if (scaled > 0) {
-        scaled += BALANCE_ENCODER_COUNTS_PER_REV / 2;
-    } else if (scaled < 0) {
-        scaled -= BALANCE_ENCODER_COUNTS_PER_REV / 2;
-    }
-    steps = clamp_i64_to_i32(scaled /
-        BALANCE_ENCODER_COUNTS_PER_REV);
-    if ((steps == 0) && (delta_count != 0)) {
-        steps = (delta_count > 0) ? 1 : -1;
-    }
-    return steps;
-}
-
-static uint32_t test_calculate_timeout_ms(int32_t delta_steps)
-{
-    int64_t magnitude = delta_steps;
-    uint64_t expected_ms;
-
-    if (magnitude < 0) {
-        magnitude = -magnitude;
-    }
-    expected_ms = ((uint64_t)magnitude * 2U *
-        BALANCE_STEPPER_TEST_HALF_PERIOD_TICKS + 9U) / 10U;
-    expected_ms += BALANCE_SOFT_LIMIT_TEST_TIMEOUT_MARGIN_MS;
-    if (expected_ms < BALANCE_SOFT_LIMIT_TEST_TIMEOUT_MIN_MS) {
-        expected_ms = BALANCE_SOFT_LIMIT_TEST_TIMEOUT_MIN_MS;
-    }
-    if (expected_ms > BALANCE_SOFT_LIMIT_TEST_TIMEOUT_MAX_MS) {
-        expected_ms = BALANCE_SOFT_LIMIT_TEST_TIMEOUT_MAX_MS;
-    }
-    return (uint32_t)expected_ms;
-}
-
-static void test_start_target(BalanceSoftLimitTestStage stage,
+static uint8_t test_start_target(BalanceSoftLimitTestStage stage,
     int32_t target_logical_count)
 {
     int32_t current_count = logical_position_from_raw(
         BalanceEncoder_GetCountAtomic());
-    int32_t delta_steps = test_count_delta_to_steps(
-        clamp_i64_to_i32((int64_t)target_logical_count - current_count));
+    BalancePositionRuntime position;
 
     g_runtime.test_stage = stage;
     g_runtime.test_target_logical_count = target_logical_count;
     g_runtime.test_position_error_count =
         clamp_i64_to_i32((int64_t)target_logical_count - current_count);
     g_runtime.test_elapsed_ms = 0U;
-    g_runtime.test_timeout_ms = test_calculate_timeout_ms(delta_steps);
-    GimbalStepper_SetStepHalfPeriodTicks(
-        BALANCE_STEPPER_TEST_HALF_PERIOD_TICKS);
-    GimbalStepper_MoveRelativeSteps(delta_steps);
+    if (BalancePositionControl_Start(target_logical_count, current_count,
+            g_runtime.minimum_logical_count,
+            g_runtime.maximum_logical_count,
+            g_runtime.clamp_count) == 0U) {
+        return 0U;
+    }
+    BalancePositionControl_GetSnapshot(&position);
+    g_runtime.test_timeout_ms = position.timeout_ms;
+    return 1U;
 }
 
 static void test_fail(BalanceSoftLimitTestError error)
 {
-    GimbalStepper_StopHold();
+    BalancePositionControl_Cancel();
     g_runtime.test_active = 0U;
     g_runtime.test_stage = BALANCE_SOFT_LIMIT_TEST_ERROR;
     g_runtime.test_error = error;
@@ -365,6 +348,9 @@ uint8_t BalanceSoftLimits_StartTravelTest(void)
         (g_runtime.limits_valid == 0U) ||
         (g_runtime.calibration_active != 0U) ||
         (g_runtime.recalibration_armed != 0U) ||
+        (g_runtime.oscillation_active != 0U) ||
+        (BalancePositionControl_HasFault() != 0U) ||
+        (BalancePositionControl_IsBusy() != 0U) ||
         (GimbalStepper_GetFeedback()->running != 0U)) {
         g_runtime.test_stage = BALANCE_SOFT_LIMIT_TEST_ERROR;
         g_runtime.test_error = BALANCE_SOFT_LIMIT_TEST_ERROR_NOT_READY;
@@ -390,8 +376,11 @@ uint8_t BalanceSoftLimits_StartTravelTest(void)
 
     g_runtime.test_active = 1U;
     g_runtime.test_error = BALANCE_SOFT_LIMIT_TEST_ERROR_NONE;
-    g_testStartClampCount = g_runtime.clamp_count;
-    test_start_target(BALANCE_SOFT_LIMIT_TEST_TO_LOW, test_low);
+    if (test_start_target(BALANCE_SOFT_LIMIT_TEST_TO_LOW,
+            test_low) == 0U) {
+        test_fail(BALANCE_SOFT_LIMIT_TEST_ERROR_RANGE);
+        return 0U;
+    }
     return 1U;
 }
 
@@ -407,43 +396,338 @@ uint8_t BalanceSoftLimits_IsTravelTestActive(void)
     return g_runtime.test_active;
 }
 
+static uint32_t magnitude_i32(int32_t value)
+{
+    if (value >= 0) {
+        return (uint32_t)value;
+    }
+    return (uint32_t)(-(int64_t)value);
+}
+
+static int32_t oscillation_target_for_phase(uint32_t phase_ms)
+{
+    uint32_t half_period_ms = BALANCE_OSCILLATION_PERIOD_MS / 2U;
+    uint32_t progress_x1000;
+    uint64_t progress_squared;
+    uint64_t smooth_x1000;
+    int64_t span =
+        (int64_t)g_runtime.oscillation_high_logical_count -
+        (int64_t)g_runtime.oscillation_low_logical_count;
+
+    if (phase_ms <= half_period_ms) {
+        progress_x1000 = (phase_ms * 1000U) / half_period_ms;
+    } else {
+        progress_x1000 =
+            ((BALANCE_OSCILLATION_PERIOD_MS - phase_ms) * 1000U) /
+            half_period_ms;
+    }
+    progress_squared =
+        (uint64_t)progress_x1000 * progress_x1000;
+    smooth_x1000 = progress_squared *
+        (3000U - 2U * progress_x1000) / 1000000U;
+    return clamp_i64_to_i32(
+        (int64_t)g_runtime.oscillation_low_logical_count +
+        span * (int64_t)smooth_x1000 / 1000);
+}
+
+static void oscillation_fail(BalanceSoftLimitTestError error)
+{
+    BalancePositionControl_Cancel();
+    g_runtime.oscillation_active = 0U;
+    g_runtime.oscillation_stage = BALANCE_OSCILLATION_STAGE_ERROR;
+    g_runtime.oscillation_error = error;
+}
+
+uint8_t BalanceSoftLimits_StartOscillationTest(void)
+{
+#if FEATURE_BALANCE_OSCILLATION_TEST
+    int32_t current_count;
+    int32_t safe_minimum;
+    int32_t safe_maximum;
+    int32_t test_low;
+    int32_t test_high;
+
+    if ((g_runtime.zero_valid == 0U) ||
+        (g_runtime.limits_valid == 0U) ||
+        (g_runtime.calibration_active != 0U) ||
+        (g_runtime.recalibration_armed != 0U) ||
+        (g_runtime.test_active != 0U) ||
+        (g_runtime.oscillation_active != 0U) ||
+        (BalancePositionControl_HasFault() != 0U) ||
+        (BalancePositionControl_IsBusy() != 0U) ||
+        (GimbalStepper_GetFeedback()->running != 0U)) {
+        g_runtime.oscillation_stage = BALANCE_OSCILLATION_STAGE_ERROR;
+        g_runtime.oscillation_error =
+            BALANCE_SOFT_LIMIT_TEST_ERROR_NOT_READY;
+        return 0U;
+    }
+
+    safe_minimum = clamp_i64_to_i32(
+        (int64_t)g_runtime.minimum_logical_count +
+            BALANCE_POSITION_LIMIT_MARGIN_COUNTS);
+    safe_maximum = clamp_i64_to_i32(
+        (int64_t)g_runtime.maximum_logical_count -
+            BALANCE_POSITION_LIMIT_MARGIN_COUNTS);
+    test_low = clamp_i64_to_i32(
+        (int64_t)g_runtime.minimum_logical_count *
+            BALANCE_OSCILLATION_RANGE_PERCENT / 100);
+    test_high = clamp_i64_to_i32(
+        (int64_t)g_runtime.maximum_logical_count *
+            BALANCE_OSCILLATION_RANGE_PERCENT / 100);
+    if (test_low < safe_minimum) {
+        test_low = safe_minimum;
+    }
+    if (test_high > safe_maximum) {
+        test_high = safe_maximum;
+    }
+    if ((test_low >= 0) || (test_high <= 0) ||
+        (test_low >= test_high)) {
+        g_runtime.oscillation_stage = BALANCE_OSCILLATION_STAGE_ERROR;
+        g_runtime.oscillation_error = BALANCE_SOFT_LIMIT_TEST_ERROR_RANGE;
+        return 0U;
+    }
+
+    clear_oscillation_runtime();
+    g_runtime.oscillation_active = 1U;
+    g_runtime.oscillation_stage = BALANCE_OSCILLATION_STAGE_TO_START;
+    g_runtime.oscillation_low_logical_count = test_low;
+    g_runtime.oscillation_high_logical_count = test_high;
+    g_runtime.oscillation_target_logical_count = test_low;
+    current_count = logical_position_from_raw(
+        BalanceEncoder_GetCountAtomic());
+    if (BalancePositionControl_Start(test_low, current_count,
+            g_runtime.minimum_logical_count,
+            g_runtime.maximum_logical_count,
+            g_runtime.clamp_count) == 0U) {
+        oscillation_fail(BALANCE_SOFT_LIMIT_TEST_ERROR_CONTROL);
+        return 0U;
+    }
+    return 1U;
+#else
+    return 0U;
+#endif
+}
+
+void BalanceSoftLimits_CancelOscillationTest(void)
+{
+    if (g_runtime.oscillation_active != 0U) {
+        BalancePositionControl_Cancel();
+        g_runtime.oscillation_active = 0U;
+        g_runtime.oscillation_stage = BALANCE_OSCILLATION_STAGE_IDLE;
+        g_runtime.oscillation_error =
+            BALANCE_SOFT_LIMIT_TEST_ERROR_CANCELLED;
+    }
+}
+
+uint8_t BalanceSoftLimits_IsOscillationTestActive(void)
+{
+    return g_runtime.oscillation_active;
+}
+
+uint8_t BalanceSoftLimits_StartRelativePositionMoveSteps(
+    int32_t delta_steps)
+{
+    int32_t current_count;
+    int64_t scaled_delta;
+    int32_t delta_count;
+    int32_t target_count;
+    int32_t safe_minimum;
+    int32_t safe_maximum;
+
+    if ((g_runtime.zero_valid == 0U) ||
+        (g_runtime.limits_valid == 0U) ||
+        (g_runtime.calibration_active != 0U) ||
+        (g_runtime.test_active != 0U) ||
+        (g_runtime.oscillation_active != 0U) ||
+        (g_runtime.recalibration_armed != 0U) ||
+        (BalancePositionControl_HasFault() != 0U) ||
+        (BalancePositionControl_IsBusy() != 0U)) {
+        return 0U;
+    }
+
+    scaled_delta = (int64_t)delta_steps *
+        BALANCE_ENCODER_COUNTS_PER_REV;
+    if (scaled_delta > 0) {
+        scaled_delta += BALANCE_STEPPER_COMMAND_STEPS_PER_REV / 2;
+    } else if (scaled_delta < 0) {
+        scaled_delta -= BALANCE_STEPPER_COMMAND_STEPS_PER_REV / 2;
+    }
+    delta_count = clamp_i64_to_i32(scaled_delta /
+        BALANCE_STEPPER_COMMAND_STEPS_PER_REV);
+    current_count = logical_position_from_raw(
+        BalanceEncoder_GetCountAtomic());
+    safe_minimum = clamp_i64_to_i32(
+        (int64_t)g_runtime.minimum_logical_count +
+            BALANCE_POSITION_LIMIT_MARGIN_COUNTS);
+    safe_maximum = clamp_i64_to_i32(
+        (int64_t)g_runtime.maximum_logical_count -
+            BALANCE_POSITION_LIMIT_MARGIN_COUNTS);
+    target_count = clamp_i64_to_i32(
+        (int64_t)current_count + delta_count);
+    if (target_count < safe_minimum) {
+        target_count = safe_minimum;
+    }
+    if (target_count > safe_maximum) {
+        target_count = safe_maximum;
+    }
+    return BalancePositionControl_Start(target_count, current_count,
+        g_runtime.minimum_logical_count,
+        g_runtime.maximum_logical_count, g_runtime.clamp_count);
+}
+
+void BalanceSoftLimits_CancelPositionMove(void)
+{
+    BalancePositionControl_Cancel();
+}
+
+uint8_t BalanceSoftLimits_IsPositionMoveActive(void)
+{
+    return BalancePositionControl_IsBusy();
+}
+
+uint8_t BalanceSoftLimits_ResetPositionFault(void)
+{
+    if ((g_runtime.zero_valid == 0U) ||
+        (g_runtime.limits_valid == 0U) ||
+        (g_runtime.calibration_active != 0U)) {
+        return 0U;
+    }
+    if (BalancePositionControl_ResetFault() == 0U) {
+        return 0U;
+    }
+    clear_test_runtime();
+    clear_oscillation_runtime();
+    return 1U;
+}
+
+void BalanceSoftLimits_StopMotion(void)
+{
+    if (g_runtime.test_active != 0U) {
+        g_runtime.test_active = 0U;
+        g_runtime.test_stage = BALANCE_SOFT_LIMIT_TEST_ERROR;
+        g_runtime.test_error = BALANCE_SOFT_LIMIT_TEST_ERROR_CANCELLED;
+    }
+    if (g_runtime.oscillation_active != 0U) {
+        g_runtime.oscillation_active = 0U;
+        g_runtime.oscillation_stage = BALANCE_OSCILLATION_STAGE_ERROR;
+        g_runtime.oscillation_error =
+            BALANCE_SOFT_LIMIT_TEST_ERROR_CANCELLED;
+    }
+    BalancePositionControl_Cancel();
+}
+
 void BalanceSoftLimits_Update20ms(uint32_t elapsed_ms)
 {
     int32_t current_count;
-    int64_t position_error;
     int64_t span;
     int64_t inset;
+    BalancePositionRuntime position;
 
-    if (g_runtime.test_active == 0U) {
-        return;
-    }
-
-    g_runtime.test_elapsed_ms = add_u32_saturating(
-        g_runtime.test_elapsed_ms, elapsed_ms);
-    if (g_runtime.clamp_count != g_testStartClampCount) {
-        test_fail(BALANCE_SOFT_LIMIT_TEST_ERROR_CLAMPED);
-        return;
-    }
-    if (g_runtime.test_elapsed_ms > g_runtime.test_timeout_ms) {
-        test_fail(BALANCE_SOFT_LIMIT_TEST_ERROR_TIMEOUT);
+    if ((g_runtime.zero_valid == 0U) ||
+        (g_runtime.limits_valid == 0U) ||
+        (g_runtime.calibration_active != 0U) ||
+        (g_runtime.recalibration_armed != 0U)) {
+        if (BalancePositionControl_IsBusy() != 0U) {
+            BalancePositionControl_Cancel();
+        }
         return;
     }
 
     current_count = logical_position_from_raw(
         BalanceEncoder_GetCountAtomic());
-    position_error = (int64_t)g_runtime.test_target_logical_count -
-        (int64_t)current_count;
-    g_runtime.test_position_error_count =
-        clamp_i64_to_i32(position_error);
-    if (GimbalStepper_GetFeedback()->running != 0U) {
+    BalancePositionControl_Update20ms(current_count, elapsed_ms,
+        g_runtime.clamp_count);
+    BalancePositionControl_GetSnapshot(&position);
+
+    if (g_runtime.oscillation_active != 0U) {
+        uint32_t error_magnitude = magnitude_i32(
+            position.position_error_count);
+
+        if (error_magnitude >
+            (uint32_t)g_runtime.oscillation_max_error_count) {
+            g_runtime.oscillation_max_error_count =
+                (error_magnitude > INT32_MAX) ? INT32_MAX :
+                    (int32_t)error_magnitude;
+        }
+        if (position.fault != BALANCE_POSITION_FAULT_NONE) {
+            g_runtime.oscillation_active = 0U;
+            g_runtime.oscillation_stage = BALANCE_OSCILLATION_STAGE_ERROR;
+            g_runtime.oscillation_error =
+                BALANCE_SOFT_LIMIT_TEST_ERROR_CONTROL;
+            return;
+        }
+
+        if (g_runtime.oscillation_stage ==
+            BALANCE_OSCILLATION_STAGE_TO_START) {
+            if ((position.busy == 0U) &&
+                (position.target_reached != 0U)) {
+                if (BalancePositionControl_StartTracking(
+                        g_runtime.oscillation_low_logical_count,
+                        current_count,
+                        g_runtime.minimum_logical_count,
+                        g_runtime.maximum_logical_count,
+                        g_runtime.clamp_count) == 0U) {
+                    oscillation_fail(
+                        BALANCE_SOFT_LIMIT_TEST_ERROR_CONTROL);
+                    return;
+                }
+                g_runtime.oscillation_stage =
+                    BALANCE_OSCILLATION_STAGE_RUNNING;
+                g_runtime.oscillation_phase_ms = 0U;
+                g_runtime.oscillation_cycle_count = 0U;
+                g_runtime.oscillation_max_error_count = 0;
+            }
+            return;
+        }
+
+        if (g_runtime.oscillation_stage ==
+            BALANCE_OSCILLATION_STAGE_RUNNING) {
+            g_runtime.oscillation_phase_ms += elapsed_ms;
+            while (g_runtime.oscillation_phase_ms >=
+                BALANCE_OSCILLATION_PERIOD_MS) {
+                g_runtime.oscillation_phase_ms -=
+                    BALANCE_OSCILLATION_PERIOD_MS;
+                if (g_runtime.oscillation_cycle_count != UINT32_MAX) {
+                    g_runtime.oscillation_cycle_count++;
+                }
+            }
+            g_runtime.oscillation_target_logical_count =
+                oscillation_target_for_phase(
+                    g_runtime.oscillation_phase_ms);
+            if (BalancePositionControl_SetTrackingTarget(
+                    g_runtime.oscillation_target_logical_count) == 0U) {
+                oscillation_fail(
+                    BALANCE_SOFT_LIMIT_TEST_ERROR_CONTROL);
+            }
+            return;
+        }
+
+        oscillation_fail(BALANCE_SOFT_LIMIT_TEST_ERROR_POSITION);
         return;
     }
 
-    if (position_error < 0) {
-        position_error = -position_error;
+    if (g_runtime.test_active == 0U) {
+        return;
     }
-    if (position_error > BALANCE_SOFT_LIMIT_TEST_TOLERANCE_COUNTS) {
-        test_fail(BALANCE_SOFT_LIMIT_TEST_ERROR_POSITION);
+
+    g_runtime.test_elapsed_ms = position.elapsed_ms;
+    g_runtime.test_timeout_ms = position.timeout_ms;
+    g_runtime.test_position_error_count =
+        position.position_error_count;
+    if (position.fault != BALANCE_POSITION_FAULT_NONE) {
+        g_runtime.test_active = 0U;
+        g_runtime.test_stage = BALANCE_SOFT_LIMIT_TEST_ERROR;
+        if (position.fault == BALANCE_POSITION_FAULT_TIMEOUT) {
+            g_runtime.test_error = BALANCE_SOFT_LIMIT_TEST_ERROR_TIMEOUT;
+        } else if (position.fault ==
+            BALANCE_POSITION_FAULT_SOFT_LIMIT) {
+            g_runtime.test_error = BALANCE_SOFT_LIMIT_TEST_ERROR_CLAMPED;
+        } else {
+            g_runtime.test_error = BALANCE_SOFT_LIMIT_TEST_ERROR_CONTROL;
+        }
+        return;
+    }
+    if ((position.busy != 0U) || (position.target_reached == 0U)) {
         return;
     }
 
@@ -456,15 +740,20 @@ void BalanceSoftLimits_Update20ms(uint32_t elapsed_ms)
 
     switch (g_runtime.test_stage) {
         case BALANCE_SOFT_LIMIT_TEST_TO_LOW:
-            test_start_target(BALANCE_SOFT_LIMIT_TEST_TO_HIGH,
+            if (test_start_target(BALANCE_SOFT_LIMIT_TEST_TO_HIGH,
                 clamp_i64_to_i32(
-                    (int64_t)g_runtime.maximum_logical_count - inset));
+                    (int64_t)g_runtime.maximum_logical_count - inset)) ==
+                    0U) {
+                test_fail(BALANCE_SOFT_LIMIT_TEST_ERROR_RANGE);
+            }
             break;
         case BALANCE_SOFT_LIMIT_TEST_TO_HIGH:
-            test_start_target(BALANCE_SOFT_LIMIT_TEST_TO_ZERO, 0);
+            if (test_start_target(BALANCE_SOFT_LIMIT_TEST_TO_ZERO,
+                    0) == 0U) {
+                test_fail(BALANCE_SOFT_LIMIT_TEST_ERROR_RANGE);
+            }
             break;
         case BALANCE_SOFT_LIMIT_TEST_TO_ZERO:
-            GimbalStepper_StopHold();
             g_runtime.test_active = 0U;
             g_runtime.test_stage = BALANCE_SOFT_LIMIT_TEST_DONE;
             g_runtime.test_error = BALANCE_SOFT_LIMIT_TEST_ERROR_NONE;
@@ -583,6 +872,45 @@ void BalanceSoftLimits_CancelTravelTest(void)
 uint8_t BalanceSoftLimits_IsTravelTestActive(void)
 {
     return 0U;
+}
+
+uint8_t BalanceSoftLimits_StartOscillationTest(void)
+{
+    return 0U;
+}
+
+void BalanceSoftLimits_CancelOscillationTest(void)
+{
+}
+
+uint8_t BalanceSoftLimits_IsOscillationTestActive(void)
+{
+    return 0U;
+}
+
+uint8_t BalanceSoftLimits_StartRelativePositionMoveSteps(
+    int32_t delta_steps)
+{
+    (void)delta_steps;
+    return 0U;
+}
+
+void BalanceSoftLimits_CancelPositionMove(void)
+{
+}
+
+uint8_t BalanceSoftLimits_IsPositionMoveActive(void)
+{
+    return 0U;
+}
+
+uint8_t BalanceSoftLimits_ResetPositionFault(void)
+{
+    return 0U;
+}
+
+void BalanceSoftLimits_StopMotion(void)
+{
 }
 
 void BalanceSoftLimits_Update20ms(uint32_t elapsed_ms)

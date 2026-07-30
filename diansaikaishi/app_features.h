@@ -35,10 +35,31 @@
 #define BALANCE_SOFT_LIMIT_MIN_SPAN_COUNTS        (64)
 #define BALANCE_SOFT_LIMIT_TEST_INSET_PERCENT     (10)
 #define BALANCE_SOFT_LIMIT_TEST_MIN_INSET_COUNTS  (16)
-#define BALANCE_SOFT_LIMIT_TEST_TOLERANCE_COUNTS  (32)
-#define BALANCE_SOFT_LIMIT_TEST_TIMEOUT_MIN_MS    (3000U)
-#define BALANCE_SOFT_LIMIT_TEST_TIMEOUT_MARGIN_MS (2000U)
-#define BALANCE_SOFT_LIMIT_TEST_TIMEOUT_MAX_MS    (60000U)
+/* Encoder position loop: proportional pulse-rate scheduling with latched
+ * no-feedback, persistent following-error and direction checks. */
+#define FEATURE_BALANCE_POSITION_CONTROL          (1)
+#define BALANCE_POSITION_DEADBAND_COUNTS           (4)
+#define BALANCE_POSITION_REENGAGE_COUNTS           (8)
+#define BALANCE_POSITION_LIMIT_MARGIN_COUNTS       (8)
+#define BALANCE_POSITION_SETTLE_MS                 (100U)
+#define BALANCE_POSITION_MIN_STEP_RATE_HZ          (40U)
+#define BALANCE_POSITION_MAX_STEP_RATE_HZ          (200U)
+#define BALANCE_POSITION_STEP_RATE_KP              (1U)
+#define BALANCE_POSITION_NO_FEEDBACK_STEP_THRESHOLD (32U)
+#define BALANCE_POSITION_FOLLOW_ERROR_COUNTS       (64)
+#define BALANCE_POSITION_FOLLOW_ERROR_DURATION_MS  (200U)
+#define BALANCE_POSITION_DIRECTION_ERROR_DURATION_MS (100U)
+#define BALANCE_POSITION_TIMEOUT_MULTIPLIER        (3U)
+#define BALANCE_POSITION_TIMEOUT_MIN_MS            (3000U)
+#define BALANCE_POSITION_TIMEOUT_MARGIN_MS         (3000U)
+#define BALANCE_POSITION_TIMEOUT_MAX_MS            (60000U)
+/* Continuous actuator-bandwidth test. The generated target completes one
+ * smooth LOW->HIGH->LOW cycle per second and uses 60% of each calibrated
+ * side around logical ZERO. The normal position-loop speed limit is kept so
+ * target tracking error exposes insufficient mechanical bandwidth. */
+#define FEATURE_BALANCE_OSCILLATION_TEST            (1)
+#define BALANCE_OSCILLATION_RANGE_PERCENT           (60)
+#define BALANCE_OSCILLATION_PERIOD_MS               (1000U)
 /* HC-06 is retired. PB6/PB7 now belong to the balance-axis encoder;
  * PB2/PB3 UART_VISION remains the future K230/Raspberry Pi host link. */
 #define FEATURE_BLUETOOTH_UART     (0)
@@ -122,6 +143,15 @@
 #error Balance software limits require the balance encoder and stepper
 #endif
 
+#if FEATURE_BALANCE_POSITION_CONTROL && !FEATURE_BALANCE_SOFT_LIMITS
+#error Balance position control requires calibrated software limits
+#endif
+
+#if FEATURE_BALANCE_OSCILLATION_TEST && \
+    !FEATURE_BALANCE_POSITION_CONTROL
+#error Balance oscillation test requires position control
+#endif
+
 #if BALANCE_STEPPER_CAL_JOG_STEPS <= 0
 #error BALANCE_STEPPER_CAL_JOG_STEPS must be positive
 #endif
@@ -139,8 +169,35 @@
 #error BALANCE_SOFT_LIMIT_TEST_MIN_INSET_COUNTS must be positive
 #endif
 
-#if BALANCE_SOFT_LIMIT_TEST_TOLERANCE_COUNTS < 0
-#error BALANCE_SOFT_LIMIT_TEST_TOLERANCE_COUNTS cannot be negative
+#if (BALANCE_POSITION_DEADBAND_COUNTS < 0) || \
+    (BALANCE_POSITION_REENGAGE_COUNTS <= BALANCE_POSITION_DEADBAND_COUNTS)
+#error Balance position deadband/reengage configuration is invalid
+#endif
+
+#if BALANCE_POSITION_LIMIT_MARGIN_COUNTS < \
+    BALANCE_POSITION_DEADBAND_COUNTS
+#error Balance position limit margin must cover the position deadband
+#endif
+
+#if (BALANCE_POSITION_MIN_STEP_RATE_HZ == 0) || \
+    (BALANCE_POSITION_MAX_STEP_RATE_HZ < \
+        BALANCE_POSITION_MIN_STEP_RATE_HZ)
+#error Balance position step-rate range is invalid
+#endif
+
+#if (BALANCE_POSITION_NO_FEEDBACK_STEP_THRESHOLD == 0) || \
+    (BALANCE_POSITION_FOLLOW_ERROR_COUNTS <= 0)
+#error Balance position fault thresholds must be positive
+#endif
+
+#if (BALANCE_OSCILLATION_RANGE_PERCENT <= 0) || \
+    (BALANCE_OSCILLATION_RANGE_PERCENT >= 100)
+#error Balance oscillation range must be in 1..99 percent
+#endif
+
+#if (BALANCE_OSCILLATION_PERIOD_MS < 200U) || \
+    ((BALANCE_OSCILLATION_PERIOD_MS % 40U) != 0U)
+#error Balance oscillation period must be >=200 ms and divisible by 40 ms
 #endif
 
 #if (BALANCE_ENCODER_DIRECTION_SIGN != 1) && \

@@ -3,6 +3,7 @@
 "./app_config.o"
 "./balance_calibration_store.o"
 "./balance_encoder.o"
+"./balance_position_control.o"
 "./balance_soft_limits.o"
 "./bluetooth_uart.o"
 "./car_controller.o"

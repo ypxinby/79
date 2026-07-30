@@ -1491,7 +1491,11 @@ void App_Update_20ms(uint32_t elapsed_ms)
     uint32_t timestamp_ms = SystemTime_GetMs();
 
 #if FEATURE_BALANCE_SOFT_LIMITS
-    BalanceSoftLimits_Update20ms(elapsed_ms);
+    if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
+        BalanceSoftLimits_StopMotion();
+    } else {
+        BalanceSoftLimits_Update20ms(elapsed_ms);
+    }
 #endif
 #if FEATURE_WHEEL_SPEED_ESTIMATOR
     WheelSpeedEstimator_Update(elapsed_ms);

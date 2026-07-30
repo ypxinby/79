@@ -4,6 +4,7 @@
 #include "app_config.h"
 #include "app_features.h"
 #include "balance_encoder.h"
+#include "balance_position_control.h"
 #include "balance_soft_limits.h"
 #include "car_controller.h"
 #include "car_state.h"
@@ -366,8 +367,16 @@ static void menu_handle_status_key(KeyEvent event)
     if (g_oledPage == OLED_PAGE_BALANCE_STEPPER_TEST) {
 #if FEATURE_BALANCE_SOFT_LIMITS
         BalanceSoftLimitsRuntime limits;
+        BalancePositionRuntime position;
 
         BalanceSoftLimits_GetSnapshot(&limits);
+        BalancePositionControl_GetSnapshot(&position);
+        if (position.fault != BALANCE_POSITION_FAULT_NONE) {
+            if (event == KEY3_LONG) {
+                (void)BalanceSoftLimits_ResetPositionFault();
+            }
+            return;
+        }
         if (BalanceSoftLimits_IsCalibrationActive() != 0U) {
             switch (event) {
                 case KEY1_SHORT:
@@ -407,9 +416,26 @@ static void menu_handle_status_key(KeyEvent event)
             }
             return;
         }
+
+        if (BalanceSoftLimits_IsOscillationTestActive() != 0U) {
+            if ((event == KEY1_LONG) || (event == KEY3_LONG)) {
+                BalanceSoftLimits_CancelOscillationTest();
+            }
+            return;
+        }
+
+        if (BalanceSoftLimits_IsPositionMoveActive() != 0U) {
+            if ((event == KEY1_LONG) || (event == KEY3_LONG)) {
+                BalanceSoftLimits_CancelPositionMove();
+            }
+            return;
+        }
 #endif
         switch (event) {
             case KEY1_SHORT:
+#if FEATURE_BALANCE_SOFT_LIMITS
+                BalanceSoftLimits_CancelPositionMove();
+#endif
                 GimbalStepper_StopHold();
                 menu_next_main_page();
                 break;
@@ -421,7 +447,7 @@ static void menu_handle_status_key(KeyEvent event)
                     if (limits.zero_confirmation_required != 0U) {
                         (void)BalanceSoftLimits_BeginAtCurrentAsZero();
                     } else {
-                        (void)BalanceSoftLimits_StartTravelTest();
+                        (void)BalanceSoftLimits_StartOscillationTest();
                     }
 #else
                     (void)GimbalStepper_ConfirmZero();
@@ -430,16 +456,26 @@ static void menu_handle_status_key(KeyEvent event)
                 }
                 break;
             case KEY2_SHORT:
+#if FEATURE_BALANCE_SOFT_LIMITS
+                (void)BalanceSoftLimits_StartRelativePositionMoveSteps(
+                    BALANCE_STEPPER_TEST_DELTA_STEPS);
+#else
                 GimbalStepper_SetStepHalfPeriodTicks(
                     BALANCE_STEPPER_TEST_HALF_PERIOD_TICKS);
                 GimbalStepper_MoveRelativeSteps(
                     BALANCE_STEPPER_TEST_DELTA_STEPS);
+#endif
                 break;
             case KEY3_SHORT:
+#if FEATURE_BALANCE_SOFT_LIMITS
+                (void)BalanceSoftLimits_StartRelativePositionMoveSteps(
+                    -BALANCE_STEPPER_TEST_DELTA_STEPS);
+#else
                 GimbalStepper_SetStepHalfPeriodTicks(
                     BALANCE_STEPPER_TEST_HALF_PERIOD_TICKS);
                 GimbalStepper_MoveRelativeSteps(
                     -BALANCE_STEPPER_TEST_DELTA_STEPS);
+#endif
                 break;
             case KEY3_LONG:
 #if FEATURE_BALANCE_SOFT_LIMITS
