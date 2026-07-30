@@ -29,6 +29,20 @@ typedef struct {
 } VisionReceiverObservation;
 
 typedef struct {
+    uint8_t available;
+    uint8_t profile_valid;
+    uint8_t target_valid;
+    uint32_t local_receive_timestamp_ms;
+    uint32_t update_count;
+    uint32_t profile_error_count;
+    uint32_t session_id;
+    uint16_t sequence;
+    uint16_t axis_position_px;
+    uint16_t axis_span_px;
+    uint16_t confidence;
+} VisionBallAxisObservation;
+
+typedef struct {
     volatile uint32_t rx_byte_count;
     volatile uint32_t ring_overflow_count;
     uint32_t discarded_byte_count;
@@ -61,6 +75,7 @@ uint16_t VisionReceiver_Process(uint32_t localTimeMs,
     uint16_t maxBytesToProcess);
 const VisionReceiverStatus *VisionReceiver_GetStatus(void);
 const VisionReceiverObservation *VisionReceiver_GetObservation(void);
+const VisionBallAxisObservation *VisionReceiver_GetBallAxisObservation(void);
 uint32_t VisionReceiver_GetProtocolErrorCount(void);
 
 #endif

@@ -28,6 +28,7 @@
 #include "obstacle_safety.h"
 #include "oled.h"
 #include "runtime_snapshot.h"
+#include "scheduler_monitor.h"
 #include "track_sensor.h"
 #include "ultrasonic.h"
 #include "vision_receiver.h"
@@ -1464,6 +1465,68 @@ static void print_heading_page(void)
     OLED_PrintInt16(Imu_IsReady() ? 1 : 0);
 }
 
+#if FEATURE_BALANCE_VISION_MONITOR
+static const char *balance_vision_state_to_string(
+    const VisionBallAxisObservation *ball, uint32_t age_ms)
+{
+    if (ball->available == 0U) {
+        return "WAIT";
+    }
+    if (ball->profile_valid == 0U) {
+        return "PROF";
+    }
+    if (age_ms > BALANCE_VISION_STALE_TIMEOUT_MS) {
+        return "STALE";
+    }
+    return (ball->target_valid != 0U) ? "OK" : "NONE";
+}
+
+static void print_balance_vision_page(void)
+{
+    const VisionBallAxisObservation *ball =
+        VisionReceiver_GetBallAxisObservation();
+    uint32_t now_ms = SystemTime_GetMs();
+    uint32_t age_ms = (ball->available != 0U) ?
+        (now_ms - ball->local_receive_timestamp_ms) : UINT32_MAX;
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("BALL:");
+    OLED_PrintString(balance_vision_state_to_string(ball, age_ms));
+    OLED_PrintString(" A:");
+    if (ball->available != 0U) {
+        print_uint64_decimal((age_ms > 999U) ? 999U : age_ms);
+    } else {
+        OLED_PrintString("---");
+    }
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("X:");
+    if ((ball->profile_valid != 0U) &&
+        (ball->target_valid != 0U)) {
+        OLED_PrintUInt16(ball->axis_position_px);
+    } else {
+        OLED_PrintString("NA");
+    }
+    OLED_PrintString(" W:");
+    OLED_PrintUInt16(ball->axis_span_px);
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("Q:");
+    OLED_PrintUInt16(ball->sequence);
+    OLED_PrintString(" C:");
+    OLED_PrintUInt16(ball->confidence);
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("N:");
+    print_uint64_decimal((uint64_t)ball->update_count);
+    OLED_PrintString(" E:");
+    print_uint64_decimal((uint64_t)
+        VisionReceiver_GetProtocolErrorCount());
+    OLED_PrintChar('/');
+    print_uint64_decimal((uint64_t)ball->profile_error_count);
+}
+#endif
+
 #if FEATURE_GIMBAL_OLED_TEST
 static const char *gimbal_mode_to_string(GimbalMode mode)
 {
@@ -2034,6 +2097,13 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
         case OLED_PAGE_BALANCE_STEPPER_TEST:
 #if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
             print_balance_stepper_test_page();
+#else
+            print_status_page(raw, error, keyEvent);
+#endif
+            break;
+        case OLED_PAGE_BALANCE_VISION:
+#if FEATURE_BALANCE_VISION_MONITOR
+            print_balance_vision_page();
 #else
             print_status_page(raw, error, keyEvent);
 #endif

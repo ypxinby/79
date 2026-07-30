@@ -17,9 +17,13 @@ void VisionUart_Init(void)
 
 void VisionUart_Process(void)
 {
+#if FEATURE_VISION_TUNING_CONSOLE || \
+    FEATURE_DEBUG_TELEMETRY_VISION_UART
     uint8_t byte;
     uint8_t transmitted = 0U;
+#endif
 
+#if FEATURE_VISION_TUNING_CONSOLE
     (void)VisionTuningConsole_Process(
         VISION_TUNING_RX_PROCESS_BUDGET);
 
@@ -31,6 +35,7 @@ void VisionUart_Process(void)
         DL_UART_Main_transmitData(UART_VISION_INST, byte);
         transmitted++;
     }
+#endif
 
 #if FEATURE_DEBUG_TELEMETRY_VISION_UART
     while ((transmitted < VISION_TUNING_TX_PROCESS_BUDGET) &&
@@ -53,7 +58,9 @@ void UART_VISION_INST_IRQHandler(void)
                     DL_UART_Main_receiveData(UART_VISION_INST);
 
                 VisionReceiver_PushByteFromIsr(byte);
+#if FEATURE_VISION_TUNING_CONSOLE
                 VisionTuningConsole_PushByteFromIsr(byte);
+#endif
             }
             break;
         default:

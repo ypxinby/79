@@ -89,13 +89,17 @@ int main(void)
 #if FEATURE_GIMBAL_MOTION_CONTROL
     GimbalVisionAdapter_Init();
 #endif
+#if FEATURE_VISION_TUNING_CONSOLE
     VisionPitchTuning_Init();
     VisionYawTuning_Init();
+#endif
 #if FEATURE_GIMBAL_MOTION_CONTROL
     GimbalVisionPitchTracker_Init();
     GimbalVisionYawTracker_Init();
 #endif
+#if FEATURE_VISION_TUNING_CONSOLE
     VisionTuningConsole_Init();
+#endif
     VisionUart_Init();
 
     SysTick_Config(CPUCLK_FREQ / APP_TICK_HZ);

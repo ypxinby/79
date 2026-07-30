@@ -308,6 +308,43 @@ def make_no_target_report(
     )
 
 
+def make_ball_1d_report(
+    args: argparse.Namespace,
+    session_id: int,
+    sequence: int,
+    timestamp_ms: int,
+    source_restart: bool,
+    valid: bool,
+) -> VisionTargetReport:
+    flags = 0
+    center_x = 0xFFFF
+    center_y = 0xFFFF
+    confidence = 0
+    if valid:
+        flags = FLAG_TARGET_VALID | FLAG_HAS_CONFIDENCE
+        center_x = args.x
+        center_y = 0
+        confidence = args.confidence
+    if source_restart:
+        flags |= FLAG_SOURCE_RESTART
+    return VisionTargetReport(
+        session_id=session_id,
+        sequence=sequence & 0xFFFF,
+        timestamp_ms=timestamp_ms & 0xFFFFFFFF,
+        frame_width=args.width,
+        frame_height=1,
+        target_center_x=center_x,
+        target_center_y=center_y,
+        confidence=confidence,
+        target_id=0xFFFF,
+        bbox_x=0,
+        bbox_y=0,
+        bbox_width=0,
+        bbox_height=0,
+        flags=flags,
+    )
+
+
 def make_record(label: str, report: VisionTargetReport, **build_kwargs: object) -> FrameRecord:
     return FrameRecord(label=label, report=report, frame=build_frame(report, **build_kwargs))
 
@@ -329,7 +366,14 @@ def normal_operations(
         sequence = (args.sequence + index) & 0xFFFF
         timestamp_ms = timestamp_for(args, index, start_time)
         restart = index < args.restart_frames
-        if args.mode == "valid" or (args.mode == "alternating" and index % 2 == 0):
+        if args.mode in ("ball-1d", "ball-no-target"):
+            ball_valid = args.mode == "ball-1d"
+            report = make_ball_1d_report(
+                args, session_id, sequence, timestamp_ms, restart,
+                ball_valid,
+            )
+            label = "ball-1d" if ball_valid else "ball-no-target"
+        elif args.mode == "valid" or (args.mode == "alternating" and index % 2 == 0):
             report = make_valid_report(args, session_id, sequence, timestamp_ms, restart)
             label = "valid"
         else:
@@ -697,6 +741,25 @@ def run_self_test() -> None:
     if computed_crc(bytes(corrupted)) != 0x7969:
         raise AssertionError("mutated vector CRC mismatch")
 
+    ball_1d = VisionTargetReport(
+        session_id=0x12345678,
+        sequence=0,
+        timestamp_ms=1000,
+        frame_width=640,
+        frame_height=1,
+        target_center_x=360,
+        target_center_y=0,
+        confidence=900,
+        target_id=0xFFFF,
+        bbox_x=0,
+        bbox_y=0,
+        bbox_width=0,
+        bbox_height=0,
+        flags=FLAG_TARGET_VALID | FLAG_HAS_CONFIDENCE,
+    )
+    if stored_crc(build_frame(ball_1d)) != 0x9990:
+        raise AssertionError("ball 1D vector mismatch")
+
     print("SELF-TEST PASS")
     print("header_size=8 payload_size=30 frame_size=40")
     print("valid_crc=0xD14D")
@@ -718,6 +781,8 @@ def build_parser() -> argparse.ArgumentParser:
             "valid",
             "no-target",
             "alternating",
+            "ball-1d",
+            "ball-no-target",
             "pitch-reversal",
             "half",
             "truncated",
@@ -800,7 +865,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
         session_id = args.session_id if args.session_id is not None else generate_session_id()
         start_time = time.monotonic()
-        if args.mode in ("valid", "no-target", "alternating"):
+        if args.mode in (
+            "valid", "no-target", "alternating",
+            "ball-1d", "ball-no-target",
+        ):
             operations = normal_operations(args, session_id, start_time)
         elif args.mode == "pitch-reversal":
             operations = pitch_reversal_operations(args, session_id, start_time)

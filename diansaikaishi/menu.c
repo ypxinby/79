@@ -128,8 +128,18 @@ static void menu_next_main_page(void)
     } else if (g_oledPage == OLED_PAGE_MOTOR_CONTROL_DETAIL) {
         g_oledPage = OLED_PAGE_BALANCE_STEPPER_TEST;
 #endif
-#if FEATURE_BLUETOOTH_UART
+#if FEATURE_BALANCE_VISION_MONITOR
 #if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
+    } else if (g_oledPage == OLED_PAGE_BALANCE_STEPPER_TEST) {
+#else
+    } else if (g_oledPage == OLED_PAGE_MOTOR_CONTROL_DETAIL) {
+#endif
+        g_oledPage = OLED_PAGE_BALANCE_VISION;
+#endif
+#if FEATURE_BLUETOOTH_UART
+#if FEATURE_BALANCE_VISION_MONITOR
+    } else if (g_oledPage == OLED_PAGE_BALANCE_VISION) {
+#elif FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
     } else if (g_oledPage == OLED_PAGE_BALANCE_STEPPER_TEST) {
 #else
     } else if (g_oledPage == OLED_PAGE_MOTOR_CONTROL_DETAIL) {
@@ -150,8 +160,18 @@ static void menu_next_main_page(void)
     } else if (g_oledPage == OLED_PAGE_DISTANCE) {
         g_oledPage = OLED_PAGE_BALANCE_STEPPER_TEST;
 #endif
-#if FEATURE_BLUETOOTH_UART
+#if FEATURE_BALANCE_VISION_MONITOR
 #if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
+    } else if (g_oledPage == OLED_PAGE_BALANCE_STEPPER_TEST) {
+#else
+    } else if (g_oledPage == OLED_PAGE_DISTANCE) {
+#endif
+        g_oledPage = OLED_PAGE_BALANCE_VISION;
+#endif
+#if FEATURE_BLUETOOTH_UART
+#if FEATURE_BALANCE_VISION_MONITOR
+    } else if (g_oledPage == OLED_PAGE_BALANCE_VISION) {
+#elif FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
     } else if (g_oledPage == OLED_PAGE_BALANCE_STEPPER_TEST) {
 #else
     } else if (g_oledPage == OLED_PAGE_DISTANCE) {
@@ -362,6 +382,15 @@ static void menu_adjust_param(int8_t direction, uint8_t fast)
 static void menu_handle_status_key(KeyEvent event)
 {
     CarState state = CarState_Get();
+
+#if FEATURE_BALANCE_VISION_MONITOR
+    if (g_oledPage == OLED_PAGE_BALANCE_VISION) {
+        if (event == KEY1_SHORT) {
+            menu_next_main_page();
+        }
+        return;
+    }
+#endif
 
 #if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
     if (g_oledPage == OLED_PAGE_BALANCE_STEPPER_TEST) {

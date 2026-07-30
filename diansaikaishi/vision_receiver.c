@@ -16,6 +16,7 @@ static uint8_t g_frame[VISION_PROTOCOL_FRAME_LENGTH_V1];
 static uint8_t g_frameSize;
 static VisionReceiverStatus g_status;
 static VisionReceiverObservation g_observation;
+static VisionBallAxisObservation g_ballAxisObservation;
 
 static uint16_t read_u16_le(const uint8_t *data)
 {
@@ -120,6 +121,35 @@ static void accept_packet(const VisionTargetPacket *packet,
     g_observation.target_valid = targetValid;
     g_observation.local_receive_timestamp_ms = localTimeMs;
     g_observation.packet = *packet;
+
+    g_ballAxisObservation.available = 1U;
+    g_ballAxisObservation.local_receive_timestamp_ms = localTimeMs;
+    g_ballAxisObservation.update_count++;
+    g_ballAxisObservation.session_id = packet->session_id;
+    g_ballAxisObservation.sequence = packet->sequence;
+    g_ballAxisObservation.axis_span_px = packet->frame_width;
+    g_ballAxisObservation.confidence = packet->confidence;
+    g_ballAxisObservation.target_valid = 0U;
+
+    /* Balance V1 is intentionally one-dimensional. Keep the proven generic
+     * frame/parser, but accept only height=1 and Y=0 as a usable ball sample. */
+    if (packet->frame_height != 1U) {
+        g_ballAxisObservation.profile_valid = 0U;
+        g_ballAxisObservation.profile_error_count++;
+    } else if (targetValid != 0U) {
+        if (packet->target_center_y == 0U) {
+            g_ballAxisObservation.profile_valid = 1U;
+            g_ballAxisObservation.target_valid = 1U;
+            g_ballAxisObservation.axis_position_px =
+                packet->target_center_x;
+        } else {
+            g_ballAxisObservation.profile_valid = 0U;
+            g_ballAxisObservation.profile_error_count++;
+        }
+    } else {
+        g_ballAxisObservation.profile_valid = 1U;
+        g_ballAxisObservation.axis_position_px = 0U;
+    }
 
     if (targetValid != 0U) {
         g_status.target_frame_count++;
@@ -233,6 +263,8 @@ void VisionReceiver_Init(void)
     g_frameSize = 0U;
     memset(&g_status, 0, sizeof(g_status));
     memset(&g_observation, 0, sizeof(g_observation));
+    memset(&g_ballAxisObservation, 0,
+        sizeof(g_ballAxisObservation));
     g_status.last_event = VISION_RECEIVER_EVENT_WAITING;
 }
 
@@ -273,6 +305,11 @@ const VisionReceiverStatus *VisionReceiver_GetStatus(void)
 const VisionReceiverObservation *VisionReceiver_GetObservation(void)
 {
     return &g_observation;
+}
+
+const VisionBallAxisObservation *VisionReceiver_GetBallAxisObservation(void)
+{
+    return &g_ballAxisObservation;
 }
 
 uint32_t VisionReceiver_GetProtocolErrorCount(void)

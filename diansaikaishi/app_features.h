@@ -60,6 +60,14 @@
 #define FEATURE_BALANCE_OSCILLATION_TEST            (1)
 #define BALANCE_OSCILLATION_RANGE_PERCENT           (60)
 #define BALANCE_OSCILLATION_PERIOD_MS               (1000U)
+/* K230 receive-only bring-up. The existing robust 40-byte receiver is reused,
+ * while the balance profile accepts one meaningful pipe-axis coordinate:
+ * frame_height=1, target_center_y=0, target_center_x=axis position. */
+#define FEATURE_BALANCE_VISION_MONITOR               (1)
+#define BALANCE_VISION_STALE_TIMEOUT_MS              (100U)
+/* Do not multiplex the retired $VPT/$VYT ASCII tuning console onto the K230
+ * binary stream; accidental prefix matches must never generate UART replies. */
+#define FEATURE_VISION_TUNING_CONSOLE                (0)
 /* HC-06 is retired. PB6/PB7 now belong to the balance-axis encoder;
  * PB2/PB3 UART_VISION remains the future K230/Raspberry Pi host link. */
 #define FEATURE_BLUETOOTH_UART     (0)
@@ -198,6 +206,11 @@
 #if (BALANCE_OSCILLATION_PERIOD_MS < 200U) || \
     ((BALANCE_OSCILLATION_PERIOD_MS % 40U) != 0U)
 #error Balance oscillation period must be >=200 ms and divisible by 40 ms
+#endif
+
+#if FEATURE_BALANCE_VISION_MONITOR && \
+    (BALANCE_VISION_STALE_TIMEOUT_MS == 0U)
+#error Balance vision stale timeout must be positive
 #endif
 
 #if (BALANCE_ENCODER_DIRECTION_SIGN != 1) && \
