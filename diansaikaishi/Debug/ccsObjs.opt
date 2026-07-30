@@ -1,6 +1,7 @@
 "./angle_utils.o"
 "./app.o"
 "./app_config.o"
+"./balance_calibration_store.o"
 "./balance_encoder.o"
 "./balance_soft_limits.o"
 "./bluetooth_uart.o"

@@ -365,6 +365,9 @@ static void menu_handle_status_key(KeyEvent event)
 #if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
     if (g_oledPage == OLED_PAGE_BALANCE_STEPPER_TEST) {
 #if FEATURE_BALANCE_SOFT_LIMITS
+        BalanceSoftLimitsRuntime limits;
+
+        BalanceSoftLimits_GetSnapshot(&limits);
         if (BalanceSoftLimits_IsCalibrationActive() != 0U) {
             switch (event) {
                 case KEY1_SHORT:
@@ -397,6 +400,13 @@ static void menu_handle_status_key(KeyEvent event)
             }
             return;
         }
+
+        if (BalanceSoftLimits_IsTravelTestActive() != 0U) {
+            if ((event == KEY1_LONG) || (event == KEY3_LONG)) {
+                BalanceSoftLimits_CancelTravelTest();
+            }
+            return;
+        }
 #endif
         switch (event) {
             case KEY1_SHORT:
@@ -408,7 +418,11 @@ static void menu_handle_status_key(KeyEvent event)
                     GimbalStepper_StopHold();
                 } else {
 #if FEATURE_BALANCE_SOFT_LIMITS
-                    (void)BalanceSoftLimits_BeginAtCurrentAsZero();
+                    if (limits.zero_confirmation_required != 0U) {
+                        (void)BalanceSoftLimits_BeginAtCurrentAsZero();
+                    } else {
+                        (void)BalanceSoftLimits_StartTravelTest();
+                    }
 #else
                     (void)GimbalStepper_ConfirmZero();
                     BalanceEncoder_Reset();
@@ -428,7 +442,18 @@ static void menu_handle_status_key(KeyEvent event)
                     -BALANCE_STEPPER_TEST_DELTA_STEPS);
                 break;
             case KEY3_LONG:
+#if FEATURE_BALANCE_SOFT_LIMITS
+                if (limits.recalibration_armed != 0U) {
+                    BalanceSoftLimits_CancelRecalibration();
+                } else if ((limits.zero_valid != 0U) &&
+                    (limits.limits_valid != 0U)) {
+                    (void)BalanceSoftLimits_ArmRecalibration();
+                } else {
+                    GimbalStepper_Release();
+                }
+#else
                 GimbalStepper_Release();
+#endif
                 break;
             default:
                 break;

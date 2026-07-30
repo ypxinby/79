@@ -1,8 +1,7 @@
 # FIXED
 
-balance_soft_limits.o: ../balance_soft_limits.c ../balance_soft_limits.h \
- ../balance_calibration_store.h ../app_features.h ../balance_encoder.h \
- ../gimbal_stepper.h \
+balance_calibration_store.o: ../balance_calibration_store.c \
+ ../balance_calibration_store.h ../app_features.h \
  ti_msp_dl_config.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/msp.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/DeviceFamily.h \
@@ -77,11 +76,8 @@ balance_soft_limits.o: ../balance_soft_limits.c ../balance_soft_limits.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/dl_wwdt.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/m0p/dl_interrupt.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/m0p/dl_systick.h
-../balance_soft_limits.h:
 ../balance_calibration_store.h:
 ../app_features.h:
-../balance_encoder.h:
-../gimbal_stepper.h:
 ti_msp_dl_config.h:
 C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/msp.h:
 C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/DeviceFamily.h:

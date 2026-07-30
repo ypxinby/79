@@ -832,6 +832,64 @@ static const char *balance_cal_stage_to_string(
     }
 }
 
+static const char *balance_flash_status_to_string(
+    BalanceCalibrationFlashStatus status)
+{
+    switch (status) {
+        case BALANCE_CALIBRATION_FLASH_VALID:
+            return "OK";
+        case BALANCE_CALIBRATION_FLASH_INVALID:
+            return "BAD";
+        case BALANCE_CALIBRATION_FLASH_WRITE_ERROR:
+            return "ERR";
+        case BALANCE_CALIBRATION_FLASH_EMPTY:
+        default:
+            return "NA";
+    }
+}
+
+static const char *balance_test_stage_to_string(
+    BalanceSoftLimitTestStage stage)
+{
+    switch (stage) {
+        case BALANCE_SOFT_LIMIT_TEST_TO_LOW:
+            return "LOW";
+        case BALANCE_SOFT_LIMIT_TEST_TO_HIGH:
+            return "HIGH";
+        case BALANCE_SOFT_LIMIT_TEST_TO_ZERO:
+            return "ZERO";
+        case BALANCE_SOFT_LIMIT_TEST_DONE:
+            return "DONE";
+        case BALANCE_SOFT_LIMIT_TEST_ERROR:
+            return "ERR";
+        case BALANCE_SOFT_LIMIT_TEST_IDLE:
+        default:
+            return "IDLE";
+    }
+}
+
+static const char *balance_test_error_to_string(
+    BalanceSoftLimitTestError error)
+{
+    switch (error) {
+        case BALANCE_SOFT_LIMIT_TEST_ERROR_NOT_READY:
+            return "NRDY";
+        case BALANCE_SOFT_LIMIT_TEST_ERROR_RANGE:
+            return "RANGE";
+        case BALANCE_SOFT_LIMIT_TEST_ERROR_TIMEOUT:
+            return "TIME";
+        case BALANCE_SOFT_LIMIT_TEST_ERROR_POSITION:
+            return "POS";
+        case BALANCE_SOFT_LIMIT_TEST_ERROR_CLAMPED:
+            return "LIM";
+        case BALANCE_SOFT_LIMIT_TEST_ERROR_CANCELLED:
+            return "CANCEL";
+        case BALANCE_SOFT_LIMIT_TEST_ERROR_NONE:
+        default:
+            return "NONE";
+    }
+}
+
 static void print_balance_limit_value(uint8_t valid, int32_t value)
 {
     if (valid != 0U) {
@@ -846,11 +904,11 @@ static void print_balance_stepper_test_page(void)
 {
     GimbalStepperFeedback stepper;
     BalanceEncoderRuntime encoder;
-    int32_t follow_error;
 #if !FEATURE_BALANCE_SOFT_LIMITS
+    int32_t follow_error;
     int32_t speed_rpm_x10;
-#endif
     uint8_t error_valid;
+#endif
     const char *state;
 #if FEATURE_BALANCE_SOFT_LIMITS
     BalanceSoftLimitsRuntime limits;
@@ -860,11 +918,6 @@ static void print_balance_stepper_test_page(void)
     BalanceEncoder_GetSnapshot(&encoder);
 #if FEATURE_BALANCE_SOFT_LIMITS
     BalanceSoftLimits_GetSnapshot(&limits);
-    error_valid = BalanceEncoder_CalculateFollowError(
-        stepper.estimated_steps,
-        (limits.zero_valid != 0U) ? limits.current_logical_count :
-            encoder.count,
-        &follow_error);
 #else
     error_valid = BalanceEncoder_CalculateFollowError(
         stepper.estimated_steps, encoder.count, &follow_error);
@@ -886,8 +939,9 @@ static void print_balance_stepper_test_page(void)
         OLED_PrintString("CAL:");
         OLED_PrintString(balance_cal_stage_to_string(
             limits.calibration_stage));
-        OLED_PrintChar(' ');
-        OLED_PrintString(state);
+        OLED_PrintString(" F:");
+        OLED_PrintString(balance_flash_status_to_string(
+            limits.flash_status));
 
         OLED_SetCursor(2, 0);
         OLED_PrintString("POS:");
@@ -903,19 +957,81 @@ static void print_balance_stepper_test_page(void)
             limits.high_logical_count);
 
         OLED_SetCursor(6, 0);
-        if (limits.error == BALANCE_SOFT_LIMIT_ERROR_RANGE) {
+        if (limits.error == BALANCE_SOFT_LIMIT_ERROR_FLASH) {
+            OLED_PrintString("ERR:FLASH RAM=OK");
+        } else if (limits.error == BALANCE_SOFT_LIMIT_ERROR_RANGE) {
             OLED_PrintString("ERR:RANGE K1=SET");
         } else if (limits.calibration_stage ==
             BALANCE_SOFT_LIMIT_CAL_COMPLETE) {
-            OLED_PrintString("K1=EXIT LIM=OK");
+            OLED_PrintString("SAVE:OK K1L=EXIT");
         } else {
-            OLED_PrintString("K1=SET K3L=X");
+            OLED_PrintString("K1L=SET K3L=X");
         }
         return;
     }
 
+    if (limits.zero_confirmation_required != 0U) {
+        OLED_SetCursor(0, 0);
+        OLED_PrintString("F:");
+        OLED_PrintString(balance_flash_status_to_string(
+            limits.flash_status));
+        OLED_PrintString(" Z:WAIT ");
+        OLED_PrintString(state);
+
+        OLED_SetCursor(2, 0);
+        OLED_PrintString("ALIGN PHYS ZERO");
+
+        OLED_SetCursor(4, 0);
+        OLED_PrintString("L:");
+        print_balance_limit_value(limits.low_valid,
+            limits.low_logical_count);
+        OLED_PrintString(" H:");
+        print_balance_limit_value(limits.high_valid,
+            limits.high_logical_count);
+
+        OLED_SetCursor(6, 0);
+        if (limits.recalibration_armed != 0U) {
+            OLED_PrintString("K1L=NEW K3L=CANCEL");
+        } else if (limits.flash_record_valid != 0U) {
+            OLED_PrintString("K1L=RESTORE");
+        } else {
+            OLED_PrintString("K1L=FIRST CAL");
+        }
+        return;
+    }
+
+    if (limits.test_active != 0U) {
+        OLED_SetCursor(0, 0);
+        OLED_PrintString("TEST:");
+        OLED_PrintString(balance_test_stage_to_string(
+            limits.test_stage));
+        OLED_PrintChar(' ');
+        OLED_PrintString(state);
+
+        OLED_SetCursor(2, 0);
+        OLED_PrintString("POS:");
+        print_signed_total_tail((int64_t)limits.current_logical_count);
+        OLED_PrintString(" T:");
+        print_signed_total_tail((int64_t)limits.test_target_logical_count);
+
+        OLED_SetCursor(4, 0);
+        OLED_PrintString("L:");
+        print_signed_total_tail((int64_t)limits.minimum_logical_count);
+        OLED_PrintString(" H:");
+        print_signed_total_tail((int64_t)limits.maximum_logical_count);
+
+        OLED_SetCursor(6, 0);
+        OLED_PrintString("E:");
+        print_signed_total_tail((int64_t)limits.test_position_error_count);
+        OLED_PrintString(" K3L=X");
+        return;
+    }
+
     OLED_SetCursor(0, 0);
-    OLED_PrintString("POS:");
+    OLED_PrintString("F:");
+    OLED_PrintString(balance_flash_status_to_string(
+        limits.flash_status));
+    OLED_PrintString(" P:");
     print_balance_limit_value(limits.zero_valid,
         limits.current_logical_count);
     OLED_PrintChar(' ');
@@ -936,16 +1052,16 @@ static void print_balance_stepper_test_page(void)
         limits.high_logical_count);
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("E:");
-    if (error_valid != 0U) {
-        print_signed_total_tail((int64_t)follow_error);
+    if (limits.test_stage == BALANCE_SOFT_LIMIT_TEST_DONE) {
+        OLED_PrintString("TEST:OK K1L=AGAIN");
+    } else if (limits.test_stage == BALANCE_SOFT_LIMIT_TEST_ERROR) {
+        OLED_PrintString("TERR:");
+        OLED_PrintString(balance_test_error_to_string(
+            limits.test_error));
+        OLED_PrintString(" K1L=GO");
     } else {
-        OLED_PrintString("NA");
+        OLED_PrintString("K1L=TEST K3L=CAL");
     }
-    OLED_PrintString(" IV:");
-    print_uint64_decimal((uint64_t)encoder.invalid_transition_count);
-    OLED_PrintString(" C:");
-    print_uint64_decimal((uint64_t)limits.clamp_count);
 #else
     OLED_SetCursor(0, 0);
     OLED_PrintString("ENC:");

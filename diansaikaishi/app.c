@@ -4,6 +4,7 @@
 
 #include "app_config.h"
 #include "app_features.h"
+#include "balance_soft_limits.h"
 #include "bluetooth_uart.h"
 #include "car_controller.h"
 #include "car_state.h"
@@ -1489,6 +1490,9 @@ void App_Update_20ms(uint32_t elapsed_ms)
 {
     uint32_t timestamp_ms = SystemTime_GetMs();
 
+#if FEATURE_BALANCE_SOFT_LIMITS
+    BalanceSoftLimits_Update20ms(elapsed_ms);
+#endif
 #if FEATURE_WHEEL_SPEED_ESTIMATOR
     WheelSpeedEstimator_Update(elapsed_ms);
 #endif

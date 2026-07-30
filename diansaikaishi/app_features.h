@@ -28,11 +28,17 @@
 #define BALANCE_ENCODER_COUNTS_PER_REV          (4096)
 #define BALANCE_ENCODER_DIRECTION_SIGN          (1)
 #define BALANCE_ENCODER_SPEED_SAMPLE_MS         (10U)
-/* No physical switches are fitted. Calibrate ZERO/LOW/HIGH manually after
- * every power-up, then enforce the encoder positions as software limits. */
+/* No physical switches are fitted. Flash keeps LOW/HIGH offsets relative to
+ * ZERO; every power-up still requires one manual physical-ZERO confirmation. */
 #define FEATURE_BALANCE_SOFT_LIMITS              (1)
 #define BALANCE_STEPPER_CAL_JOG_STEPS             (20)
 #define BALANCE_SOFT_LIMIT_MIN_SPAN_COUNTS        (64)
+#define BALANCE_SOFT_LIMIT_TEST_INSET_PERCENT     (10)
+#define BALANCE_SOFT_LIMIT_TEST_MIN_INSET_COUNTS  (16)
+#define BALANCE_SOFT_LIMIT_TEST_TOLERANCE_COUNTS  (32)
+#define BALANCE_SOFT_LIMIT_TEST_TIMEOUT_MIN_MS    (3000U)
+#define BALANCE_SOFT_LIMIT_TEST_TIMEOUT_MARGIN_MS (2000U)
+#define BALANCE_SOFT_LIMIT_TEST_TIMEOUT_MAX_MS    (60000U)
 /* HC-06 is retired. PB6/PB7 now belong to the balance-axis encoder;
  * PB2/PB3 UART_VISION remains the future K230/Raspberry Pi host link. */
 #define FEATURE_BLUETOOTH_UART     (0)
@@ -122,6 +128,19 @@
 
 #if BALANCE_SOFT_LIMIT_MIN_SPAN_COUNTS <= 0
 #error BALANCE_SOFT_LIMIT_MIN_SPAN_COUNTS must be positive
+#endif
+
+#if (BALANCE_SOFT_LIMIT_TEST_INSET_PERCENT <= 0) || \
+    (BALANCE_SOFT_LIMIT_TEST_INSET_PERCENT >= 50)
+#error BALANCE_SOFT_LIMIT_TEST_INSET_PERCENT must be in 1..49
+#endif
+
+#if BALANCE_SOFT_LIMIT_TEST_MIN_INSET_COUNTS <= 0
+#error BALANCE_SOFT_LIMIT_TEST_MIN_INSET_COUNTS must be positive
+#endif
+
+#if BALANCE_SOFT_LIMIT_TEST_TOLERANCE_COUNTS < 0
+#error BALANCE_SOFT_LIMIT_TEST_TOLERANCE_COUNTS cannot be negative
 #endif
 
 #if (BALANCE_ENCODER_DIRECTION_SIGN != 1) && \
