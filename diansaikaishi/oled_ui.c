@@ -2,6 +2,7 @@
 #include "app.h"
 #include "app_config.h"
 #include "app_features.h"
+#include "balance_encoder.h"
 #include "bluetooth_uart.h"
 #include "car_controller.h"
 #include "car_state.h"
@@ -68,6 +69,21 @@ static int16_t clamp_control_term_i16(float value)
         return -999;
     }
     return (int16_t)value;
+}
+
+static void print_signed_x10(int16_t value)
+{
+    int32_t signedValue = value;
+    uint16_t magnitude;
+
+    if (signedValue < 0) {
+        OLED_PrintChar('-');
+        signedValue = -signedValue;
+    }
+    magnitude = (uint16_t)signedValue;
+    OLED_PrintUInt16((uint16_t)(magnitude / 10U));
+    OLED_PrintChar('.');
+    OLED_PrintChar((char)('0' + (magnitude % 10U)));
 }
 
 static void print_track_pattern_s1_to_s7(uint8_t pattern)
@@ -798,36 +814,57 @@ static void print_sensor_page(uint8_t raw, uint8_t blackCount, int16_t error)
 #if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
 static void print_balance_stepper_test_page(void)
 {
-    const GimbalStepperFeedback *stepper = GimbalStepper_GetFeedback();
+    GimbalStepperFeedback stepper;
+    BalanceEncoderRuntime encoder;
+    int32_t follow_error;
+    int32_t speed_rpm_x10;
+    uint8_t error_valid;
     const char *state;
 
-    if (stepper->running != 0U) {
+    GimbalStepper_GetFeedbackSnapshot(&stepper);
+    BalanceEncoder_GetSnapshot(&encoder);
+    error_valid = BalanceEncoder_CalculateFollowError(
+        stepper.estimated_steps, encoder.count, &follow_error);
+    speed_rpm_x10 = BalanceEncoder_CalculateSpeedRpmX10(
+        encoder.speed_sample_delta_count);
+
+    if (stepper.running != 0U) {
         state = "RUN";
-    } else if (stepper->enabled != 0U) {
+    } else if (stepper.enabled != 0U) {
         state = "HOLD";
     } else {
         state = "REL";
     }
 
     OLED_SetCursor(0, 0);
-    OLED_PrintString("BAL STEP ");
+    OLED_PrintString("ENC:");
+    print_signed_total_tail((int64_t)encoder.count);
+    OLED_PrintChar(' ');
     OLED_PrintString(state);
 
     OLED_SetCursor(2, 0);
-    OLED_PrintString("P:");
-    print_signed_total_tail(stepper->estimated_steps);
+    OLED_PrintString("STEP:");
+    print_signed_total_tail(stepper.estimated_steps);
+    OLED_PrintString(" R:");
+    print_signed_x10(clamp_display_i16(speed_rpm_x10));
 
     OLED_SetCursor(4, 0);
-    OLED_PrintString("REM:");
-    OLED_PrintInt16(clamp_display_i16(stepper->target_steps));
-    OLED_PrintString(" D:");
-    OLED_PrintChar((stepper->direction >= 0) ? '+' : '-');
+    OLED_PrintString("ERR:");
+    if (error_valid != 0U) {
+        print_signed_total_tail((int64_t)follow_error);
+    } else {
+        OLED_PrintString("NA");
+    }
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("E:");
-    OLED_PrintInt16((int16_t)stepper->enabled);
-    OLED_PrintString(" H:");
-    OLED_PrintUInt16(stepper->step_half_period_ticks);
+    OLED_PrintString("DIR:");
+    OLED_PrintChar((encoder.direction > 0) ? '+' :
+        ((encoder.direction < 0) ? '-' : '0'));
+    OLED_PrintString(" N:");
+    OLED_PrintInt16(clamp_display_i16(
+        encoder.speed_sample_delta_count));
+    OLED_PrintString(" IV:");
+    print_uint64_decimal((uint64_t)encoder.invalid_transition_count);
 }
 #endif
 
@@ -1066,7 +1103,6 @@ static const char *gimbal_mode_to_string(GimbalMode mode)
 }
 
 static void print_uint_scaled(uint16_t value, uint8_t fractionalDigits);
-static void print_signed_x10(int16_t value);
 static void print_alpha_x1000(uint16_t value);
 
 static void print_gimbal_page(void)
@@ -1186,21 +1222,6 @@ static void print_uint_scaled(uint16_t value, uint8_t fractionalDigits)
         print_uint_min_width((uint16_t)(value % divisor),
             fractionalDigits);
     }
-}
-
-static void print_signed_x10(int16_t value)
-{
-    int32_t signedValue = value;
-    uint16_t magnitude;
-
-    if (signedValue < 0) {
-        OLED_PrintChar('-');
-        signedValue = -signedValue;
-    }
-    magnitude = (uint16_t)signedValue;
-    OLED_PrintUInt16((uint16_t)(magnitude / 10U));
-    OLED_PrintChar('.');
-    OLED_PrintChar((char)('0' + (magnitude % 10U)));
 }
 
 static void print_alpha_x1000(uint16_t value)

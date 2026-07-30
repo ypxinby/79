@@ -3,6 +3,7 @@
 #include "app.h"
 #include "app_config.h"
 #include "app_features.h"
+#include "balance_encoder.h"
 #include "car_controller.h"
 #include "car_state.h"
 #include "emergency_stop.h"
@@ -368,7 +369,12 @@ static void menu_handle_status_key(KeyEvent event)
                 menu_next_main_page();
                 break;
             case KEY1_LONG:
-                GimbalStepper_StopHold();
+                if (GimbalStepper_GetFeedback()->running != 0U) {
+                    GimbalStepper_StopHold();
+                } else {
+                    (void)GimbalStepper_ConfirmZero();
+                    BalanceEncoder_Reset();
+                }
                 break;
             case KEY2_SHORT:
                 GimbalStepper_SetStepHalfPeriodTicks(

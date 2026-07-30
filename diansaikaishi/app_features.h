@@ -21,7 +21,14 @@
 #define FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST (1)
 #define BALANCE_STEPPER_TEST_DELTA_STEPS        (200)
 #define BALANCE_STEPPER_TEST_HALF_PERIOD_TICKS  (25U)
-/* HC-06 is retired. PB6/PB7 are released for the balance-axis encoder/limits;
+/* Stage 2 capture only: the MT6816 AB output is 1024 lines/rev and is
+ * decoded at x4 on PB6/PB7, giving 4096 counts/rev. */
+#define FEATURE_BALANCE_ENCODER_CAPTURE         (1)
+#define BALANCE_STEPPER_COMMAND_STEPS_PER_REV   (3200)
+#define BALANCE_ENCODER_COUNTS_PER_REV          (4096)
+#define BALANCE_ENCODER_DIRECTION_SIGN          (1)
+#define BALANCE_ENCODER_SPEED_SAMPLE_MS         (10U)
+/* HC-06 is retired. PB6/PB7 now belong to the balance-axis encoder;
  * PB2/PB3 UART_VISION remains the future K230/Raspberry Pi host link. */
 #define FEATURE_BLUETOOTH_UART     (0)
 /* PB5 drives a 3.3 V high-level-trigger relay module for the 5 V magnet. */
@@ -92,6 +99,28 @@
 
 #if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST && FEATURE_GIMBAL_MOTION_CONTROL
 #error Balance stepper test and legacy gimbal cannot own PB4/PA1/PA2 together
+#endif
+
+#if FEATURE_BALANCE_ENCODER_CAPTURE && FEATURE_BLUETOOTH_UART
+#error Balance encoder and Bluetooth UART cannot own PB6/PB7 together
+#endif
+
+#if (BALANCE_ENCODER_DIRECTION_SIGN != 1) && \
+    (BALANCE_ENCODER_DIRECTION_SIGN != -1)
+#error BALANCE_ENCODER_DIRECTION_SIGN must be 1 or -1
+#endif
+
+#if BALANCE_STEPPER_COMMAND_STEPS_PER_REV <= 0
+#error BALANCE_STEPPER_COMMAND_STEPS_PER_REV must be positive
+#endif
+
+#if BALANCE_ENCODER_COUNTS_PER_REV < 0
+#error BALANCE_ENCODER_COUNTS_PER_REV cannot be negative
+#endif
+
+#if (BALANCE_ENCODER_SPEED_SAMPLE_MS == 0) || \
+    (BALANCE_ENCODER_SPEED_SAMPLE_MS > 255)
+#error BALANCE_ENCODER_SPEED_SAMPLE_MS must be in 1..255 ms
 #endif
 
 #if FEATURE_GIMBAL_MOTION_CONTROL && FEATURE_BLUETOOTH_UART

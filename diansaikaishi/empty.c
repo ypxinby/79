@@ -8,6 +8,7 @@
 
 #include "app.h"
 #include "app_features.h"
+#include "balance_encoder.h"
 #include "bluetooth_uart.h"
 #include "encoder.h"
 #include "emergency_stop.h"
@@ -74,6 +75,9 @@ int main(void)
     GimbalStepper_SetStepHalfPeriodTicks(
         BALANCE_STEPPER_TEST_HALF_PERIOD_TICKS);
 #endif
+#if FEATURE_BALANCE_ENCODER_CAPTURE
+    BalanceEncoder_Init();
+#endif
 #if FEATURE_BLUETOOTH_UART
     BluetoothUart_Init();
 #endif
@@ -92,6 +96,9 @@ int main(void)
 
     SysTick_Config(CPUCLK_FREQ / APP_TICK_HZ);
     NVIC_EnableIRQ(GPIO_ENCODERS_INT_IRQN);
+#if FEATURE_BALANCE_ENCODER_CAPTURE
+    NVIC_EnableIRQ(GPIO_BALANCE_ENCODER_INT_IRQN);
+#endif
     __enable_irq();
 
     while (1) {
@@ -190,6 +197,9 @@ void SysTick_Handler(void)
 {
     static uint8_t tick100usCount;
     static uint8_t controlMsCount;
+#if FEATURE_BALANCE_ENCODER_CAPTURE
+    static uint8_t balanceEncoderSpeedMsCount;
+#endif
 #if FEATURE_GIMBAL_MOTION_CONTROL
     static uint8_t gimbalMsCount;
     static uint8_t trackerMsCount;
@@ -219,6 +229,14 @@ void SysTick_Handler(void)
         WatchdogMonitor_Tick1msFromIsr(g_localTimeMs);
 
         controlMsCount++;
+#if FEATURE_BALANCE_ENCODER_CAPTURE
+        balanceEncoderSpeedMsCount++;
+        if (balanceEncoderSpeedMsCount >=
+            BALANCE_ENCODER_SPEED_SAMPLE_MS) {
+            balanceEncoderSpeedMsCount = 0U;
+            BalanceEncoder_SampleSpeed10msFromIsr();
+        }
+#endif
 #if FEATURE_GIMBAL_MOTION_CONTROL
         gimbalMsCount++;
         trackerMsCount++;
@@ -267,6 +285,11 @@ void GROUP1_IRQHandler(void)
         case GPIO_ENCODERS_INT_IIDX:
             Encoder_HandleGpioInterrupt();
             break;
+#if FEATURE_BALANCE_ENCODER_CAPTURE
+        case GPIO_BALANCE_ENCODER_INT_IIDX:
+            BalanceEncoder_HandleGpioInterrupt();
+            break;
+#endif
         default:
             break;
     }

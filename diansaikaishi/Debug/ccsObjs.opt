@@ -1,6 +1,7 @@
 "./angle_utils.o"
 "./app.o"
 "./app_config.o"
+"./balance_encoder.o"
 "./bluetooth_uart.o"
 "./car_controller.o"
 "./car_state.o"

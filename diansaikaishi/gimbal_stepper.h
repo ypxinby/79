@@ -24,5 +24,6 @@ uint8_t GimbalStepper_ConfirmZero(void);
 void GimbalStepper_StopHold(void);
 void GimbalStepper_Release(void);
 const GimbalStepperFeedback *GimbalStepper_GetFeedback(void);
+void GimbalStepper_GetFeedbackSnapshot(GimbalStepperFeedback *snapshot);
 
 #endif

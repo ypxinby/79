@@ -12,6 +12,7 @@ C_SRCS += \
 ../angle_utils.c \
 ../app.c \
 ../app_config.c \
+../balance_encoder.c \
 ../bluetooth_uart.c \
 ../car_controller.c \
 ../car_state.c \
@@ -71,6 +72,7 @@ C_DEPS += \
 ./angle_utils.d \
 ./app.d \
 ./app_config.d \
+./balance_encoder.d \
 ./bluetooth_uart.d \
 ./car_controller.d \
 ./car_state.d \
@@ -125,6 +127,7 @@ OBJS += \
 ./angle_utils.o \
 ./app.o \
 ./app_config.o \
+./balance_encoder.o \
 ./bluetooth_uart.o \
 ./car_controller.o \
 ./car_state.o \
@@ -181,6 +184,7 @@ OBJS__QUOTED += \
 "angle_utils.o" \
 "app.o" \
 "app_config.o" \
+"balance_encoder.o" \
 "bluetooth_uart.o" \
 "car_controller.o" \
 "car_state.o" \
@@ -237,6 +241,7 @@ C_DEPS__QUOTED += \
 "angle_utils.d" \
 "app.d" \
 "app_config.d" \
+"balance_encoder.d" \
 "bluetooth_uart.d" \
 "car_controller.d" \
 "car_state.d" \
@@ -293,6 +298,7 @@ C_SRCS__QUOTED += \
 "../angle_utils.c" \
 "../app.c" \
 "../app_config.c" \
+"../balance_encoder.c" \
 "../bluetooth_uart.c" \
 "../car_controller.c" \
 "../car_state.c" \

@@ -351,3 +351,19 @@ const GimbalStepperFeedback *GimbalStepper_GetFeedback(void)
 {
     return &g_feedback;
 }
+
+void GimbalStepper_GetFeedbackSnapshot(GimbalStepperFeedback *snapshot)
+{
+    uint32_t primask;
+
+    if (snapshot == (GimbalStepperFeedback *)0) {
+        return;
+    }
+
+    primask = __get_PRIMASK();
+    __disable_irq();
+    *snapshot = g_feedback;
+    if (primask == 0U) {
+        __enable_irq();
+    }
+}

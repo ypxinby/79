@@ -28,6 +28,7 @@ const GPIO10 = GPIO.addInstance();
 const GPIO11 = GPIO.addInstance();
 const GPIO12 = GPIO.addInstance();
 const GPIO13 = GPIO.addInstance();
+const GPIO14 = GPIO.addInstance();
 
 /**
  * Write custom configuration values to the imported modules.
@@ -219,3 +220,21 @@ GPIO13.associatedPins.create(1);
 GPIO13.associatedPins[0].$name           = "RELAY_CTRL";
 GPIO13.associatedPins[0].assignedPin     = "5";
 GPIO13.associatedPins[0].initialValue    = "CLEARED";
+
+/* Balance-axis incremental encoder. Decode both A and B on both edges so the
+ * runtime count is the x4 count used by the STEP/encoder ratio check. */
+GPIO14.$name                              = "GPIO_BALANCE_ENCODER";
+GPIO14.port                               = "PORTB";
+GPIO14.associatedPins.create(2);
+GPIO14.associatedPins[0].$name            = "ENCODER_A";
+GPIO14.associatedPins[0].assignedPin      = "6";
+GPIO14.associatedPins[0].direction        = "INPUT";
+GPIO14.associatedPins[0].internalResistor = "PULL_UP";
+GPIO14.associatedPins[0].interruptEn      = true;
+GPIO14.associatedPins[0].polarity         = "RISE_FALL";
+GPIO14.associatedPins[1].$name            = "ENCODER_B";
+GPIO14.associatedPins[1].assignedPin      = "7";
+GPIO14.associatedPins[1].direction        = "INPUT";
+GPIO14.associatedPins[1].internalResistor = "PULL_UP";
+GPIO14.associatedPins[1].interruptEn      = true;
+GPIO14.associatedPins[1].polarity         = "RISE_FALL";

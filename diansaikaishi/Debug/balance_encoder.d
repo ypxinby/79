@@ -1,11 +1,7 @@
 # FIXED
 
-empty.o: ../empty.c ../app.h ../app_features.h ../balance_encoder.h \
- ../bluetooth_uart.h ../encoder.h ../emergency_stop.h ../gimbal.h \
- ../gimbal_stepper.h ../gimbal_tracker.h ../gimbal_vision_adapter.h \
- ../vision_protocol.h ../gimbal_vision_pitch_tracker.h \
- ../gimbal_vision_yaw_tracker.h ../motor.h ../servo.h \
- ../scheduler_monitor.h \
+balance_encoder.o: ../balance_encoder.c ../balance_encoder.h \
+ ../app_features.h \
  ti_msp_dl_config.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/msp.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/DeviceFamily.h \
@@ -79,26 +75,9 @@ empty.o: ../empty.c ../app.h ../app_features.h ../balance_encoder.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/dl_vref.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/dl_wwdt.h \
  C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/m0p/dl_interrupt.h \
- C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/m0p/dl_systick.h \
- ../ultrasonic.h ../vision_receiver.h ../vision_pitch_tuning.h \
- ../vision_yaw_tuning.h ../vision_tuning_console.h ../vision_uart.h \
- ../watchdog_monitor.h
-../app.h:
-../app_features.h:
+ C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/m0p/dl_systick.h
 ../balance_encoder.h:
-../bluetooth_uart.h:
-../encoder.h:
-../emergency_stop.h:
-../gimbal.h:
-../gimbal_stepper.h:
-../gimbal_tracker.h:
-../gimbal_vision_adapter.h:
-../vision_protocol.h:
-../gimbal_vision_pitch_tracker.h:
-../gimbal_vision_yaw_tracker.h:
-../motor.h:
-../servo.h:
-../scheduler_monitor.h:
+../app_features.h:
 ti_msp_dl_config.h:
 C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/msp/msp.h:
 C:/TI/mspm0_sdk_2_05_01_00/source/ti/devices/DeviceFamily.h:
@@ -173,10 +152,3 @@ C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/dl_vref.h:
 C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/dl_wwdt.h:
 C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/m0p/dl_interrupt.h:
 C:/TI/mspm0_sdk_2_05_01_00/source/ti/driverlib/m0p/dl_systick.h:
-../ultrasonic.h:
-../vision_receiver.h:
-../vision_pitch_tuning.h:
-../vision_yaw_tuning.h:
-../vision_tuning_console.h:
-../vision_uart.h:
-../watchdog_monitor.h:

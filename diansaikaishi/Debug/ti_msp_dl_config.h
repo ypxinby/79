@@ -252,6 +252,20 @@ extern "C" {
 /* Defines for RELAY_CTRL: GPIOB.5 with pinCMx 18 on package pin 53 */
 #define GPIO_MAGNET_RELAY_RELAY_CTRL_PIN                         (DL_GPIO_PIN_5)
 #define GPIO_MAGNET_RELAY_RELAY_CTRL_IOMUX                       (IOMUX_PINCM18)
+/* Port definition for Pin Group GPIO_BALANCE_ENCODER */
+#define GPIO_BALANCE_ENCODER_PORT                                        (GPIOB)
+
+/* Defines for ENCODER_A: GPIOB.6 with pinCMx 23 on package pin 58 */
+// pins affected by this interrupt request:["ENCODER_A","ENCODER_B"]
+#define GPIO_BALANCE_ENCODER_INT_IRQN                           (GPIOB_INT_IRQn)
+#define GPIO_BALANCE_ENCODER_INT_IIDX           (DL_INTERRUPT_GROUP1_IIDX_GPIOB)
+#define GPIO_BALANCE_ENCODER_ENCODER_A_IIDX                  (DL_GPIO_IIDX_DIO6)
+#define GPIO_BALANCE_ENCODER_ENCODER_A_PIN                       (DL_GPIO_PIN_6)
+#define GPIO_BALANCE_ENCODER_ENCODER_A_IOMUX                     (IOMUX_PINCM23)
+/* Defines for ENCODER_B: GPIOB.7 with pinCMx 24 on package pin 59 */
+#define GPIO_BALANCE_ENCODER_ENCODER_B_IIDX                  (DL_GPIO_IIDX_DIO7)
+#define GPIO_BALANCE_ENCODER_ENCODER_B_PIN                       (DL_GPIO_PIN_7)
+#define GPIO_BALANCE_ENCODER_ENCODER_B_IOMUX                     (IOMUX_PINCM24)
 
 /* clang-format on */
 
