@@ -1,6 +1,9 @@
 #include "vision_receiver.h"
 
+#include <limits.h>
 #include <string.h>
+
+#include "app_features.h"
 
 #define VISION_RX_RING_SIZE        (512U)
 #define VISION_RX_RING_MASK        (VISION_RX_RING_SIZE - 1U)
@@ -12,16 +15,21 @@
 static volatile uint8_t g_ring[VISION_RX_RING_SIZE];
 static volatile uint16_t g_ringHead;
 static volatile uint16_t g_ringTail;
-static uint8_t g_frame[VISION_PROTOCOL_FRAME_LENGTH_V2];
-static uint8_t g_frameSize;
+static uint8_t g_line[VISION_PROTOCOL_LINE_MAX_LENGTH];
+static uint16_t g_lineSize;
+static uint8_t g_discardUntilNewline;
+static uint32_t g_lastSourceTimestampMs;
+static uint32_t g_localSessionId;
 static VisionReceiverStatus g_status;
 static VisionReceiverObservation g_observation;
 static VisionBallPositionObservation g_ballPositionObservation;
 
-static uint16_t read_u16_le(const uint8_t *data)
+static uint32_t magnitude_i32(int32_t value)
 {
-    return (uint16_t)((uint16_t)data[0] |
-        ((uint16_t)data[1] << 8));
+    if (value >= 0) {
+        return (uint32_t)value;
+    }
+    return (uint32_t)(-(value + 1)) + 1U;
 }
 
 static uint8_t ring_pop(uint8_t *byte)
@@ -31,39 +39,9 @@ static uint8_t ring_pop(uint8_t *byte)
     if (tail == g_ringHead) {
         return 0U;
     }
-
     *byte = g_ring[tail];
     g_ringTail = (uint16_t)((tail + 1U) & VISION_RX_RING_MASK);
     return 1U;
-}
-
-static void resync_candidate(void)
-{
-    uint8_t index;
-    uint8_t oldSize = g_frameSize;
-
-    g_status.resync_count++;
-    for (index = 1U; (uint8_t)(index + 1U) < oldSize; index++) {
-        if ((g_frame[index] == VISION_PROTOCOL_MAGIC_0) &&
-            (g_frame[index + 1U] == VISION_PROTOCOL_MAGIC_1)) {
-            uint8_t retained = (uint8_t)(oldSize - index);
-
-            memmove(g_frame, &g_frame[index], retained);
-            g_frameSize = retained;
-            g_status.discarded_byte_count += index;
-            return;
-        }
-    }
-
-    if ((oldSize != 0U) &&
-        (g_frame[oldSize - 1U] == VISION_PROTOCOL_MAGIC_0)) {
-        g_frame[0] = VISION_PROTOCOL_MAGIC_0;
-        g_frameSize = 1U;
-        g_status.discarded_byte_count += (uint32_t)(oldSize - 1U);
-    } else {
-        g_frameSize = 0U;
-        g_status.discarded_byte_count += oldSize;
-    }
 }
 
 static void count_parse_error(VisionProtocolParseResult result)
@@ -77,23 +55,8 @@ static void count_parse_error(VisionProtocolParseResult result)
             g_status.crc_error_count++;
             g_status.last_event = VISION_RECEIVER_EVENT_CRC_ERROR;
             break;
-        case VISION_PROTOCOL_PARSE_VERSION_ERROR:
-            g_status.version_error_count++;
-            g_status.last_event = VISION_RECEIVER_EVENT_VERSION_ERROR;
-            break;
-        case VISION_PROTOCOL_PARSE_TYPE_ERROR:
-            g_status.type_error_count++;
-            g_status.last_event = VISION_RECEIVER_EVENT_TYPE_ERROR;
-            break;
-        case VISION_PROTOCOL_PARSE_RESERVED_ERROR:
-            g_status.reserved_error_count++;
-            g_status.last_event = VISION_RECEIVER_EVENT_RESERVED_ERROR;
-            break;
-        case VISION_PROTOCOL_PARSE_FLAGS_ERROR:
-            g_status.flags_error_count++;
-            g_status.last_event = VISION_RECEIVER_EVENT_FLAGS_ERROR;
-            break;
-        case VISION_PROTOCOL_PARSE_FIELD_ERROR:
+        case VISION_PROTOCOL_PARSE_MAGIC_ERROR:
+            g_status.discarded_byte_count += g_lineSize;
             g_status.field_error_count++;
             g_status.last_event = VISION_RECEIVER_EVENT_FIELD_ERROR;
             break;
@@ -104,59 +67,105 @@ static void count_parse_error(VisionProtocolParseResult result)
     }
 }
 
-static void accept_packet(const VisionTargetPacket *packet,
+static void populate_legacy_observation(
+    const VisionBallAsciiPacket *packet, uint32_t localTimeMs,
+    uint32_t sessionId)
+{
+    VisionTargetPacket *legacy = &g_observation.packet;
+
+    memset(legacy, 0, sizeof(*legacy));
+    legacy->flags = (packet->target_valid != 0U) ?
+        (VISION_FLAG_TARGET_VALID | VISION_FLAG_HAS_CONFIDENCE) : 0U;
+    legacy->session_id = sessionId;
+    legacy->sequence = packet->sequence;
+    legacy->source_timestamp_ms = packet->source_timestamp_ms;
+    legacy->frame_width = BALANCE_BALL_AXIS_SPAN_MM;
+    legacy->frame_height = 1U;
+    legacy->target_center_x = (packet->target_valid != 0U) ?
+        (uint16_t)packet->position_mm : 0xFFFFU;
+    legacy->target_center_y = (packet->target_valid != 0U) ? 0U : 0xFFFFU;
+    legacy->confidence = (packet->target_valid != 0U) ?
+        packet->confidence : 0U;
+    legacy->target_id = 0xFFFFU;
+    g_observation.available = 1U;
+    g_observation.target_valid = packet->target_valid;
+    g_observation.local_receive_timestamp_ms = localTimeMs;
+}
+
+static void accept_packet(const VisionBallAsciiPacket *packet,
     uint32_t localTimeMs, uint8_t newSession)
 {
-    uint8_t targetValid =
-        ((packet->flags & VISION_FLAG_TARGET_VALID) != 0U);
-
-    g_status.session_id = packet->session_id;
+    g_status.session_id = g_localSessionId;
     g_status.last_sequence = packet->sequence;
     g_status.session_initialized = 1U;
     g_status.sequence_initialized = 1U;
     g_status.last_valid_packet_time_ms = localTimeMs;
     g_status.accepted_frame_count++;
+    g_lastSourceTimestampMs = packet->source_timestamp_ms;
 
-    g_observation.available = 1U;
-    g_observation.target_valid = targetValid;
-    g_observation.local_receive_timestamp_ms = localTimeMs;
-    g_observation.packet = *packet;
+    populate_legacy_observation(packet, localTimeMs, g_localSessionId);
 
     g_ballPositionObservation.available = 1U;
-    g_ballPositionObservation.target_valid = targetValid;
+    g_ballPositionObservation.target_valid = packet->target_valid;
+    g_ballPositionObservation.measured = packet->measured;
     g_ballPositionObservation.local_receive_timestamp_ms = localTimeMs;
     g_ballPositionObservation.update_count++;
-    g_ballPositionObservation.session_id = packet->session_id;
+    g_ballPositionObservation.session_id = g_localSessionId;
     g_ballPositionObservation.sequence = packet->sequence;
-    g_ballPositionObservation.axis_span_mm = packet->frame_width;
-    g_ballPositionObservation.position_mm = (targetValid != 0U) ?
-        (int16_t)packet->target_center_x : 0;
+    g_ballPositionObservation.position_mm =
+        (packet->target_valid != 0U) ? packet->position_mm : 0;
+    g_ballPositionObservation.predicted_position_mm =
+        packet->predicted_position_mm;
+    g_ballPositionObservation.reported_velocity_mm_s =
+        packet->velocity_mm_s;
+    g_ballPositionObservation.axis_span_mm =
+        BALANCE_BALL_AXIS_SPAN_MM;
     g_ballPositionObservation.confidence = packet->confidence;
+    memcpy(g_ballPositionObservation.state, packet->state,
+        sizeof(g_ballPositionObservation.state));
 
-    if (targetValid != 0U) {
+    if (packet->target_valid != 0U) {
         g_status.target_frame_count++;
     } else {
         g_status.no_target_frame_count++;
     }
-
     if (newSession != 0U) {
         g_status.last_event = VISION_RECEIVER_EVENT_NEW_SESSION;
-    } else if (targetValid != 0U) {
+    } else if (packet->target_valid != 0U) {
         g_status.last_event = VISION_RECEIVER_EVENT_TARGET;
     } else {
         g_status.last_event = VISION_RECEIVER_EVENT_NO_TARGET;
     }
 }
 
-static void handle_packet(const VisionTargetPacket *packet,
+static void handle_packet(const VisionBallAsciiPacket *packet,
     uint32_t localTimeMs)
 {
+    int16_t sequenceDelta;
+
+    if ((packet->target_valid != 0U) &&
+        ((magnitude_i32(packet->position_mm) * 2U >
+            BALANCE_BALL_AXIS_SPAN_MM) ||
+         (magnitude_i32(packet->predicted_position_mm) * 2U >
+            BALANCE_BALL_AXIS_SPAN_MM) ||
+         (magnitude_i32(packet->velocity_mm_s) >
+            BALANCE_BALL_MAX_REPORTED_SPEED_MM_S))) {
+        count_parse_error(VISION_PROTOCOL_PARSE_FIELD_ERROR);
+        return;
+    }
+
     if (g_status.session_initialized == 0U) {
+        g_localSessionId = 1U;
         accept_packet(packet, localTimeMs, 1U);
         return;
     }
 
-    if (packet->session_id != g_status.session_id) {
+    /* A K230 restart resets its monotonic timestamp. Treat that as a new
+     * local session so sequence zero is accepted immediately. */
+    if (packet->source_timestamp_ms < g_lastSourceTimestampMs) {
+        if (g_localSessionId != UINT32_MAX) {
+            g_localSessionId++;
+        }
         g_status.session_change_count++;
         g_status.sequence_initialized = 0U;
         accept_packet(packet, localTimeMs, 1U);
@@ -167,82 +176,95 @@ static void handle_packet(const VisionTargetPacket *packet,
         accept_packet(packet, localTimeMs, 0U);
         return;
     }
-
-    {
-        int16_t delta =
-            (int16_t)(uint16_t)(packet->sequence - g_status.last_sequence);
-
-        if (delta > 0) {
-            accept_packet(packet, localTimeMs, 0U);
-        } else if (delta == 0) {
-            g_status.duplicate_count++;
-            g_status.last_event = VISION_RECEIVER_EVENT_DUPLICATE;
-        } else {
-            g_status.old_sequence_count++;
-            g_status.last_event = VISION_RECEIVER_EVENT_OLD_SEQUENCE;
-        }
+    sequenceDelta = (int16_t)(uint16_t)(packet->sequence -
+        g_status.last_sequence);
+    if (sequenceDelta > 0) {
+        accept_packet(packet, localTimeMs, 0U);
+    } else if (sequenceDelta == 0) {
+        g_status.duplicate_count++;
+        g_status.last_event = VISION_RECEIVER_EVENT_DUPLICATE;
+    } else {
+        g_status.old_sequence_count++;
+        g_status.last_event = VISION_RECEIVER_EVENT_OLD_SEQUENCE;
     }
 }
 
-static void process_complete_frame(uint32_t localTimeMs)
+static void process_complete_line(uint32_t localTimeMs)
 {
-    VisionTargetPacket packet;
-    VisionProtocolParseResult result =
-        VisionProtocol_ParseV2BallPositionFrame(g_frame, &packet);
+    VisionBallAsciiPacket packet;
+    VisionProtocolParseResult result;
 
     g_status.parsed_frame_count++;
+    result = VisionProtocol_ParseBallAsciiLine(g_line, g_lineSize,
+        &packet);
     if (result == VISION_PROTOCOL_PARSE_OK) {
-        g_frameSize = 0U;
         handle_packet(&packet, localTimeMs);
     } else {
         count_parse_error(result);
-        resync_candidate();
     }
+    g_lineSize = 0U;
 }
 
 static void consume_byte(uint8_t byte, uint32_t localTimeMs)
 {
-    if (g_frameSize == 0U) {
-        if (byte == VISION_PROTOCOL_MAGIC_0) {
-            g_frame[0] = byte;
-            g_frameSize = 1U;
-        } else {
-            g_status.discarded_byte_count++;
+    if (byte == (uint8_t)'\r') {
+        return;
+    }
+    if (byte == (uint8_t)'\n') {
+        if (g_discardUntilNewline != 0U) {
+            g_discardUntilNewline = 0U;
+            g_lineSize = 0U;
+            return;
+        }
+        if (g_lineSize != 0U) {
+            process_complete_line(localTimeMs);
         }
         return;
     }
-
-    if (g_frameSize == 1U) {
-        if (byte == VISION_PROTOCOL_MAGIC_1) {
-            g_frame[1] = byte;
-            g_frameSize = 2U;
-        } else if (byte == VISION_PROTOCOL_MAGIC_0) {
-            g_status.discarded_byte_count++;
-        } else {
-            g_frameSize = 0U;
-            g_status.discarded_byte_count += 2U;
-        }
+    if (g_discardUntilNewline != 0U) {
+        g_status.discarded_byte_count++;
         return;
     }
-
-    g_frame[g_frameSize++] = byte;
-
-    if (g_frameSize == 8U) {
-        if (read_u16_le(&g_frame[6]) !=
-            VISION_PROTOCOL_PAYLOAD_LENGTH_V2) {
-            count_parse_error(VISION_PROTOCOL_PARSE_LENGTH_ERROR);
-            resync_candidate();
-        }
-    } else if (g_frameSize == VISION_PROTOCOL_FRAME_LENGTH_V2) {
-        process_complete_frame(localTimeMs);
+    if ((byte < 0x20U) || (byte > 0x7EU)) {
+        g_status.field_error_count++;
+        g_status.last_event = VISION_RECEIVER_EVENT_FIELD_ERROR;
+        g_status.discarded_byte_count += g_lineSize + 1U;
+        g_lineSize = 0U;
+        g_discardUntilNewline = 1U;
+        return;
     }
+    if (byte == (uint8_t)'@') {
+        if (g_lineSize != 0U) {
+            g_status.discarded_byte_count += g_lineSize;
+            g_status.resync_count++;
+        }
+        g_line[0] = byte;
+        g_lineSize = 1U;
+        return;
+    }
+    if (g_lineSize == 0U) {
+        g_status.discarded_byte_count++;
+        return;
+    }
+    if (g_lineSize >= (VISION_PROTOCOL_LINE_MAX_LENGTH - 1U)) {
+        g_status.length_error_count++;
+        g_status.last_event = VISION_RECEIVER_EVENT_LENGTH_ERROR;
+        g_status.discarded_byte_count += g_lineSize;
+        g_lineSize = 0U;
+        g_discardUntilNewline = 1U;
+        return;
+    }
+    g_line[g_lineSize++] = byte;
 }
 
 void VisionReceiver_Init(void)
 {
     g_ringHead = 0U;
     g_ringTail = 0U;
-    g_frameSize = 0U;
+    g_lineSize = 0U;
+    g_discardUntilNewline = 0U;
+    g_lastSourceTimestampMs = 0U;
+    g_localSessionId = 0U;
     memset(&g_status, 0, sizeof(g_status));
     memset(&g_observation, 0, sizeof(g_observation));
     memset(&g_ballPositionObservation, 0,
@@ -260,7 +282,6 @@ void VisionReceiver_PushByteFromIsr(uint8_t byte)
         g_status.ring_overflow_count++;
         return;
     }
-
     g_ring[head] = byte;
     g_ringHead = next;
 }
@@ -275,7 +296,6 @@ uint16_t VisionReceiver_Process(uint32_t localTimeMs,
         consume_byte(byte, localTimeMs);
         processed++;
     }
-
     return processed;
 }
 

@@ -1505,6 +1505,7 @@ static void print_balance_vision_page(void)
 {
     const VisionBallPositionObservation *ball =
         VisionReceiver_GetBallPositionObservation();
+    const VisionReceiverStatus *receiver = VisionReceiver_GetStatus();
     BalanceBallControlRuntime control;
     uint32_t now_ms = SystemTime_GetMs();
     uint32_t age_ms = (ball->available != 0U) ?
@@ -1553,13 +1554,25 @@ static void print_balance_vision_page(void)
     OLED_PrintString(balance_ball_state_to_string(control.state));
 
     OLED_SetCursor(6, 0);
-    OLED_PrintString("Q:");
-    OLED_PrintUInt16(ball->sequence);
-    OLED_PrintString(" C:");
-    OLED_PrintUInt16(ball->confidence);
-    OLED_PrintString(" R:");
-    print_uint64_decimal((uint64_t)
-        VisionReceiver_GetProtocolErrorCount());
+    if (ball->available == 0U) {
+        OLED_PrintString("X:");
+        print_uint64_decimal((receiver->rx_byte_count > 999U) ?
+            999U : receiver->rx_byte_count);
+        OLED_PrintString(" F:");
+        print_uint64_decimal((receiver->parsed_frame_count > 999U) ?
+            999U : receiver->parsed_frame_count);
+        OLED_PrintString(" R:");
+        print_uint64_decimal((uint64_t)
+            VisionReceiver_GetProtocolErrorCount());
+    } else {
+        OLED_PrintString("Q:");
+        OLED_PrintUInt16(ball->sequence);
+        OLED_PrintString(" C:");
+        OLED_PrintUInt16(ball->confidence);
+        OLED_PrintString(" R:");
+        print_uint64_decimal((uint64_t)
+            VisionReceiver_GetProtocolErrorCount());
+    }
 }
 #endif
 

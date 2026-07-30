@@ -64,7 +64,9 @@
  * while the balance profile accepts one meaningful pipe-axis coordinate:
  * frame_height=1, target_center_y=0, target_center_x=axis position. */
 #define FEATURE_BALANCE_VISION_MONITOR               (1)
-#define BALANCE_VISION_STALE_TIMEOUT_MS              (100U)
+#define BALANCE_VISION_STALE_TIMEOUT_MS              (150U)
+#define BALANCE_BALL_AXIS_SPAN_MM                     (300U)
+#define BALANCE_BALL_MAX_REPORTED_SPEED_MM_S          (3000U)
 /* Static ball controller: K230 reports signed millimetres relative to O.
  * The outer PD generates a small encoder-count offset around horizontal and
  * the proven position loop remains the actuator inner loop. It never starts
@@ -72,7 +74,7 @@
 #define FEATURE_BALANCE_BALL_PD_CONTROL               (1)
 #define BALANCE_BALL_PD_MIN_CONFIDENCE                (200U)
 #define BALANCE_BALL_PD_VALID_FRAME_COUNT             (3U)
-#define BALANCE_BALL_PD_VISION_LOST_TIMEOUT_MS        (300U)
+#define BALANCE_BALL_PD_VISION_LOST_TIMEOUT_MS        (400U)
 #define BALANCE_BALL_PD_MAX_JUMP_MM                   (60U)
 #define BALANCE_BALL_PD_MAX_TARGET_ABS_MM             (500U)
 #define BALANCE_BALL_PD_KP_COUNTS_PER_MM_X100         (30)
@@ -227,6 +229,13 @@
 #if FEATURE_BALANCE_VISION_MONITOR && \
     (BALANCE_VISION_STALE_TIMEOUT_MS == 0U)
 #error Balance vision stale timeout must be positive
+#endif
+
+#if FEATURE_BALANCE_VISION_MONITOR && \
+    ((BALANCE_BALL_AXIS_SPAN_MM == 0U) || \
+     (BALANCE_BALL_AXIS_SPAN_MM > 5000U) || \
+     (BALANCE_BALL_MAX_REPORTED_SPEED_MM_S == 0U))
+#error Balance ball ASCII protocol ranges are invalid
 #endif
 
 #if FEATURE_BALANCE_BALL_PD_CONTROL && \

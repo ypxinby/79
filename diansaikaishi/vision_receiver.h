@@ -31,13 +31,17 @@ typedef struct {
 typedef struct {
     uint8_t available;
     uint8_t target_valid;
+    uint8_t measured;
     uint32_t local_receive_timestamp_ms;
     uint32_t update_count;
     uint32_t session_id;
     uint16_t sequence;
     int16_t position_mm;
+    int16_t predicted_position_mm;
+    int16_t reported_velocity_mm_s;
     uint16_t axis_span_mm;
     uint16_t confidence;
+    char state[VISION_PROTOCOL_STATE_MAX_LENGTH];
 } VisionBallPositionObservation;
 
 typedef struct {
