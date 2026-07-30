@@ -18,6 +18,7 @@ void GimbalStepper_Init(void);
 void GimbalStepper_Tick100us(void);
 void GimbalStepper_SetStepHalfPeriodTicks(uint16_t half_period_ticks);
 void GimbalStepper_MoveToEstimatedSteps(int64_t target_estimated_steps);
+void GimbalStepper_MoveRelativeSteps(int32_t delta_steps);
 void GimbalStepper_MoveRelativeDeg(float delta_deg);
 uint8_t GimbalStepper_ConfirmZero(void);
 void GimbalStepper_StopHold(void);

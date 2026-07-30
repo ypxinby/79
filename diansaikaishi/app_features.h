@@ -12,12 +12,18 @@
 
 #define FEATURE_OBSTACLE_SCANNER   (0)
 #define FEATURE_GIMBAL_TEST_AUTO_RUN (0)
-/* Gimbal motion is frozen and its PB6/PB7 pitch pins are reassigned to the
- * HC-06 Bluetooth UART. Set back to 1 only after moving the gimbal pins. */
+/* The legacy two-axis gimbal remains frozen. The new single balance axis must
+ * use its own feature gate and pin group instead of enabling this switch. */
 #define FEATURE_GIMBAL_MOTION_CONTROL (0)
 #define FEATURE_GIMBAL_OLED_TEST   (0)
-/* HC-06 on UART1: PB6 MCU TX -> module RXD; PB7 MCU RX <- module TXD. */
-#define FEATURE_BLUETOOTH_UART     (1)
+/* Stage 1 balance-axis regression: reuse the proven PB4/PA1/PA2 open-loop
+ * stepper pulse generator and expose only a guarded OLED/key smoke test. */
+#define FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST (1)
+#define BALANCE_STEPPER_TEST_DELTA_STEPS        (200)
+#define BALANCE_STEPPER_TEST_HALF_PERIOD_TICKS  (25U)
+/* HC-06 is retired. PB6/PB7 are released for the balance-axis encoder/limits;
+ * PB2/PB3 UART_VISION remains the future K230/Raspberry Pi host link. */
+#define FEATURE_BLUETOOTH_UART     (0)
 /* PB5 drives a 3.3 V high-level-trigger relay module for the 5 V magnet. */
 #define FEATURE_MAGNET_RELAY       (1)
 /* Bring-up aid: echo every received byte through HC-06. Disable this when the
@@ -82,6 +88,10 @@
 
 #if FEATURE_GIMBAL_OLED_TEST && !FEATURE_GIMBAL_MOTION_CONTROL
 #error Gimbal OLED test requires gimbal motion control and dedicated pins
+#endif
+
+#if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST && FEATURE_GIMBAL_MOTION_CONTROL
+#error Balance stepper test and legacy gimbal cannot own PB4/PA1/PA2 together
 #endif
 
 #if FEATURE_GIMBAL_MOTION_CONTROL && FEATURE_BLUETOOTH_UART

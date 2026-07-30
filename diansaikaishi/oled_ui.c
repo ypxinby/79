@@ -7,6 +7,7 @@
 #include "car_state.h"
 #include "fault.h"
 #include "gimbal.h"
+#include "gimbal_stepper.h"
 #include "gimbal_tracker.h"
 #include "heading_control.h"
 #include "imu.h"
@@ -793,6 +794,42 @@ static void print_sensor_page(uint8_t raw, uint8_t blackCount, int16_t error)
     OLED_PrintInt16((int16_t)blackCount);
 #endif
 }
+
+#if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
+static void print_balance_stepper_test_page(void)
+{
+    const GimbalStepperFeedback *stepper = GimbalStepper_GetFeedback();
+    const char *state;
+
+    if (stepper->running != 0U) {
+        state = "RUN";
+    } else if (stepper->enabled != 0U) {
+        state = "HOLD";
+    } else {
+        state = "REL";
+    }
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintString("BAL STEP ");
+    OLED_PrintString(state);
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("P:");
+    print_signed_total_tail(stepper->estimated_steps);
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("REM:");
+    OLED_PrintInt16(clamp_display_i16(stepper->target_steps));
+    OLED_PrintString(" D:");
+    OLED_PrintChar((stepper->direction >= 0) ? '+' : '-');
+
+    OLED_SetCursor(6, 0);
+    OLED_PrintString("E:");
+    OLED_PrintInt16((int16_t)stepper->enabled);
+    OLED_PrintString(" H:");
+    OLED_PrintUInt16(stepper->step_half_period_ticks);
+}
+#endif
 
 static void print_imu_page(void)
 {
@@ -1595,6 +1632,13 @@ void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
             break;
         case OLED_PAGE_DISTANCE:
             print_drive_distance_page();
+            break;
+        case OLED_PAGE_BALANCE_STEPPER_TEST:
+#if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
+            print_balance_stepper_test_page();
+#else
+            print_status_page(raw, error, keyEvent);
+#endif
             break;
         case OLED_PAGE_BLUETOOTH:
             print_bluetooth_page();

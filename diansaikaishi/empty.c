@@ -10,7 +10,9 @@
 #include "app_features.h"
 #include "bluetooth_uart.h"
 #include "encoder.h"
+#include "emergency_stop.h"
 #include "gimbal.h"
+#include "gimbal_stepper.h"
 #include "gimbal_tracker.h"
 #include "gimbal_vision_adapter.h"
 #include "gimbal_vision_pitch_tracker.h"
@@ -67,6 +69,11 @@ int main(void)
     SYSCFG_DL_init();
 
     App_Init();
+#if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
+    GimbalStepper_Init();
+    GimbalStepper_SetStepHalfPeriodTicks(
+        BALANCE_STEPPER_TEST_HALF_PERIOD_TICKS);
+#endif
 #if FEATURE_BLUETOOTH_UART
     BluetoothUart_Init();
 #endif
@@ -193,6 +200,13 @@ void SysTick_Handler(void)
 #endif
 #if FEATURE_GIMBAL_MOTION_CONTROL
     Gimbal_Tick100us();
+#endif
+#if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
+    if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
+        GimbalStepper_StopHold();
+    } else {
+        GimbalStepper_Tick100us();
+    }
 #endif
     Servo_Tick100us();
     Ultrasonic_Tick100us();

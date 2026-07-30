@@ -8,6 +8,7 @@
 #include "emergency_stop.h"
 #include "fault.h"
 #include "gimbal.h"
+#include "gimbal_stepper.h"
 #include "gimbal_tracker.h"
 #include "gimbal_vision_pitch_tracker.h"
 #include "gimbal_vision_yaw_tracker.h"
@@ -120,8 +121,16 @@ static void menu_next_main_page(void)
         g_oledPage = OLED_PAGE_MOTOR_CONTROL;
     } else if (g_oledPage == OLED_PAGE_MOTOR_CONTROL) {
         g_oledPage = OLED_PAGE_MOTOR_CONTROL_DETAIL;
-#if FEATURE_BLUETOOTH_UART
+#if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
     } else if (g_oledPage == OLED_PAGE_MOTOR_CONTROL_DETAIL) {
+        g_oledPage = OLED_PAGE_BALANCE_STEPPER_TEST;
+#endif
+#if FEATURE_BLUETOOTH_UART
+#if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
+    } else if (g_oledPage == OLED_PAGE_BALANCE_STEPPER_TEST) {
+#else
+    } else if (g_oledPage == OLED_PAGE_MOTOR_CONTROL_DETAIL) {
+#endif
         g_oledPage = OLED_PAGE_BLUETOOTH;
 #endif
     } else {
@@ -134,8 +143,16 @@ static void menu_next_main_page(void)
         g_oledPage = OLED_PAGE_HEADING;
     } else if (g_oledPage == OLED_PAGE_HEADING) {
         g_oledPage = OLED_PAGE_DISTANCE;
-#if FEATURE_BLUETOOTH_UART
+#if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
     } else if (g_oledPage == OLED_PAGE_DISTANCE) {
+        g_oledPage = OLED_PAGE_BALANCE_STEPPER_TEST;
+#endif
+#if FEATURE_BLUETOOTH_UART
+#if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
+    } else if (g_oledPage == OLED_PAGE_BALANCE_STEPPER_TEST) {
+#else
+    } else if (g_oledPage == OLED_PAGE_DISTANCE) {
+#endif
         g_oledPage = OLED_PAGE_BLUETOOTH;
 #endif
     } else {
@@ -342,6 +359,38 @@ static void menu_adjust_param(int8_t direction, uint8_t fast)
 static void menu_handle_status_key(KeyEvent event)
 {
     CarState state = CarState_Get();
+
+#if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
+    if (g_oledPage == OLED_PAGE_BALANCE_STEPPER_TEST) {
+        switch (event) {
+            case KEY1_SHORT:
+                GimbalStepper_StopHold();
+                menu_next_main_page();
+                break;
+            case KEY1_LONG:
+                GimbalStepper_StopHold();
+                break;
+            case KEY2_SHORT:
+                GimbalStepper_SetStepHalfPeriodTicks(
+                    BALANCE_STEPPER_TEST_HALF_PERIOD_TICKS);
+                GimbalStepper_MoveRelativeSteps(
+                    BALANCE_STEPPER_TEST_DELTA_STEPS);
+                break;
+            case KEY3_SHORT:
+                GimbalStepper_SetStepHalfPeriodTicks(
+                    BALANCE_STEPPER_TEST_HALF_PERIOD_TICKS);
+                GimbalStepper_MoveRelativeSteps(
+                    -BALANCE_STEPPER_TEST_DELTA_STEPS);
+                break;
+            case KEY3_LONG:
+                GimbalStepper_Release();
+                break;
+            default:
+                break;
+        }
+        return;
+    }
+#endif
 
 #if FEATURE_GIMBAL_OLED_TEST
     if (menu_is_debug_page(g_oledPage) != 0U) {
@@ -628,6 +677,9 @@ void Menu_HandleKeyEvent(KeyEvent event)
 
     if (EmergencyStop_IsActive()) {
         if (event == KEY3_LONG) {
+#if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
+            GimbalStepper_Release();
+#endif
             (void)App_ResetToReady();
             g_oledPage = OLED_PAGE_STATUS;
         }
@@ -635,6 +687,9 @@ void Menu_HandleKeyEvent(KeyEvent event)
     }
 
     if (event == KEY2_LONG) {
+#if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
+        GimbalStepper_StopHold();
+#endif
         EmergencyStop_Trigger();
         g_oledPage = OLED_PAGE_STATUS;
         return;

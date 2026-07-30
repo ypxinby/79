@@ -1,8 +1,8 @@
 # FIXED
 
 empty.o: ../empty.c ../app.h ../app_features.h ../bluetooth_uart.h \
- ../encoder.h ../gimbal.h ../gimbal_tracker.h \
- ../gimbal_vision_adapter.h ../vision_protocol.h \
+ ../encoder.h ../emergency_stop.h ../gimbal.h ../gimbal_stepper.h \
+ ../gimbal_tracker.h ../gimbal_vision_adapter.h ../vision_protocol.h \
  ../gimbal_vision_pitch_tracker.h ../gimbal_vision_yaw_tracker.h \
  ../motor.h ../servo.h ../scheduler_monitor.h \
  ti_msp_dl_config.h \
@@ -86,7 +86,9 @@ empty.o: ../empty.c ../app.h ../app_features.h ../bluetooth_uart.h \
 ../app_features.h:
 ../bluetooth_uart.h:
 ../encoder.h:
+../emergency_stop.h:
 ../gimbal.h:
+../gimbal_stepper.h:
 ../gimbal_tracker.h:
 ../gimbal_vision_adapter.h:
 ../vision_protocol.h:

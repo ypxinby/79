@@ -219,11 +219,17 @@ void GimbalStepper_MoveToEstimatedSteps(int64_t target_estimated_steps)
     gimbal_stepper_start_to_estimated_steps(target_estimated_steps);
 }
 
+void GimbalStepper_MoveRelativeSteps(int32_t delta_steps)
+{
+    gimbal_stepper_start_to_estimated_steps(
+        g_stepperEstimatedSteps + (int64_t)delta_steps);
+}
+
 void GimbalStepper_MoveRelativeDeg(float delta_deg)
 {
     int32_t steps = gimbal_deg_to_steps(delta_deg);
 
-    gimbal_stepper_start_to_estimated_steps(g_stepperEstimatedSteps + steps);
+    GimbalStepper_MoveRelativeSteps(steps);
 }
 
 uint8_t GimbalStepper_ConfirmZero(void)

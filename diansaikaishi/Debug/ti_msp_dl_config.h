@@ -113,22 +113,6 @@ extern "C" {
 #define UART_VISION_BAUD_RATE                                           (115200)
 #define UART_VISION_IBRD_32_MHZ_115200_BAUD                                 (17)
 #define UART_VISION_FBRD_32_MHZ_115200_BAUD                                 (23)
-/* Defines for UART_BLUETOOTH */
-#define UART_BLUETOOTH_INST                                                UART1
-#define UART_BLUETOOTH_INST_FREQUENCY                                   32000000
-#define UART_BLUETOOTH_INST_IRQHandler                          UART1_IRQHandler
-#define UART_BLUETOOTH_INST_INT_IRQN                              UART1_INT_IRQn
-#define GPIO_UART_BLUETOOTH_RX_PORT                                        GPIOB
-#define GPIO_UART_BLUETOOTH_TX_PORT                                        GPIOB
-#define GPIO_UART_BLUETOOTH_RX_PIN                                 DL_GPIO_PIN_7
-#define GPIO_UART_BLUETOOTH_TX_PIN                                 DL_GPIO_PIN_6
-#define GPIO_UART_BLUETOOTH_IOMUX_RX                             (IOMUX_PINCM24)
-#define GPIO_UART_BLUETOOTH_IOMUX_TX                             (IOMUX_PINCM23)
-#define GPIO_UART_BLUETOOTH_IOMUX_RX_FUNC               IOMUX_PINCM24_PF_UART1_RX
-#define GPIO_UART_BLUETOOTH_IOMUX_TX_FUNC               IOMUX_PINCM23_PF_UART1_TX
-#define UART_BLUETOOTH_BAUD_RATE                                          (9600)
-#define UART_BLUETOOTH_IBRD_32_MHZ_9600_BAUD                               (208)
-#define UART_BLUETOOTH_FBRD_32_MHZ_9600_BAUD                                (21)
 
 
 
@@ -277,7 +261,6 @@ void SYSCFG_DL_GPIO_init(void);
 void SYSCFG_DL_SYSCTL_init(void);
 void SYSCFG_DL_PWM_MOTOR_init(void);
 void SYSCFG_DL_UART_VISION_init(void);
-void SYSCFG_DL_UART_BLUETOOTH_init(void);
 
 
 bool SYSCFG_DL_saveConfiguration(void);
