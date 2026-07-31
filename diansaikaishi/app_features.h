@@ -67,7 +67,8 @@
 /* Keep the last valid position through roughly 2-3 missing K230 frames.
  * Only after this grace period may the ball controller return toward ZERO. */
 #define BALANCE_VISION_STALE_TIMEOUT_MS              (150U)
-#define BALANCE_BALL_AXIS_SPAN_MM                     (300U)
+#define BALANCE_BALL_PHYSICAL_SPAN_MM                 (250U)
+#define BALANCE_BALL_PROTOCOL_POSITION_LIMIT_MM       (150U)
 #define BALANCE_BALL_MAX_REPORTED_SPEED_MM_S          (3000U)
 /* Static ball controller: K230 reports signed millimetres relative to O.
  * The outer PD generates a small encoder-count offset around horizontal and
@@ -78,12 +79,23 @@
 #define BALANCE_BALL_PD_VALID_FRAME_COUNT             (3U)
 #define BALANCE_BALL_PD_VISION_LOST_TIMEOUT_MS        (400U)
 #define BALANCE_BALL_PD_MAX_JUMP_MM                   (60U)
-#define BALANCE_BALL_PD_MAX_TARGET_ABS_MM             (500U)
-#define BALANCE_BALL_PD_KP_COUNTS_PER_MM_X100         (30)
-#define BALANCE_BALL_PD_KD_COUNTS_PER_MM_S_X100       (3)
+#define BALANCE_BALL_PD_MAX_TARGET_ABS_MM             \
+    (BALANCE_BALL_PHYSICAL_SPAN_MM / 2U)
+/* Measured mechanism mapping:
+ * LOW/HIGH are about +332/-355 count for roughly +/-10 degrees, so the
+ * pipe moves about 33-36 count/degree. Static breakaway needs about 5
+ * degrees, or approximately 166-178 count. A 30 mm error with Kp=6.00
+ * therefore requests about 180 count and can actually overcome stiction.
+ * MAX=200 allows about 5.6-6.0 degrees while retaining ample room inside
+ * the calibrated software limits. */
+#define BALANCE_BALL_PD_KP_COUNTS_PER_MM_X100         (600)
+#define BALANCE_BALL_PD_KD_COUNTS_PER_MM_S_X100       (10)
 #define BALANCE_BALL_PD_TILT_SIGN                     (1)
-#define BALANCE_BALL_PD_MAX_OFFSET_COUNTS             (64U)
-#define BALANCE_BALL_PD_TARGET_SLEW_COUNTS_PER_20MS   (4)
+#define BALANCE_BALL_PD_MAX_OFFSET_COUNTS             (200U)
+/* 5 count/20 ms = 250 count/s. The current 200 STEP/s actuator limit is
+ * about 256 encoder count/s at 4096 count / 3200 STEP, so increasing this
+ * further would mainly build position error rather than move faster. */
+#define BALANCE_BALL_PD_TARGET_SLEW_COUNTS_PER_20MS   (5)
 #define BALANCE_POSITION_TRACKING_DEADBAND_COUNTS      (2)
 #define BALANCE_POSITION_TRACKING_REENGAGE_COUNTS      (3)
 /* Do not multiplex the retired $VPT/$VYT ASCII tuning console onto the K230
@@ -235,10 +247,14 @@
 #endif
 
 #if FEATURE_BALANCE_VISION_MONITOR && \
-    ((BALANCE_BALL_AXIS_SPAN_MM == 0U) || \
-     (BALANCE_BALL_AXIS_SPAN_MM > 5000U) || \
+    ((BALANCE_BALL_PHYSICAL_SPAN_MM == 0U) || \
+     (BALANCE_BALL_PHYSICAL_SPAN_MM > 5000U) || \
+     (BALANCE_BALL_PROTOCOL_POSITION_LIMIT_MM == 0U) || \
+     (BALANCE_BALL_PROTOCOL_POSITION_LIMIT_MM > 5000U) || \
+     ((BALANCE_BALL_PHYSICAL_SPAN_MM / 2U) > \
+        BALANCE_BALL_PROTOCOL_POSITION_LIMIT_MM) || \
      (BALANCE_BALL_MAX_REPORTED_SPEED_MM_S == 0U))
-#error Balance ball ASCII protocol ranges are invalid
+#error Balance ball physical geometry or ASCII protocol ranges are invalid
 #endif
 
 #if FEATURE_BALANCE_BALL_PD_CONTROL && \

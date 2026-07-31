@@ -186,7 +186,13 @@ static void process_observation(uint32_t now_ms)
         reset_measurement_history();
     }
 
+    /* Only a new frame that contains a real K230 measurement may update
+     * position, velocity history, or the consecutive acquisition count.
+     * HOLD/prediction frames remain available in VisionReceiver for
+     * diagnostics, but the controller treats them as missing measurements
+     * and relies on the existing 150 ms hold window instead. */
     if ((ball->target_valid == 0U) ||
+        (ball->measured == 0U) ||
         ((now_ms - ball->local_receive_timestamp_ms) >
             BALANCE_VISION_STALE_TIMEOUT_MS)) {
         process_invalid_observation();

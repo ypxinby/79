@@ -42,7 +42,10 @@ typedef struct {
     uint16_t confidence;
     uint8_t enable_requested;
     uint8_t tracking_owned;
+    /* Latest processed observation was valid=1 and measured=1. */
     uint8_t raw_vision_valid;
+    /* Three-frame acquisition is complete and the last real sample is
+     * still inside the short hold window. */
     uint8_t measurement_valid;
     uint8_t valid_streak;
     BalanceBallControlState state;

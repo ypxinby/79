@@ -79,7 +79,7 @@ static void populate_legacy_observation(
     legacy->session_id = sessionId;
     legacy->sequence = packet->sequence;
     legacy->source_timestamp_ms = packet->source_timestamp_ms;
-    legacy->frame_width = BALANCE_BALL_AXIS_SPAN_MM;
+    legacy->frame_width = BALANCE_BALL_PHYSICAL_SPAN_MM;
     legacy->frame_height = 1U;
     legacy->target_center_x = (packet->target_valid != 0U) ?
         (uint16_t)packet->position_mm : 0xFFFFU;
@@ -101,8 +101,8 @@ static void accept_packet(const VisionBallAsciiPacket *packet,
     /* The center controller intentionally uses only the measured position.
      * Keep optional K230 prediction/velocity diagnostics from invalidating a
      * recoverable position frame. */
-    if (magnitude_i32(safePredictedPositionMm) * 2U >
-        BALANCE_BALL_AXIS_SPAN_MM) {
+    if (magnitude_i32(safePredictedPositionMm) >
+        BALANCE_BALL_PROTOCOL_POSITION_LIMIT_MM) {
         safePredictedPositionMm = packet->position_mm;
     }
     if (magnitude_i32(safeVelocityMmS) >
@@ -134,7 +134,7 @@ static void accept_packet(const VisionBallAsciiPacket *packet,
     g_ballPositionObservation.reported_velocity_mm_s =
         safeVelocityMmS;
     g_ballPositionObservation.axis_span_mm =
-        BALANCE_BALL_AXIS_SPAN_MM;
+        BALANCE_BALL_PHYSICAL_SPAN_MM;
     g_ballPositionObservation.confidence = packet->confidence;
     memcpy(g_ballPositionObservation.state, packet->state,
         sizeof(g_ballPositionObservation.state));
@@ -159,8 +159,8 @@ static void handle_packet(const VisionBallAsciiPacket *packet,
     int16_t sequenceDelta;
 
     if ((packet->target_valid != 0U) &&
-        (magnitude_i32(packet->position_mm) * 2U >
-            BALANCE_BALL_AXIS_SPAN_MM)) {
+        (magnitude_i32(packet->position_mm) >
+            BALANCE_BALL_PROTOCOL_POSITION_LIMIT_MM)) {
         count_parse_error(VISION_PROTOCOL_PARSE_FIELD_ERROR);
         return;
     }
