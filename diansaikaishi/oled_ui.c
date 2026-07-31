@@ -1495,6 +1495,8 @@ static const char *balance_ball_state_to_string(
             return "ZERO";
         case BALANCE_BALL_STATE_VISION_LOST:
             return "LOST";
+        case BALANCE_BALL_STATE_HOLD_LAST:
+            return "HOLD";
         case BALANCE_BALL_STATE_FAULT:
         default:
             return "FLT";

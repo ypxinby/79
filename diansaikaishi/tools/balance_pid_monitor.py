@@ -591,7 +591,11 @@ class Monitor:
         return message
 
     def _record_debug(self, message: str) -> None:
-        self.debug_lines.append(self._compact_debug(message))
+        compact = self._compact_debug(message)
+        wall_time = f"{datetime.now():%H:%M:%S.%f}"[:-3]
+        self.debug_lines.append(compact)
+        print(f"[{wall_time}] {compact}", flush=True)
+        print(f"           RAW {message}", flush=True)
         try:
             self.log_dir.mkdir(parents=True, exist_ok=True)
             with self.debug_log_path.open("a", encoding="utf-8") as handle:

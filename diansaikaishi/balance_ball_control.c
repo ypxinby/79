@@ -193,7 +193,7 @@ static void process_observation(uint32_t now_ms)
      * position, velocity history, or the consecutive acquisition count.
      * HOLD/prediction frames remain available in VisionReceiver for
      * diagnostics, but the controller treats them as missing measurements
-     * and relies on the existing 150 ms hold window instead. */
+     * and relies on the bounded last-command hold window instead. */
     if (ball->target_valid == 0U) {
         process_invalid_observation(
             BALANCE_BALL_OBSERVATION_TARGET_INVALID);
@@ -449,28 +449,55 @@ void BalanceBallControl_Update20ms(uint32_t now_ms,
         measurement_age_ms = now_ms -
             g_runtime.last_measurement_time_ms;
     }
-    if ((g_runtime.measurement_valid == 0U) ||
-        (measurement_age_ms > BALANCE_VISION_STALE_TIMEOUT_MS)) {
-        if (measurement_age_ms > BALANCE_VISION_STALE_TIMEOUT_MS) {
-            g_runtime.raw_vision_valid = 0U;
-            g_runtime.measurement_valid = 0U;
-            g_runtime.valid_streak = 0U;
-            g_runtime.velocity_mm_s = 0;
-            g_velocityInitialized = 0U;
-            g_lastPositionTimeMs = 0U;
-        }
-        if (measurement_age_ms >
-            BALANCE_BALL_PD_VISION_LOST_TIMEOUT_MS) {
-            if (g_runtime.state != BALANCE_BALL_STATE_VISION_LOST) {
-                g_runtime.vision_lost_count++;
-            }
-            g_runtime.state = BALANCE_BALL_STATE_VISION_LOST;
-        } else {
-            g_runtime.state = BALANCE_BALL_STATE_WAIT_VISION;
-        }
+    if (g_runtime.measurement_valid == 0U) {
+        g_runtime.state = (measurement_age_ms >
+            BALANCE_BALL_PD_VISION_LOST_TIMEOUT_MS) ?
+            BALANCE_BALL_STATE_VISION_LOST :
+            BALANCE_BALL_STATE_WAIT_VISION;
         if (g_runtime.tracking_owned != 0U) {
             return_toward_zero(&limits, 0U);
         }
+        return;
+    }
+
+    if (measurement_age_ms >
+        BALANCE_BALL_PD_VISION_LOST_TIMEOUT_MS) {
+        g_runtime.raw_vision_valid = 0U;
+        g_runtime.measurement_valid = 0U;
+        g_runtime.valid_streak = 0U;
+        g_runtime.velocity_mm_s = 0;
+        g_velocityInitialized = 0U;
+        g_lastPositionTimeMs = 0U;
+        if (g_runtime.state != BALANCE_BALL_STATE_VISION_LOST) {
+            g_runtime.vision_lost_count++;
+        }
+        g_runtime.state = BALANCE_BALL_STATE_VISION_LOST;
+        if (g_runtime.tracking_owned != 0U) {
+            return_toward_zero(&limits, 0U);
+        }
+        return;
+    }
+
+    if (measurement_age_ms > BALANCE_VISION_STALE_TIMEOUT_MS) {
+        /* Bounded sample-and-hold: a rejected or missing K230 frame must not
+         * erase the last real ball position.  Freeze the last computed PD
+         * request and keep advancing the slew-limited axis target.  This
+         * lets the stepper finish the intended tilt through short corrupt
+         * bursts, while the hard timeout above prevents indefinite motion
+         * on stale vision. */
+        if (ensure_tracking_started(&limits, &position) == 0U) {
+            g_runtime.state = BALANCE_BALL_STATE_WAIT_AXIS;
+            return;
+        }
+        if (command_offset(&limits,
+            g_runtime.pd_output_count) == 0U) {
+            BalancePositionControl_Cancel();
+            g_runtime.enable_requested = 0U;
+            g_runtime.tracking_owned = 0U;
+            g_runtime.state = BALANCE_BALL_STATE_FAULT;
+            return;
+        }
+        g_runtime.state = BALANCE_BALL_STATE_HOLD_LAST;
         return;
     }
 

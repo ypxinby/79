@@ -77,7 +77,10 @@
 #define FEATURE_BALANCE_BALL_PD_CONTROL               (1)
 #define FEATURE_BALANCE_SERIAL_TUNING                  (1)
 #define BALANCE_BALL_PD_VALID_FRAME_COUNT             (3U)
-#define BALANCE_BALL_PD_VISION_LOST_TIMEOUT_MS        (400U)
+/* A bad/NO_TARGET frame never overwrites the last real position.  Continue
+ * slewing toward the last valid PD target through short K230 dropouts; only
+ * after this hard timeout is the stale command abandoned and ZERO requested. */
+#define BALANCE_BALL_PD_VISION_LOST_TIMEOUT_MS        (800U)
 #define BALANCE_BALL_PD_MAX_JUMP_MM                   (60U)
 #define BALANCE_BALL_PD_MAX_TARGET_ABS_MM             \
     (BALANCE_BALL_PHYSICAL_SPAN_MM / 2U)

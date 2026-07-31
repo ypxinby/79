@@ -231,6 +231,7 @@ static const char *controller_state_text(BalanceBallControlState state)
         case BALANCE_BALL_STATE_RETURN_ZERO: return "ZERO";
         case BALANCE_BALL_STATE_VISION_LOST: return "LOST";
         case BALANCE_BALL_STATE_FAULT: return "FAULT";
+        case BALANCE_BALL_STATE_HOLD_LAST: return "HOLD";
         default: return "UNKNOWN";
     }
 }

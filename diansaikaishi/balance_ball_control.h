@@ -10,7 +10,8 @@ typedef enum {
     BALANCE_BALL_STATE_ACTIVE,
     BALANCE_BALL_STATE_RETURN_ZERO,
     BALANCE_BALL_STATE_VISION_LOST,
-    BALANCE_BALL_STATE_FAULT
+    BALANCE_BALL_STATE_FAULT,
+    BALANCE_BALL_STATE_HOLD_LAST
 } BalanceBallControlState;
 
 /* Latest reason why a newly received K230 observation was not admitted to
