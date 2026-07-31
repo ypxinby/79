@@ -74,9 +74,9 @@ class BalanceSerial:
         self.stop_event = threading.Event()
         self.thread: threading.Thread | None = None
         self.buffer = bytearray()
-        self.frames: deque[tuple[int, float, tuple[float, ...]]] = deque(
-            maxlen=30000
-        )
+        self.pending_frames: deque[
+            tuple[int, float, tuple[float, ...]]
+        ] = deque(maxlen=5000)
         self.messages: deque[str] = deque(maxlen=100)
         self.sequence = 0
         self.good = 0
@@ -183,7 +183,9 @@ class BalanceSerial:
             with self.data_lock:
                 self.sequence += 1
                 self.good += 1
-                self.frames.append((self.sequence, time.monotonic(), values))
+                self.pending_frames.append(
+                    (self.sequence, time.monotonic(), values)
+                )
 
     def _worker(self) -> None:
         while not self.stop_event.is_set():
@@ -228,9 +230,11 @@ class BalanceSerial:
             except (serial.SerialException, OSError) as exc:
                 return False, f"发送失败: {exc}"
 
-    def frames_after(self, sequence: int):
+    def take_frames(self):
         with self.data_lock:
-            return [frame for frame in self.frames if frame[0] > sequence]
+            frames = list(self.pending_frames)
+            self.pending_frames.clear()
+            return frames
 
     def snapshot(self):
         with self.data_lock:
@@ -248,6 +252,10 @@ class Monitor:
         self.times: deque[float] = deque(maxlen=30000)
         self.channels = [deque(maxlen=30000) for _ in range(FLOAT_COUNT)]
         self.last_message = ""
+        self.last_rate_time = time.monotonic()
+        self.last_rate_frames = 0
+        self.receive_fps = 0.0
+        self.last_autoscale_time = 0.0
         self.log_dir = Path(__file__).resolve().parent / "balance_logs"
 
         plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "DejaVu Sans"]
@@ -261,7 +269,10 @@ class Monitor:
         self.value_text = self.figure.text(0.76, 0.82, "等待数据", va="top", family="monospace")
         self.message_text = self.figure.text(0.76, 0.39, "", va="top", family="monospace")
         self.figure.canvas.mpl_connect("close_event", lambda _event: self.link.stop())
-        self.animation = FuncAnimation(self.figure, self._update, interval=50, cache_frame_data=False)
+        self.animation = FuncAnimation(
+            self.figure, self._update, interval=40,
+            blit=False, cache_frame_data=False,
+        )
 
     def _make_lines(self) -> None:
         ax_pos, ax_pd, ax_axis = self.axes
@@ -352,7 +363,7 @@ class Monitor:
             self.last_message = f"CFG解析失败: {message}"
 
     def _append_frames(self) -> None:
-        for sequence, timestamp, values in self.link.frames_after(self.last_sequence):
+        for sequence, timestamp, values in self.link.take_frames():
             self.last_sequence = sequence
             if self.origin is None:
                 self.origin = timestamp
@@ -381,12 +392,21 @@ class Monitor:
     def _update(self, _frame):
         self._append_frames()
         status, good, bad, rx_bytes, messages = self.link.snapshot()
+        now = time.monotonic()
+        rate_elapsed = now - self.last_rate_time
+        if rate_elapsed >= 0.5:
+            self.receive_fps = (good - self.last_rate_frames) / rate_elapsed
+            self.last_rate_frames = good
+            self.last_rate_time = now
         if messages:
             for message in messages:
                 if message.startswith("CFG,"):
                     self._load_cfg(message)
                 self.last_message = message
-        self.status_text.set_text(f"{status}\nframes={good} bad={bad} rx={rx_bytes}B")
+        self.status_text.set_text(
+            f"{status}\nFPS={self.receive_fps:5.1f} "
+            f"frames={good} bad={bad}\nRX={rx_bytes}B"
+        )
         self.message_text.set_text(f"最后消息\n{self.last_message}")
         if not self.times:
             return ()
@@ -399,9 +419,11 @@ class Monitor:
             (self.axis_target_line, c[7]),
         ):
             line.set_data(t, data)
-        for axis in self.axes:
-            axis.relim()
-            axis.autoscale_view()
+        if (now - self.last_autoscale_time) >= 0.25:
+            for axis in self.axes:
+                axis.relim()
+                axis.autoscale_view()
+            self.last_autoscale_time = now
         self.axes[-1].set_xlim(max(0.0, t[-1] - self.window), max(self.window, t[-1]))
         self.value_text.set_text(
             "当前值\n"
