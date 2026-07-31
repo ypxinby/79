@@ -187,11 +187,20 @@ static void process_observation(uint32_t now_ms)
     }
 
     if ((ball->target_valid == 0U) ||
-        (ball->confidence < BALANCE_BALL_PD_MIN_CONFIDENCE) ||
         ((now_ms - ball->local_receive_timestamp_ms) >
             BALANCE_VISION_STALE_TIMEOUT_MS)) {
         process_invalid_observation();
         return;
+    }
+
+    /* A LOST/WAIT recovery must establish a new position history. Never
+     * compare the newly found ball against a stale pre-loss coordinate. */
+    if ((g_runtime.measurement_valid == 0U) &&
+        ((g_runtime.state == BALANCE_BALL_STATE_VISION_LOST) ||
+         (g_runtime.state == BALANCE_BALL_STATE_WAIT_VISION))) {
+        g_velocityInitialized = 0U;
+        g_lastPositionTimeMs = 0U;
+        g_runtime.velocity_mm_s = 0;
     }
 
     if (g_velocityInitialized != 0U) {

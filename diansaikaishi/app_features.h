@@ -75,7 +75,6 @@
  * automatically; the BALL page K2 command is still required. */
 #define FEATURE_BALANCE_BALL_PD_CONTROL               (1)
 #define FEATURE_BALANCE_SERIAL_TUNING                  (1)
-#define BALANCE_BALL_PD_MIN_CONFIDENCE                (200U)
 #define BALANCE_BALL_PD_VALID_FRAME_COUNT             (3U)
 #define BALANCE_BALL_PD_VISION_LOST_TIMEOUT_MS        (400U)
 #define BALANCE_BALL_PD_MAX_JUMP_MM                   (60U)

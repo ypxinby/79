@@ -95,6 +95,21 @@ static void populate_legacy_observation(
 static void accept_packet(const VisionBallAsciiPacket *packet,
     uint32_t localTimeMs, uint8_t newSession)
 {
+    int16_t safePredictedPositionMm = packet->predicted_position_mm;
+    int16_t safeVelocityMmS = packet->velocity_mm_s;
+
+    /* The center controller intentionally uses only the measured position.
+     * Keep optional K230 prediction/velocity diagnostics from invalidating a
+     * recoverable position frame. */
+    if (magnitude_i32(safePredictedPositionMm) * 2U >
+        BALANCE_BALL_AXIS_SPAN_MM) {
+        safePredictedPositionMm = packet->position_mm;
+    }
+    if (magnitude_i32(safeVelocityMmS) >
+        BALANCE_BALL_MAX_REPORTED_SPEED_MM_S) {
+        safeVelocityMmS = 0;
+    }
+
     g_status.session_id = g_localSessionId;
     g_status.last_sequence = packet->sequence;
     g_status.session_initialized = 1U;
@@ -115,9 +130,9 @@ static void accept_packet(const VisionBallAsciiPacket *packet,
     g_ballPositionObservation.position_mm =
         (packet->target_valid != 0U) ? packet->position_mm : 0;
     g_ballPositionObservation.predicted_position_mm =
-        packet->predicted_position_mm;
+        safePredictedPositionMm;
     g_ballPositionObservation.reported_velocity_mm_s =
-        packet->velocity_mm_s;
+        safeVelocityMmS;
     g_ballPositionObservation.axis_span_mm =
         BALANCE_BALL_AXIS_SPAN_MM;
     g_ballPositionObservation.confidence = packet->confidence;
@@ -144,12 +159,8 @@ static void handle_packet(const VisionBallAsciiPacket *packet,
     int16_t sequenceDelta;
 
     if ((packet->target_valid != 0U) &&
-        ((magnitude_i32(packet->position_mm) * 2U >
-            BALANCE_BALL_AXIS_SPAN_MM) ||
-         (magnitude_i32(packet->predicted_position_mm) * 2U >
-            BALANCE_BALL_AXIS_SPAN_MM) ||
-         (magnitude_i32(packet->velocity_mm_s) >
-            BALANCE_BALL_MAX_REPORTED_SPEED_MM_S))) {
+        (magnitude_i32(packet->position_mm) * 2U >
+            BALANCE_BALL_AXIS_SPAN_MM)) {
         count_parse_error(VISION_PROTOCOL_PARSE_FIELD_ERROR);
         return;
     }
