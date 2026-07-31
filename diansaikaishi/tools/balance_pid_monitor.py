@@ -63,6 +63,15 @@ CHANNEL_NAMES = (
     "controller_state",
 )
 
+PARAMETER_STEPS = {
+    "KP": 0.05,
+    "KD": 0.01,
+    "MAX": 8.0,
+    "SLEW": 1.0,
+    "DB": 1.0,
+    "RG": 1.0,
+}
+
 
 class BalanceSerial:
     def __init__(self, port: str, baud: int) -> None:
@@ -257,6 +266,9 @@ class Monitor:
         self.receive_fps = 0.0
         self.last_autoscale_time = 0.0
         self.log_dir = Path(__file__).resolve().parent / "balance_logs"
+        self.pending_parameter_save = False
+        self.last_config: dict[str, str] = {}
+        self.active_parameter = "KP"
 
         plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "DejaVu Sans"]
         plt.rcParams["axes.unicode_minus"] = False
@@ -268,7 +280,14 @@ class Monitor:
         self.status_text = self.figure.text(0.76, 0.93, "等待串口", va="top", family="monospace")
         self.value_text = self.figure.text(0.76, 0.82, "等待数据", va="top", family="monospace")
         self.message_text = self.figure.text(0.76, 0.39, "", va="top", family="monospace")
+        self.shortcut_text = self.figure.text(
+            0.76, 0.32,
+            "参数框：↑/↓微调，Shift+↑/↓快调\n修改后仍需点击应用按钮",
+            va="top", fontsize=9,
+        )
         self.figure.canvas.mpl_connect("close_event", lambda _event: self.link.stop())
+        self.figure.canvas.mpl_connect("button_press_event", self._select_parameter)
+        self.figure.canvas.mpl_connect("key_press_event", self._adjust_parameter_by_key)
         self.animation = FuncAnimation(
             self.figure, self._update, interval=40,
             blit=False, cache_frame_data=False,
@@ -324,6 +343,7 @@ class Monitor:
             Button(self.figure.add_axes([0.91, 0.16, 0.065, 0.045]), "GET"),
             Button(self.figure.add_axes([0.76, 0.10, 0.08, 0.045]), "默认"),
             Button(self.figure.add_axes([0.85, 0.10, 0.08, 0.045]), "CSV"),
+            Button(self.figure.add_axes([0.94, 0.10, 0.05, 0.045]), "PARAM"),
         ]
         self.buttons[0].on_clicked(self._apply_pd)
         self.buttons[1].on_clicked(self._apply_axis)
@@ -332,6 +352,74 @@ class Monitor:
         self.buttons[4].on_clicked(lambda _e: self._send("GET"))
         self.buttons[5].on_clicked(lambda _e: self._send("DEF"))
         self.buttons[6].on_clicked(lambda _e: self.save_csv())
+        self.buttons[7].on_clicked(self._request_parameter_save)
+
+    def _select_parameter(self, event) -> None:
+        for name, box in self.boxes.items():
+            if event.inaxes is box.ax:
+                self.active_parameter = name
+                return
+
+    def _parameter_int(self, name: str, fallback: int) -> int:
+        try:
+            return int(float(self.boxes[name].text.strip()))
+        except (ValueError, KeyError):
+            return fallback
+
+    def _adjust_parameter_by_key(self, event) -> None:
+        key = (event.key or "").lower()
+        direction = 0
+        multiplier = 1.0
+
+        if key in ("up", "shift+up"):
+            direction = 1
+        elif key in ("down", "shift+down"):
+            direction = -1
+        else:
+            return
+        if key.startswith("shift+"):
+            multiplier = 5.0
+
+        name = self.active_parameter
+        box = self.boxes.get(name)
+        if box is None:
+            return
+        if name == "DIR":
+            box.set_val("1" if direction > 0 else "-1")
+            self.last_message = f"DIR={box.text}，尚未应用"
+            return
+        try:
+            current = float(box.text.strip())
+        except ValueError:
+            self.last_message = f"{name}不是有效数值"
+            return
+
+        value = current + direction * PARAMETER_STEPS[name] * multiplier
+        if name == "KP":
+            value = min(10.0, max(0.0, value))
+            text = f"{value:.2f}"
+        elif name == "KD":
+            value = min(1.0, max(0.0, value))
+            text = f"{value:.2f}"
+        elif name == "MAX":
+            minimum = max(8, self._parameter_int("RG", 3))
+            value = min(1024, max(minimum, round(value)))
+            text = str(int(value))
+        elif name == "SLEW":
+            value = min(128, max(1, round(value)))
+            text = str(int(value))
+        elif name == "DB":
+            maximum = max(0, min(32, self._parameter_int("RG", 3) - 1))
+            value = min(maximum, max(0, round(value)))
+            text = str(int(value))
+        else:  # RG
+            minimum = max(1, self._parameter_int("DB", 2) + 1)
+            maximum = max(minimum,
+                min(64, self._parameter_int("MAX", 128)))
+            value = min(maximum, max(minimum, round(value)))
+            text = str(int(value))
+        box.set_val(text)
+        self.last_message = f"{name}={text}，尚未应用"
 
     def _send(self, command: str) -> None:
         _ok, self.last_message = self.link.send(command)
@@ -352,6 +440,7 @@ class Monitor:
     def _load_cfg(self, message: str) -> None:
         try:
             values = dict(item.split("=", 1) for item in message.split(",")[1:])
+            self.last_config = values
             if "KP" in values:
                 self.boxes["KP"].set_val(f"{int(values['KP']) / 100:.2f}")
             if "KD" in values:
@@ -359,8 +448,49 @@ class Monitor:
             for name in ("DIR", "MAX", "SLEW", "DB", "RG"):
                 if name in values:
                     self.boxes[name].set_val(values[name])
+            if self.pending_parameter_save:
+                self.pending_parameter_save = False
+                self._write_parameter_snapshot(values)
         except (ValueError, KeyError):
             self.last_message = f"CFG解析失败: {message}"
+
+    def _request_parameter_save(self, _event) -> None:
+        self.pending_parameter_save = True
+        ok, self.last_message = self.link.send("GET")
+        if not ok:
+            self.pending_parameter_save = False
+
+    def _write_parameter_snapshot(self, values: dict[str, str]) -> None:
+        required = ("KP", "KD", "DIR", "MAX", "SLEW", "DB", "RG")
+        if any(name not in values for name in required):
+            self.last_message = "PARAM CFG incomplete"
+            return
+        path = self.log_dir / f"balance_params_{datetime.now():%Y%m%d_%H%M%S}.txt"
+        lines = [
+            "# Runtime commands",
+            f"KP={int(values['KP']) / 100:.2f}",
+            f"KD={int(values['KD']) / 100:.2f}",
+            f"DIR={values['DIR']}",
+            f"MAX={values['MAX']}",
+            f"SLEW={values['SLEW']}",
+            f"DB={values['DB']}",
+            f"RG={values['RG']}",
+            "",
+            "# app_features.h defaults",
+            f"BALANCE_BALL_PD_KP_COUNTS_PER_MM_X100={values['KP']}",
+            f"BALANCE_BALL_PD_KD_COUNTS_PER_MM_S_X100={values['KD']}",
+            f"BALANCE_BALL_PD_TILT_SIGN={values['DIR']}",
+            f"BALANCE_BALL_PD_MAX_OFFSET_COUNTS={values['MAX']}",
+            f"BALANCE_BALL_PD_TARGET_SLEW_COUNTS_PER_20MS={values['SLEW']}",
+            f"BALANCE_POSITION_TRACKING_DEADBAND_COUNTS={values['DB']}",
+            f"BALANCE_POSITION_TRACKING_REENGAGE_COUNTS={values['RG']}",
+        ]
+        try:
+            self.log_dir.mkdir(parents=True, exist_ok=True)
+            path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            self.last_message = f"PARAM {path.name}"
+        except OSError as exc:
+            self.last_message = f"PARAM save failed: {exc}"
 
     def _append_frames(self) -> None:
         for sequence, timestamp, values in self.link.take_frames():

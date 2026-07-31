@@ -1196,12 +1196,12 @@ static void print_balance_stepper_test_page(void)
 
     OLED_SetCursor(6, 0);
     if (limits.test_stage == BALANCE_SOFT_LIMIT_TEST_DONE) {
-        OLED_PrintString("TEST:OK K1L=OSC");
+        OLED_PrintString("TEST:OK K1L=ZERO");
     } else if (limits.test_stage == BALANCE_SOFT_LIMIT_TEST_ERROR) {
         OLED_PrintString("TERR:");
         OLED_PrintString(balance_test_error_to_string(
             limits.test_error));
-        OLED_PrintString(" K1L=OSC");
+        OLED_PrintString(" K1L=ZERO");
     } else if ((limits.oscillation_stage ==
             BALANCE_OSCILLATION_STAGE_ERROR) &&
         (limits.oscillation_error !=
@@ -1209,9 +1209,9 @@ static void print_balance_stepper_test_page(void)
         OLED_PrintString("OERR:");
         OLED_PrintString(balance_test_error_to_string(
             limits.oscillation_error));
-        OLED_PrintString(" K1L=GO");
+        OLED_PrintString(" K1L=ZERO");
     } else {
-        OLED_PrintString("K1L=OSC K3L=CAL");
+        OLED_PrintString("K1L=ZERO K3L=CAL");
     }
 #else
     OLED_SetCursor(0, 0);

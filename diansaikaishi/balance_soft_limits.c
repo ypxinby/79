@@ -531,17 +531,18 @@ uint8_t BalanceSoftLimits_StartRelativePositionMoveSteps(
     int64_t scaled_delta;
     int32_t delta_count;
     int32_t target_count;
-    int32_t safe_minimum;
-    int32_t safe_maximum;
+    BalancePositionRuntime position;
 
+    BalancePositionControl_GetSnapshot(&position);
     if ((g_runtime.zero_valid == 0U) ||
         (g_runtime.limits_valid == 0U) ||
         (g_runtime.calibration_active != 0U) ||
         (g_runtime.test_active != 0U) ||
         (g_runtime.oscillation_active != 0U) ||
         (g_runtime.recalibration_armed != 0U) ||
-        (BalancePositionControl_HasFault() != 0U) ||
-        (BalancePositionControl_IsBusy() != 0U)) {
+        (position.fault != BALANCE_POSITION_FAULT_NONE) ||
+        (position.busy != 0U) ||
+        (position.tracking_enabled != 0U)) {
         return 0U;
     }
 
@@ -556,14 +557,41 @@ uint8_t BalanceSoftLimits_StartRelativePositionMoveSteps(
         BALANCE_STEPPER_COMMAND_STEPS_PER_REV);
     current_count = logical_position_from_raw(
         BalanceEncoder_GetCountAtomic());
+    target_count = clamp_i64_to_i32(
+        (int64_t)current_count + delta_count);
+    return BalanceSoftLimits_StartPositionMoveToLogicalCount(
+        target_count);
+}
+
+uint8_t BalanceSoftLimits_StartPositionMoveToLogicalCount(
+    int32_t target_count)
+{
+    int32_t current_count;
+    int32_t safe_minimum;
+    int32_t safe_maximum;
+    BalancePositionRuntime position;
+
+    BalancePositionControl_GetSnapshot(&position);
+    if ((g_runtime.zero_valid == 0U) ||
+        (g_runtime.limits_valid == 0U) ||
+        (g_runtime.calibration_active != 0U) ||
+        (g_runtime.test_active != 0U) ||
+        (g_runtime.oscillation_active != 0U) ||
+        (g_runtime.recalibration_armed != 0U) ||
+        (position.fault != BALANCE_POSITION_FAULT_NONE) ||
+        (position.busy != 0U) ||
+        (position.tracking_enabled != 0U)) {
+        return 0U;
+    }
+
+    current_count = logical_position_from_raw(
+        BalanceEncoder_GetCountAtomic());
     safe_minimum = clamp_i64_to_i32(
         (int64_t)g_runtime.minimum_logical_count +
             BALANCE_POSITION_LIMIT_MARGIN_COUNTS);
     safe_maximum = clamp_i64_to_i32(
         (int64_t)g_runtime.maximum_logical_count -
             BALANCE_POSITION_LIMIT_MARGIN_COUNTS);
-    target_count = clamp_i64_to_i32(
-        (int64_t)current_count + delta_count);
     if (target_count < safe_minimum) {
         target_count = safe_minimum;
     }

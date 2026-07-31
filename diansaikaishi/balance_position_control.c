@@ -16,6 +16,9 @@ static int64_t g_lastStepCount;
 static uint32_t g_startSoftLimitClampCount;
 static uint16_t g_trackingDeadbandCount;
 static uint16_t g_trackingReengageCount;
+/* Signed numerator remainder for count -> STEP conversion.  Its denominator
+ * is BALANCE_ENCODER_COUNTS_PER_REV. */
+static int32_t g_stepConversionResidualNumerator;
 
 static uint16_t active_deadband_count(void)
 {
@@ -56,22 +59,32 @@ static uint64_t magnitude_i64(int64_t value)
     return (uint64_t)(-(value + 1)) + 1U;
 }
 
+static void reset_step_conversion_residual(void)
+{
+    g_stepConversionResidualNumerator = 0;
+    g_runtime.step_conversion_residual_numerator = 0;
+}
+
 static int32_t count_error_to_steps(int32_t error_count)
 {
     int64_t scaled = (int64_t)error_count *
-        BALANCE_STEPPER_COMMAND_STEPS_PER_REV;
+        BALANCE_STEPPER_COMMAND_STEPS_PER_REV +
+        g_stepConversionResidualNumerator;
     int32_t steps;
 
-    if (scaled > 0) {
-        scaled += BALANCE_ENCODER_COUNTS_PER_REV / 2;
-    } else if (scaled < 0) {
-        scaled -= BALANCE_ENCODER_COUNTS_PER_REV / 2;
+    if ((scaled / BALANCE_ENCODER_COUNTS_PER_REV) > INT32_MAX) {
+        reset_step_conversion_residual();
+        return INT32_MAX;
     }
-    steps = clamp_i64_to_i32(scaled /
-        BALANCE_ENCODER_COUNTS_PER_REV);
-    if ((steps == 0) && (error_count != 0)) {
-        steps = (error_count > 0) ? 1 : -1;
+    if ((scaled / BALANCE_ENCODER_COUNTS_PER_REV) < INT32_MIN) {
+        reset_step_conversion_residual();
+        return INT32_MIN;
     }
+    steps = (int32_t)(scaled / BALANCE_ENCODER_COUNTS_PER_REV);
+    g_stepConversionResidualNumerator = (int32_t)(scaled -
+        (int64_t)steps * BALANCE_ENCODER_COUNTS_PER_REV);
+    g_runtime.step_conversion_residual_numerator =
+        g_stepConversionResidualNumerator;
     return steps;
 }
 
@@ -158,6 +171,7 @@ static void reset_motion_observers(int32_t current_count,
 static void latch_fault(BalancePositionFault fault)
 {
     GimbalStepper_StopHold();
+    reset_step_conversion_residual();
     g_runtime.commanded_step_rate_hz = 0U;
     g_runtime.step_half_period_ticks = 0U;
     g_runtime.busy = 0U;
@@ -178,6 +192,7 @@ void BalancePositionControl_Init(void)
     g_moveStartStepCount = 0;
     g_lastStepCount = 0;
     g_startSoftLimitClampCount = 0U;
+    reset_step_conversion_residual();
     g_trackingDeadbandCount =
         BALANCE_POSITION_TRACKING_DEADBAND_COUNTS;
     g_trackingReengageCount =
@@ -204,6 +219,7 @@ uint8_t BalancePositionControl_Start(int32_t target_count,
     }
 
     GimbalStepper_StopHold();
+    reset_step_conversion_residual();
     g_runtime.target_count = target_count;
     g_runtime.current_count = current_count;
     g_runtime.position_error_count = clamp_i64_to_i32(
@@ -413,6 +429,7 @@ void BalancePositionControl_Update20ms(int32_t current_count,
 void BalancePositionControl_Cancel(void)
 {
     GimbalStepper_StopHold();
+    reset_step_conversion_residual();
     g_runtime.commanded_step_rate_hz = 0U;
     g_runtime.step_half_period_ticks = 0U;
     g_runtime.busy = 0U;

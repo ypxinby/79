@@ -44,6 +44,8 @@ static uint8_t config_is_valid(
         (config->kd_x100 >= 0) && (config->kd_x100 <= 100) &&
         (config->maximum_offset_count >= 8) &&
         (config->maximum_offset_count <= 1024) &&
+        (config->maximum_offset_count >=
+            config->tracking_reengage_count) &&
         (config->target_slew_count_per_20ms >= 1) &&
         (config->target_slew_count_per_20ms <= 128) &&
         (config->tracking_deadband_count <= 32U) &&
@@ -121,16 +123,11 @@ static int32_t maximum_offset_count(
         negative_room : positive_room;
     uint32_t safe_room = (room > BALANCE_POSITION_LIMIT_MARGIN_COUNTS) ?
         (room - BALANCE_POSITION_LIMIT_MARGIN_COUNTS) : 0U;
-    uint32_t offset = (room *
-        BALANCE_BALL_PD_MAX_OFFSET_PERCENT) / 100U;
+    uint32_t offset = (uint32_t)g_config.maximum_offset_count;
 
-    if (offset > (uint32_t)g_config.maximum_offset_count) {
-        offset = (uint32_t)g_config.maximum_offset_count;
-    }
-    if ((offset < g_config.tracking_reengage_count) &&
-        (safe_room >= g_config.tracking_reengage_count)) {
-        offset = g_config.tracking_reengage_count;
-    }
+    /* MAX is the operator-visible control-authority limit.  The calibrated
+     * software limits and their safety margin remain the final hard clamp;
+     * there is no additional hidden percentage cap. */
     if (offset > safe_room) {
         offset = safe_room;
     }

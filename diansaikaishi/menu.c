@@ -438,7 +438,15 @@ static void menu_handle_status_key(KeyEvent event)
                     if (GimbalStepper_GetFeedback()->running != 0U) {
                         GimbalStepper_StopHold();
                     } else {
-                        (void)BalanceSoftLimits_CaptureCurrentStage();
+                        uint8_t calibration_complete =
+                            (limits.calibration_stage ==
+                                BALANCE_SOFT_LIMIT_CAL_COMPLETE) ? 1U : 0U;
+
+                        if ((BalanceSoftLimits_CaptureCurrentStage() != 0U) &&
+                            (calibration_complete != 0U)) {
+                            (void)
+                                BalanceSoftLimits_StartPositionMoveToLogicalCount(0);
+                        }
                     }
                     break;
                 case KEY2_SHORT:
@@ -500,7 +508,9 @@ static void menu_handle_status_key(KeyEvent event)
                     if (limits.zero_confirmation_required != 0U) {
                         (void)BalanceSoftLimits_BeginAtCurrentAsZero();
                     } else {
-                        (void)BalanceSoftLimits_StartOscillationTest();
+                        BalanceBallControl_ForceStop();
+                        (void)
+                            BalanceSoftLimits_StartPositionMoveToLogicalCount(0);
                     }
 #else
                     (void)GimbalStepper_ConfirmZero();
@@ -767,6 +777,16 @@ static void menu_handle_status_key(KeyEvent event)
         case KEY2_SHORT:
             switch (state) {
                 case CAR_STATE_READY:
+#if FEATURE_BALANCE_BALL_PD_CONTROL
+                    if (MissionManager_GetSelectedMissionId() ==
+                        MISSION_ID_TEST_BALL_CENTER) {
+                        CarController_Stop();
+                        if (BalanceBallControl_Enable(0) != 0U) {
+                            g_oledPage = OLED_PAGE_BALANCE_VISION;
+                        }
+                        break;
+                    }
+#endif
                     (void)MissionManager_Start();
                     break;
                 case CAR_STATE_RUNNING:

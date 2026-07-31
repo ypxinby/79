@@ -25,6 +25,7 @@ typedef struct {
     int32_t current_count;
     int32_t position_error_count;
     int32_t following_error_count;
+    int32_t step_conversion_residual_numerator;
     int32_t minimum_count;
     int32_t maximum_count;
     uint32_t elapsed_ms;

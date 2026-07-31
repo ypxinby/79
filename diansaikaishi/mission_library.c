@@ -68,6 +68,12 @@ static const MotionAction g_missionCompetitionMain[] = {
     ACTION_STOP()
 };
 
+/* UI-visible selector for the standalone center-balance test.  menu.c owns
+ * its K2 start path so this placeholder can never start chassis motion. */
+static const MotionAction g_missionTestBallCenter[] = {
+    ACTION_STOP()
+};
+
 /*
  * Mission registry.
  *
@@ -103,6 +109,13 @@ static const MissionDefinition g_missionRegistry[] = {
         .name = "RACE-1",
         .actions = g_missionCompetitionMain,
         .action_count = ARRAY_SIZE(g_missionCompetitionMain),
+        .control_profile_id = 0U
+    },
+    {
+        .mission_id = MISSION_ID_TEST_BALL_CENTER,
+        .name = "BALL-CENTER",
+        .actions = g_missionTestBallCenter,
+        .action_count = ARRAY_SIZE(g_missionTestBallCenter),
         .control_profile_id = 0U
     }
 #else

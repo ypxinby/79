@@ -100,6 +100,8 @@ void BalanceSoftLimits_CancelOscillationTest(void);
 uint8_t BalanceSoftLimits_IsOscillationTestActive(void);
 uint8_t BalanceSoftLimits_StartRelativePositionMoveSteps(
     int32_t delta_steps);
+uint8_t BalanceSoftLimits_StartPositionMoveToLogicalCount(
+    int32_t target_count);
 void BalanceSoftLimits_CancelPositionMove(void);
 uint8_t BalanceSoftLimits_IsPositionMoveActive(void);
 uint8_t BalanceSoftLimits_ResetPositionFault(void);

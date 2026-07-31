@@ -22,6 +22,7 @@
 #define MISSION_ID_TEST_STOP_ONLY       (9U)
 /* P6.3 development-only IDs live above the competition-map range. */
 #define MISSION_ID_TEST_DISTANCE_20     (100U)
+#define MISSION_ID_TEST_BALL_CENTER     (101U)
 
 /* 10~99: competition missions. */
 #define MISSION_ID_COMPETITION_MAIN     (10U)
