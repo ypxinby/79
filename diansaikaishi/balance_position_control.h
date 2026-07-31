@@ -35,6 +35,8 @@ typedef struct {
     uint32_t steps_without_feedback;
     uint16_t commanded_step_rate_hz;
     uint16_t step_half_period_ticks;
+    uint16_t active_deadband_count;
+    uint16_t active_reengage_count;
     uint8_t busy;
     uint8_t hold_enabled;
     uint8_t target_reached;
@@ -51,6 +53,8 @@ uint8_t BalancePositionControl_StartTracking(int32_t target_count,
     int32_t current_count, int32_t minimum_count, int32_t maximum_count,
     uint32_t soft_limit_clamp_count);
 uint8_t BalancePositionControl_SetTrackingTarget(int32_t target_count);
+uint8_t BalancePositionControl_SetTrackingThresholds(
+    uint16_t deadband_count, uint16_t reengage_count);
 void BalancePositionControl_Update20ms(int32_t current_count,
     uint32_t elapsed_ms, uint32_t soft_limit_clamp_count);
 void BalancePositionControl_Cancel(void);

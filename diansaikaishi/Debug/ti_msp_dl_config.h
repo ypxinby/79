@@ -113,6 +113,22 @@ extern "C" {
 #define UART_VISION_BAUD_RATE                                           (115200)
 #define UART_VISION_IBRD_32_MHZ_115200_BAUD                                 (17)
 #define UART_VISION_FBRD_32_MHZ_115200_BAUD                                 (23)
+/* Defines for UART_BALANCE_TUNING */
+#define UART_BALANCE_TUNING_INST                                           UART2
+#define UART_BALANCE_TUNING_INST_FREQUENCY                                32000000
+#define UART_BALANCE_TUNING_INST_IRQHandler                        UART2_IRQHandler
+#define UART_BALANCE_TUNING_INST_INT_IRQN                          UART2_INT_IRQn
+#define GPIO_UART_BALANCE_TUNING_RX_PORT                                   GPIOA
+#define GPIO_UART_BALANCE_TUNING_TX_PORT                                   GPIOA
+#define GPIO_UART_BALANCE_TUNING_RX_PIN                           DL_GPIO_PIN_22
+#define GPIO_UART_BALANCE_TUNING_TX_PIN                           DL_GPIO_PIN_21
+#define GPIO_UART_BALANCE_TUNING_IOMUX_RX                         (IOMUX_PINCM47)
+#define GPIO_UART_BALANCE_TUNING_IOMUX_TX                         (IOMUX_PINCM46)
+#define GPIO_UART_BALANCE_TUNING_IOMUX_RX_FUNC               IOMUX_PINCM47_PF_UART2_RX
+#define GPIO_UART_BALANCE_TUNING_IOMUX_TX_FUNC               IOMUX_PINCM46_PF_UART2_TX
+#define UART_BALANCE_TUNING_BAUD_RATE                                   (115200)
+#define UART_BALANCE_TUNING_IBRD_32_MHZ_115200_BAUD                         (17)
+#define UART_BALANCE_TUNING_FBRD_32_MHZ_115200_BAUD                         (23)
 
 
 
@@ -275,6 +291,7 @@ void SYSCFG_DL_GPIO_init(void);
 void SYSCFG_DL_SYSCTL_init(void);
 void SYSCFG_DL_PWM_MOTOR_init(void);
 void SYSCFG_DL_UART_VISION_init(void);
+void SYSCFG_DL_UART_BALANCE_TUNING_init(void);
 
 
 bool SYSCFG_DL_saveConfiguration(void);

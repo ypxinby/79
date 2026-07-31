@@ -17,6 +17,7 @@ C_SRCS += \
 ../balance_encoder.c \
 ../balance_position_control.c \
 ../balance_soft_limits.c \
+../balance_tuning.c \
 ../bluetooth_uart.c \
 ../car_controller.c \
 ../car_state.c \
@@ -81,6 +82,7 @@ C_DEPS += \
 ./balance_encoder.d \
 ./balance_position_control.d \
 ./balance_soft_limits.d \
+./balance_tuning.d \
 ./bluetooth_uart.d \
 ./car_controller.d \
 ./car_state.d \
@@ -140,6 +142,7 @@ OBJS += \
 ./balance_encoder.o \
 ./balance_position_control.o \
 ./balance_soft_limits.o \
+./balance_tuning.o \
 ./bluetooth_uart.o \
 ./car_controller.o \
 ./car_state.o \
@@ -201,6 +204,7 @@ OBJS__QUOTED += \
 "balance_encoder.o" \
 "balance_position_control.o" \
 "balance_soft_limits.o" \
+"balance_tuning.o" \
 "bluetooth_uart.o" \
 "car_controller.o" \
 "car_state.o" \
@@ -262,6 +266,7 @@ C_DEPS__QUOTED += \
 "balance_encoder.d" \
 "balance_position_control.d" \
 "balance_soft_limits.d" \
+"balance_tuning.d" \
 "bluetooth_uart.d" \
 "car_controller.d" \
 "car_state.d" \
@@ -323,6 +328,7 @@ C_SRCS__QUOTED += \
 "../balance_encoder.c" \
 "../balance_position_control.c" \
 "../balance_soft_limits.c" \
+"../balance_tuning.c" \
 "../bluetooth_uart.c" \
 "../car_controller.c" \
 "../car_state.c" \

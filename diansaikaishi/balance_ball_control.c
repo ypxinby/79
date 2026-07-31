@@ -12,11 +12,47 @@
 #if FEATURE_BALANCE_BALL_PD_CONTROL
 
 static BalanceBallControlRuntime g_runtime;
+static BalanceBallControlConfig g_config;
 static uint32_t g_lastObservationUpdateCount;
 static uint32_t g_lastSessionId;
 static int16_t g_lastPositionMm;
 static uint32_t g_lastPositionTimeMs;
 static uint8_t g_velocityInitialized;
+
+static void load_default_config(void)
+{
+    g_config.kp_x100 =
+        BALANCE_BALL_PD_KP_COUNTS_PER_MM_X100;
+    g_config.kd_x100 =
+        BALANCE_BALL_PD_KD_COUNTS_PER_MM_S_X100;
+    g_config.maximum_offset_count =
+        BALANCE_BALL_PD_MAX_OFFSET_COUNTS;
+    g_config.target_slew_count_per_20ms =
+        BALANCE_BALL_PD_TARGET_SLEW_COUNTS_PER_20MS;
+    g_config.tracking_deadband_count =
+        BALANCE_POSITION_TRACKING_DEADBAND_COUNTS;
+    g_config.tracking_reengage_count =
+        BALANCE_POSITION_TRACKING_REENGAGE_COUNTS;
+    g_config.tilt_sign = BALANCE_BALL_PD_TILT_SIGN;
+}
+
+static uint8_t config_is_valid(
+    const BalanceBallControlConfig *config)
+{
+    return ((config != (const BalanceBallControlConfig *)0) &&
+        (config->kp_x100 >= 0) && (config->kp_x100 <= 1000) &&
+        (config->kd_x100 >= 0) && (config->kd_x100 <= 100) &&
+        (config->maximum_offset_count >= 8) &&
+        (config->maximum_offset_count <= 1024) &&
+        (config->target_slew_count_per_20ms >= 1) &&
+        (config->target_slew_count_per_20ms <= 128) &&
+        (config->tracking_deadband_count <= 32U) &&
+        (config->tracking_reengage_count >
+            config->tracking_deadband_count) &&
+        (config->tracking_reengage_count <= 64U) &&
+        ((config->tilt_sign == 1) ||
+            (config->tilt_sign == -1))) ? 1U : 0U;
+}
 
 static int32_t clamp_i64_to_i32(int64_t value)
 {
@@ -88,12 +124,12 @@ static int32_t maximum_offset_count(
     uint32_t offset = (room *
         BALANCE_BALL_PD_MAX_OFFSET_PERCENT) / 100U;
 
-    if (offset > BALANCE_BALL_PD_MAX_OFFSET_COUNTS) {
-        offset = BALANCE_BALL_PD_MAX_OFFSET_COUNTS;
+    if (offset > (uint32_t)g_config.maximum_offset_count) {
+        offset = (uint32_t)g_config.maximum_offset_count;
     }
-    if ((offset < BALANCE_POSITION_REENGAGE_COUNTS) &&
-        (safe_room >= BALANCE_POSITION_REENGAGE_COUNTS)) {
-        offset = BALANCE_POSITION_REENGAGE_COUNTS;
+    if ((offset < g_config.tracking_reengage_count) &&
+        (safe_room >= g_config.tracking_reengage_count)) {
+        offset = g_config.tracking_reengage_count;
     }
     if (offset > safe_room) {
         offset = safe_room;
@@ -221,7 +257,7 @@ static uint8_t command_offset(const BalanceSoftLimitsRuntime *limits,
     }
     g_runtime.commanded_offset_count = slew_toward(
         g_runtime.commanded_offset_count, requested_offset,
-        BALANCE_BALL_PD_TARGET_SLEW_COUNTS_PER_20MS);
+        g_config.target_slew_count_per_20ms);
     target_count = g_runtime.commanded_offset_count;
     g_runtime.actuator_target_count = target_count;
     return BalancePositionControl_SetTrackingTarget(target_count);
@@ -243,7 +279,7 @@ static void return_toward_zero(
     if ((cancel_at_zero != 0U) &&
         (g_runtime.commanded_offset_count == 0) &&
         (magnitude_i32(limits->current_logical_count) <=
-            BALANCE_POSITION_REENGAGE_COUNTS)) {
+            g_config.tracking_reengage_count)) {
         BalancePositionControl_Cancel();
         g_runtime.tracking_owned = 0U;
         g_runtime.state = BALANCE_BALL_STATE_DISABLED;
@@ -253,6 +289,10 @@ static void return_toward_zero(
 void BalanceBallControl_Init(void)
 {
     g_runtime = (BalanceBallControlRuntime){0};
+    load_default_config();
+    (void)BalancePositionControl_SetTrackingThresholds(
+        g_config.tracking_deadband_count,
+        g_config.tracking_reengage_count);
     g_runtime.state = BALANCE_BALL_STATE_DISABLED;
     g_lastObservationUpdateCount = 0U;
     g_lastSessionId = 0U;
@@ -405,13 +445,17 @@ void BalanceBallControl_Update20ms(uint32_t now_ms,
 
     g_runtime.error_mm = clamp_i32_to_i16(
         (int32_t)g_runtime.target_mm - g_runtime.position_mm);
+    g_runtime.p_output_count = clamp_i64_to_i32(
+        (((int64_t)g_config.kp_x100 * g_runtime.error_mm) / 100) *
+            g_config.tilt_sign);
+    g_runtime.d_output_count = clamp_i64_to_i32(
+        -((int64_t)g_config.kd_x100 *
+            g_runtime.velocity_mm_s) / 100 * g_config.tilt_sign);
     pd_scaled =
-        (int64_t)BALANCE_BALL_PD_KP_COUNTS_PER_MM_X100 *
-            g_runtime.error_mm -
-        (int64_t)BALANCE_BALL_PD_KD_COUNTS_PER_MM_S_X100 *
-            g_runtime.velocity_mm_s;
+        (int64_t)g_config.kp_x100 * g_runtime.error_mm -
+        (int64_t)g_config.kd_x100 * g_runtime.velocity_mm_s;
     requested_offset = clamp_i64_to_i32(pd_scaled / 100);
-    requested_offset *= BALANCE_BALL_PD_TILT_SIGN;
+    requested_offset *= g_config.tilt_sign;
     g_runtime.pd_output_count = requested_offset;
     if (command_offset(&limits, requested_offset) == 0U) {
         BalancePositionControl_Cancel();
@@ -430,13 +474,68 @@ void BalanceBallControl_GetSnapshot(BalanceBallControlRuntime *snapshot)
     }
 }
 
+void BalanceBallControl_GetConfig(BalanceBallControlConfig *config)
+{
+    if (config != (BalanceBallControlConfig *)0) {
+        *config = g_config;
+    }
+}
+
+uint8_t BalanceBallControl_SetConfig(
+    const BalanceBallControlConfig *config)
+{
+    uint8_t active;
+
+    if (config_is_valid(config) == 0U) {
+        return 0U;
+    }
+    active = ((g_runtime.enable_requested != 0U) ||
+        (g_runtime.tracking_owned != 0U)) ? 1U : 0U;
+    if (active != 0U) {
+        if ((config->maximum_offset_count !=
+                g_config.maximum_offset_count) ||
+            (config->target_slew_count_per_20ms !=
+                g_config.target_slew_count_per_20ms) ||
+            (config->tracking_deadband_count !=
+                g_config.tracking_deadband_count) ||
+            (config->tracking_reengage_count !=
+                g_config.tracking_reengage_count) ||
+            (config->tilt_sign != g_config.tilt_sign)) {
+            return 0U;
+        }
+        g_config.kp_x100 = config->kp_x100;
+        g_config.kd_x100 = config->kd_x100;
+        return 1U;
+    }
+    if (BalancePositionControl_SetTrackingThresholds(
+            config->tracking_deadband_count,
+            config->tracking_reengage_count) == 0U) {
+        return 0U;
+    }
+    g_config = *config;
+    return 1U;
+}
+
+void BalanceBallControl_ResetConfig(void)
+{
+    BalanceBallControlConfig config;
+
+    load_default_config();
+    config = g_config;
+    (void)BalancePositionControl_SetTrackingThresholds(
+        config.tracking_deadband_count,
+        config.tracking_reengage_count);
+}
+
 #else
 
 static BalanceBallControlRuntime g_runtime;
+static BalanceBallControlConfig g_config;
 
 void BalanceBallControl_Init(void)
 {
     g_runtime = (BalanceBallControlRuntime){0};
+    g_config = (BalanceBallControlConfig){0};
     g_runtime.state = BALANCE_BALL_STATE_DISABLED;
 }
 
@@ -472,6 +571,24 @@ void BalanceBallControl_GetSnapshot(BalanceBallControlRuntime *snapshot)
     if (snapshot != (BalanceBallControlRuntime *)0) {
         *snapshot = g_runtime;
     }
+}
+
+void BalanceBallControl_GetConfig(BalanceBallControlConfig *config)
+{
+    if (config != (BalanceBallControlConfig *)0) {
+        *config = g_config;
+    }
+}
+
+uint8_t BalanceBallControl_SetConfig(
+    const BalanceBallControlConfig *config)
+{
+    (void)config;
+    return 0U;
+}
+
+void BalanceBallControl_ResetConfig(void)
+{
 }
 
 #endif

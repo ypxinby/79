@@ -14,11 +14,23 @@ typedef enum {
 } BalanceBallControlState;
 
 typedef struct {
+    int32_t kp_x100;
+    int32_t kd_x100;
+    int32_t maximum_offset_count;
+    int32_t target_slew_count_per_20ms;
+    uint16_t tracking_deadband_count;
+    uint16_t tracking_reengage_count;
+    int8_t tilt_sign;
+} BalanceBallControlConfig;
+
+typedef struct {
     int16_t target_mm;
     int16_t position_mm;
     int16_t error_mm;
     int16_t velocity_mm_s;
     int32_t pd_output_count;
+    int32_t p_output_count;
+    int32_t d_output_count;
     int32_t commanded_offset_count;
     int32_t actuator_target_count;
     uint32_t last_measurement_time_ms;
@@ -42,5 +54,9 @@ uint8_t BalanceBallControl_SetTargetMm(int16_t target_mm);
 void BalanceBallControl_Update20ms(uint32_t now_ms,
     uint32_t elapsed_ms);
 void BalanceBallControl_GetSnapshot(BalanceBallControlRuntime *snapshot);
+void BalanceBallControl_GetConfig(BalanceBallControlConfig *config);
+uint8_t BalanceBallControl_SetConfig(
+    const BalanceBallControlConfig *config);
+void BalanceBallControl_ResetConfig(void);
 
 #endif

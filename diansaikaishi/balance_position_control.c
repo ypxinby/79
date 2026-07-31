@@ -14,6 +14,20 @@ static int32_t g_lastEncoderCount;
 static int64_t g_moveStartStepCount;
 static int64_t g_lastStepCount;
 static uint32_t g_startSoftLimitClampCount;
+static uint16_t g_trackingDeadbandCount;
+static uint16_t g_trackingReengageCount;
+
+static uint16_t active_deadband_count(void)
+{
+    return (g_runtime.tracking_enabled != 0U) ?
+        g_trackingDeadbandCount : BALANCE_POSITION_DEADBAND_COUNTS;
+}
+
+static uint16_t active_reengage_count(void)
+{
+    return (g_runtime.tracking_enabled != 0U) ?
+        g_trackingReengageCount : BALANCE_POSITION_REENGAGE_COUNTS;
+}
 
 static int32_t clamp_i64_to_i32(int64_t value)
 {
@@ -84,16 +98,17 @@ static uint32_t calculate_timeout_ms(int32_t error_count)
     return (uint32_t)timeout_ms;
 }
 
-static uint16_t calculate_step_rate_hz(int32_t error_count)
+static uint16_t calculate_step_rate_hz(int32_t error_count,
+    uint16_t deadband_count)
 {
     uint64_t magnitude = magnitude_i64(error_count);
     uint64_t rate;
 
-    if (magnitude <= BALANCE_POSITION_DEADBAND_COUNTS) {
+    if (magnitude <= deadband_count) {
         return 0U;
     }
     rate = BALANCE_POSITION_MIN_STEP_RATE_HZ +
-        (magnitude - BALANCE_POSITION_DEADBAND_COUNTS) *
+        (magnitude - deadband_count) *
             BALANCE_POSITION_STEP_RATE_KP;
     if (rate > BALANCE_POSITION_MAX_STEP_RATE_HZ) {
         rate = BALANCE_POSITION_MAX_STEP_RATE_HZ;
@@ -163,6 +178,14 @@ void BalancePositionControl_Init(void)
     g_moveStartStepCount = 0;
     g_lastStepCount = 0;
     g_startSoftLimitClampCount = 0U;
+    g_trackingDeadbandCount =
+        BALANCE_POSITION_TRACKING_DEADBAND_COUNTS;
+    g_trackingReengageCount =
+        BALANCE_POSITION_TRACKING_REENGAGE_COUNTS;
+    g_runtime.active_deadband_count =
+        BALANCE_POSITION_DEADBAND_COUNTS;
+    g_runtime.active_reengage_count =
+        BALANCE_POSITION_REENGAGE_COUNTS;
 }
 
 uint8_t BalancePositionControl_Start(int32_t target_count,
@@ -230,6 +253,19 @@ uint8_t BalancePositionControl_SetTrackingTarget(int32_t target_count)
     return 1U;
 }
 
+uint8_t BalancePositionControl_SetTrackingThresholds(
+    uint16_t deadband_count, uint16_t reengage_count)
+{
+    if ((reengage_count <= deadband_count) ||
+        (reengage_count > BALANCE_POSITION_FOLLOW_ERROR_COUNTS) ||
+        (g_runtime.tracking_enabled != 0U)) {
+        return 0U;
+    }
+    g_trackingDeadbandCount = deadband_count;
+    g_trackingReengageCount = reengage_count;
+    return 1U;
+}
+
 void BalancePositionControl_Update20ms(int32_t current_count,
     uint32_t elapsed_ms, uint32_t soft_limit_clamp_count)
 {
@@ -242,6 +278,8 @@ void BalancePositionControl_Update20ms(int32_t current_count,
     int32_t command_steps;
     uint16_t step_rate_hz;
     uint16_t half_period_ticks;
+    uint16_t deadband_count;
+    uint16_t reengage_count;
     uint64_t error_magnitude;
 
     if (g_runtime.fault != BALANCE_POSITION_FAULT_NONE) {
@@ -251,6 +289,10 @@ void BalancePositionControl_Update20ms(int32_t current_count,
     g_runtime.current_count = current_count;
     g_runtime.position_error_count =
         clamp_i64_to_i32((int64_t)g_runtime.target_count - current_count);
+    deadband_count = active_deadband_count();
+    reengage_count = active_reengage_count();
+    g_runtime.active_deadband_count = deadband_count;
+    g_runtime.active_reengage_count = reengage_count;
 
     if (g_runtime.hold_enabled == 0U) {
         return;
@@ -258,7 +300,7 @@ void BalancePositionControl_Update20ms(int32_t current_count,
 
     error_magnitude = magnitude_i64(g_runtime.position_error_count);
     if (g_runtime.busy == 0U) {
-        if (error_magnitude <= BALANCE_POSITION_REENGAGE_COUNTS) {
+        if (error_magnitude <= reengage_count) {
             return;
         }
         g_runtime.busy = 1U;
@@ -340,7 +382,7 @@ void BalancePositionControl_Update20ms(int32_t current_count,
     g_lastStepCount = stepper.estimated_steps;
     g_lastEncoderCount = current_count;
 
-    if (error_magnitude <= BALANCE_POSITION_DEADBAND_COUNTS) {
+    if (error_magnitude <= deadband_count) {
         GimbalStepper_StopHold();
         g_runtime.commanded_step_rate_hz = 0U;
         g_runtime.step_half_period_ticks = 0U;
@@ -358,7 +400,7 @@ void BalancePositionControl_Update20ms(int32_t current_count,
     g_runtime.settle_ms = 0U;
     g_runtime.state = BALANCE_POSITION_STATE_MOVING;
     step_rate_hz = calculate_step_rate_hz(
-        g_runtime.position_error_count);
+        g_runtime.position_error_count, deadband_count);
     half_period_ticks = step_rate_to_half_period_ticks(step_rate_hz);
     command_steps = count_error_to_steps(
         g_runtime.position_error_count);
@@ -453,6 +495,14 @@ uint8_t BalancePositionControl_StartTracking(int32_t target_count,
 uint8_t BalancePositionControl_SetTrackingTarget(int32_t target_count)
 {
     (void)target_count;
+    return 0U;
+}
+
+uint8_t BalancePositionControl_SetTrackingThresholds(
+    uint16_t deadband_count, uint16_t reengage_count)
+{
+    (void)deadband_count;
+    (void)reengage_count;
     return 0U;
 }
 

@@ -11,6 +11,7 @@
 #include "balance_ball_control.h"
 #include "balance_encoder.h"
 #include "balance_soft_limits.h"
+#include "balance_tuning.h"
 #include "bluetooth_uart.h"
 #include "encoder.h"
 #include "emergency_stop.h"
@@ -90,6 +91,9 @@ int main(void)
 #if FEATURE_BALANCE_BALL_PD_CONTROL
     BalanceBallControl_Init();
 #endif
+#if FEATURE_BALANCE_SERIAL_TUNING
+    BalanceTuning_Init();
+#endif
 #if FEATURE_GIMBAL_MOTION_CONTROL
     GimbalVisionAdapter_Init();
 #endif
@@ -125,6 +129,9 @@ int main(void)
         BluetoothUart_Process();
 #endif
         VisionUart_Process();
+#if FEATURE_BALANCE_SERIAL_TUNING
+        BalanceTuning_Process();
+#endif
         (void)VisionReceiver_Process(g_localTimeMs,
             VISION_RX_PROCESS_BUDGET);
 #if FEATURE_GIMBAL_MOTION_CONTROL

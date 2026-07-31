@@ -12,6 +12,7 @@
 const SYSCTL = scripting.addModule("/ti/driverlib/SYSCTL");
 const UART   = scripting.addModule("/ti/driverlib/UART", {}, false);
 const UART1  = UART.addInstance();
+const UART2  = UART.addInstance();
 const PWM    = scripting.addModule("/ti/driverlib/PWM", {}, false);
 const PWM1   = PWM.addInstance();
 const GPIO   = scripting.addModule("/ti/driverlib/GPIO", {}, false);
@@ -47,6 +48,17 @@ UART1.enabledInterrupts = ["RX"];
 UART1.enableFIFO = false;
 UART1.peripheral.txPin.$assign = "PB2";
 UART1.peripheral.rxPin.$assign = "PB3";
+
+/* Dedicated full-duplex tuning link. Keep K230 isolated on PB2/PB3. */
+UART2.$name = "UART_BALANCE_TUNING";
+UART2.profile = "CONFIG_PROFILE_1";
+UART2.peripheral.$assign = "UART2";
+UART2.targetBaudRate = 115200;
+UART2.enableInternalLoopback = false;
+UART2.enabledInterrupts = ["RX"];
+UART2.enableFIFO = false;
+UART2.peripheral.txPin.$assign = "PA21";
+UART2.peripheral.rxPin.$assign = "PA22";
 
 PWM1.$name                      = "PWM_MOTOR";
 PWM1.pwmMode                    = "EDGE_ALIGN_UP";

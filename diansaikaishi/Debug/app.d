@@ -1,7 +1,7 @@
 # FIXED
 
 app.o: ../app.c ../app.h ../app_config.h ../app_features.h \
- ../balance_ball_control.h ../balance_soft_limits.h \
+ ../balance_ball_control.h ../balance_tuning.h ../balance_soft_limits.h \
  ../balance_calibration_store.h ../bluetooth_uart.h ../car_controller.h \
  ../track_sensor.h ../car_state.h ../debug_telemetry.h \
  ../emergency_stop.h ../encoder.h ../fault.h ../gimbal.h \
@@ -16,6 +16,7 @@ app.o: ../app.c ../app.h ../app_config.h ../app_features.h \
 ../app_config.h:
 ../app_features.h:
 ../balance_ball_control.h:
+../balance_tuning.h:
 ../balance_soft_limits.h:
 ../balance_calibration_store.h:
 ../bluetooth_uart.h:

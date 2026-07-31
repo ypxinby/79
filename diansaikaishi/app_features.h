@@ -72,6 +72,7 @@
  * the proven position loop remains the actuator inner loop. It never starts
  * automatically; the BALL page K2 command is still required. */
 #define FEATURE_BALANCE_BALL_PD_CONTROL               (1)
+#define FEATURE_BALANCE_SERIAL_TUNING                  (1)
 #define BALANCE_BALL_PD_MIN_CONFIDENCE                (200U)
 #define BALANCE_BALL_PD_VALID_FRAME_COUNT             (3U)
 #define BALANCE_BALL_PD_VISION_LOST_TIMEOUT_MS        (400U)
@@ -83,6 +84,8 @@
 #define BALANCE_BALL_PD_MAX_OFFSET_PERCENT            (15U)
 #define BALANCE_BALL_PD_MAX_OFFSET_COUNTS             (64U)
 #define BALANCE_BALL_PD_TARGET_SLEW_COUNTS_PER_20MS   (4)
+#define BALANCE_POSITION_TRACKING_DEADBAND_COUNTS      (2)
+#define BALANCE_POSITION_TRACKING_REENGAGE_COUNTS      (3)
 /* Do not multiplex the retired $VPT/$VYT ASCII tuning console onto the K230
  * binary stream; accidental prefix matches must never generate UART replies. */
 #define FEATURE_VISION_TUNING_CONSOLE                (0)
@@ -243,6 +246,17 @@
      !FEATURE_BALANCE_POSITION_CONTROL || \
      !FEATURE_BALANCE_SOFT_LIMITS)
 #error Balance ball PD requires vision, position control and soft limits
+#endif
+
+#if FEATURE_BALANCE_SERIAL_TUNING && !FEATURE_BALANCE_BALL_PD_CONTROL
+#error Balance serial tuning requires balance ball PD control
+#endif
+
+#if (BALANCE_POSITION_TRACKING_REENGAGE_COUNTS <= \
+        BALANCE_POSITION_TRACKING_DEADBAND_COUNTS) || \
+    (BALANCE_POSITION_TRACKING_REENGAGE_COUNTS > \
+        BALANCE_POSITION_FOLLOW_ERROR_COUNTS)
+#error Balance tracking deadband/reengage configuration is invalid
 #endif
 
 #if FEATURE_BALANCE_BALL_PD_CONTROL && \
