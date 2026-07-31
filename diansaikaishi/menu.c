@@ -495,9 +495,19 @@ static void menu_handle_status_key(KeyEvent event)
         switch (event) {
             case KEY1_SHORT:
 #if FEATURE_BALANCE_SOFT_LIMITS
-                BalanceSoftLimits_CancelPositionMove();
+                /* Page navigation must not energize an uncalibrated axis.
+                 * A real position move has already been handled above.  Keep
+                 * a calibrated axis held, but leave a not-yet-zeroed axis
+                 * released so merely entering the BALL page is harmless. */
+                if ((limits.zero_valid != 0U) &&
+                    (limits.limits_valid != 0U)) {
+                    GimbalStepper_StopHold();
+                } else {
+                    GimbalStepper_Release();
+                }
+#else
+                GimbalStepper_Release();
 #endif
-                GimbalStepper_StopHold();
                 menu_next_main_page();
                 break;
             case KEY1_LONG:

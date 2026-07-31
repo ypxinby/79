@@ -116,6 +116,20 @@ class BalanceSerial:
             with self.data_lock:
                 self.status = f"等待 {self.port_name}: {exc}"
             return False
+        try:
+            # Opening a USB-UART can leave a noise byte or an unfinished line
+            # in the MCU command parser.  A blank line terminates and clears
+            # that startup fragment before the operator's first real command.
+            port.reset_input_buffer()
+            port.write(b"\n")
+        except (serial.SerialException, OSError) as exc:
+            try:
+                port.close()
+            except (serial.SerialException, OSError):
+                pass
+            with self.data_lock:
+                self.status = f"初始化 {self.port_name} 失败: {exc}"
+            return False
         with self.port_lock:
             self.port = port
         self.buffer.clear()
@@ -227,7 +241,11 @@ class BalanceSerial:
         if not command or len(command) > 40:
             return False, "命令为空或过长"
         try:
-            payload = (command + "\n").encode("ascii")
+            # Prefix a blank line so an unfinished/noisy MCU command is closed
+            # before this real command.  The firmware ignores an empty line;
+            # if it was discarding a damaged line it may report ERR,LENGTH,
+            # but the following command is still parsed normally.
+            payload = ("\n" + command + "\n").encode("ascii")
         except UnicodeEncodeError:
             return False, "命令只能包含ASCII字符"
         with self.port_lock:
@@ -764,6 +782,217 @@ class Monitor:
             self.link.stop()
 
 
+class TerminalMonitor:
+    """Low-overhead terminal console without Matplotlib redraws."""
+
+    STATE_NAMES = {
+        0: "OFF",
+        1: "AXIS",
+        2: "VIS",
+        3: "ACT",
+        4: "ZERO",
+        5: "LOST",
+        6: "FAULT",
+        7: "HOLD",
+    }
+
+    def __init__(self, link: BalanceSerial, watch_hz: float = 2.0) -> None:
+        self.link = link
+        self.stop_event = threading.Event()
+        self.print_thread: threading.Thread | None = None
+        self.watch_hz = max(0.0, min(20.0, watch_hz))
+        self.last_watch_time = 0.0
+        self.last_values: tuple[float, ...] | None = None
+        self.last_good = 0
+        self.show_rx_errors = False
+        self.force_rx_debug_once = False
+        self.rx_error_suppressed = 0
+        self.last_rx_error_print = 0.0
+
+    @staticmethod
+    def _help() -> str:
+        return """可用命令：
+  cal              进入完整标定
+  u / d            正向/反向点动20 STEP
+  uu / dd          正向/反向快速点动100 STEP
+  set              确认当前ZERO/端点
+  cal?             查询标定状态
+  abort            取消标定
+  t 0              设置小球目标mm；例如t 50、t -50
+  kp 6.00          设置KP（KD/MAX/SLEW/DB/RG/DIR同理）
+  run / stop       启动或停止平衡
+  get / def        读取参数或恢复编译默认值
+  status           获取参数、标定和保护链快照
+  watch 2          每秒显示2次遥测；watch off关闭
+  errors on        显示RX错误摘要；errors off关闭
+  help             显示帮助
+  quit             退出终端
+也可以直接输入原始命令，例如 KP=6.00、T=50、J+、SET。"""
+
+    def _translate(self, line: str) -> str | None:
+        stripped = line.strip()
+        if not stripped:
+            return None
+        parts = stripped.split()
+        key = parts[0].lower()
+        aliases = {
+            "u": "J+", "up": "J+",
+            "d": "J-", "down": "J-",
+            "uu": "J++", "fastup": "J++",
+            "dd": "J--", "fastdown": "J--",
+            "set": "SET", "enter": "SET",
+            "abort": "CALX", "cancel": "CALX",
+            "cal": "CAL", "cal?": "CAL?",
+            "run": "RUN", "stop": "STOP",
+            "get": "GET", "def": "DEF", "log": "LOG",
+        }
+        if key in aliases and len(parts) == 1:
+            return aliases[key]
+        parameter_names = {"kp", "kd", "dir", "max", "slew", "db", "rg", "t"}
+        if key in parameter_names and len(parts) == 2:
+            return f"{key.upper()}={parts[1]}"
+        return stripped.upper()
+
+    def _print_telemetry(self, values: tuple[float, ...]) -> None:
+        state_value = int(round(values[15]))
+        state = self.STATE_NAMES.get(state_value, str(state_value))
+        print(
+            "TEL "
+            f"state={state:<5} pos={values[0]:+6.1f}mm "
+            f"err={values[3]:+6.1f} vel={values[2]:+7.1f} "
+            f"PD={values[6]:+7.1f} cmd={values[7]:+6.1f} "
+            f"enc={values[8]:+7.1f} step={values[9]:+6.1f}Hz "
+            f"valid={int(values[10])} age={values[11]:.0f}ms",
+            flush=True,
+        )
+
+    def _printer(self) -> None:
+        while not self.stop_event.is_set():
+            frames = self.link.take_frames()
+            if frames:
+                self.last_values = frames[-1][2]
+            status, good, bad, rx_bytes, messages = self.link.snapshot()
+            now = time.monotonic()
+            for message in messages:
+                wall_time = f"{datetime.now():%H:%M:%S.%f}"[:-3]
+                if message.startswith("DBG,"):
+                    if message.startswith("DBG,RX,"):
+                        self.rx_error_suppressed += 1
+                        should_print_rx = self.force_rx_debug_once or (
+                            self.show_rx_errors
+                            and now - self.last_rx_error_print >= 1.0
+                        )
+                        if not should_print_rx:
+                            continue
+                        compact = Monitor._compact_debug(message)
+                        print(
+                            f"[{wall_time}] {compact} "
+                            f"(过去1秒合并{self.rx_error_suppressed}条RX事件)",
+                            flush=True,
+                        )
+                        self.rx_error_suppressed = 0
+                        self.last_rx_error_print = now
+                        self.force_rx_debug_once = False
+                        continue
+                    print(
+                        f"[{wall_time}] {Monitor._compact_debug(message)}",
+                        flush=True,
+                    )
+                else:
+                    print(f"[{wall_time}] {message}", flush=True)
+            if (
+                self.watch_hz > 0.0
+                and self.last_values is not None
+                and now - self.last_watch_time >= 1.0 / self.watch_hz
+            ):
+                self._print_telemetry(self.last_values)
+                self.last_watch_time = now
+            if (
+                self.watch_hz > 0.0
+                and good != self.last_good
+                and good % 500 == 0
+            ):
+                print(
+                    f"LINK {status} frames={good} bad={bad} RX={rx_bytes}B",
+                    flush=True,
+                )
+            self.last_good = good
+            self.stop_event.wait(0.03)
+
+    def _handle_local_command(self, line: str) -> bool:
+        parts = line.strip().split()
+        if not parts:
+            return True
+        key = parts[0].lower()
+        if key in ("quit", "exit", "q"):
+            return False
+        if key in ("help", "h", "?"):
+            print(self._help(), flush=True)
+            return True
+        if key == "watch":
+            if len(parts) != 2:
+                print(f"watch={self.watch_hz:g} Hz", flush=True)
+                return True
+            if parts[1].lower() in ("off", "0"):
+                self.watch_hz = 0.0
+            else:
+                try:
+                    self.watch_hz = max(0.1, min(20.0, float(parts[1])))
+                except ValueError:
+                    print("用法：watch 2 或 watch off", flush=True)
+                    return True
+            print(f"watch={self.watch_hz:g} Hz", flush=True)
+            return True
+        if key == "errors":
+            if len(parts) != 2 or parts[1].lower() not in ("on", "off"):
+                state = "on" if self.show_rx_errors else "off"
+                print(f"用法：errors on/off（当前{state}）", flush=True)
+                return True
+            self.show_rx_errors = parts[1].lower() == "on"
+            self.rx_error_suppressed = 0
+            print(
+                f"RX错误输出={'on' if self.show_rx_errors else 'off'}",
+                flush=True,
+            )
+            return True
+        if key == "status":
+            self.force_rx_debug_once = True
+            for command in ("GET", "CAL?", "LOG"):
+                ok, message = self.link.send(command)
+                if not ok:
+                    print(message, flush=True)
+                    break
+            return True
+        command = self._translate(line)
+        if command is not None:
+            ok, message = self.link.send(command)
+            print(message, flush=True)
+            if not ok:
+                return True
+        return True
+
+    def show(self) -> None:
+        self.link.start()
+        self.print_thread = threading.Thread(target=self._printer, daemon=True)
+        self.print_thread.start()
+        print(self._help(), flush=True)
+        try:
+            while True:
+                try:
+                    line = input("bal> ")
+                except EOFError:
+                    break
+                if not self._handle_local_command(line):
+                    break
+        except KeyboardInterrupt:
+            print("\n退出", flush=True)
+        finally:
+            self.stop_event.set()
+            if self.print_thread:
+                self.print_thread.join(timeout=1.0)
+            self.link.stop()
+
+
 def list_ports() -> None:
     ports = list(serial.tools.list_ports.comports())
     if not ports:
@@ -778,12 +1007,28 @@ def main() -> None:
     parser.add_argument("--port", default="COM9")
     parser.add_argument("--baud", type=int, default=115200)
     parser.add_argument("--window", type=float, default=20.0)
+    parser.add_argument("--cli", action="store_true", help="使用轻量终端模式，不启动绘图")
+    parser.add_argument(
+        "--watch", default="2",
+        help="CLI遥测刷新率Hz；使用off或0关闭",
+    )
     parser.add_argument("--list", action="store_true")
     args = parser.parse_args()
     if args.list:
         list_ports()
         return
-    Monitor(BalanceSerial(args.port, args.baud), args.window).show()
+    if str(args.watch).lower() in ("off", "none"):
+        watch_hz = 0.0
+    else:
+        try:
+            watch_hz = float(args.watch)
+        except ValueError:
+            parser.error("--watch 必须是数字、0或off")
+    link = BalanceSerial(args.port, args.baud)
+    if args.cli:
+        TerminalMonitor(link, watch_hz).show()
+    else:
+        Monitor(link, args.window).show()
 
 
 if __name__ == "__main__":
