@@ -155,6 +155,21 @@ uint8_t BalanceSoftLimits_BeginAtCurrentAsZero(void)
     return 1U;
 }
 
+uint8_t BalanceSoftLimits_BeginFullCalibrationAtCurrentAsZero(void)
+{
+    if ((GimbalStepper_GetFeedback()->running != 0U) ||
+        (BalancePositionControl_HasFault() != 0U) ||
+        (g_runtime.calibration_active != 0U) ||
+        (g_runtime.test_active != 0U) ||
+        (g_runtime.oscillation_active != 0U) ||
+        (BalancePositionControl_IsBusy() != 0U)) {
+        g_runtime.error = BALANCE_SOFT_LIMIT_ERROR_RUNNING;
+        return 0U;
+    }
+    g_runtime.recalibration_armed = 1U;
+    return BalanceSoftLimits_BeginAtCurrentAsZero();
+}
+
 uint8_t BalanceSoftLimits_CaptureCurrentStage(void)
 {
     BalanceCalibrationFlashStatus flash_status;
@@ -861,6 +876,11 @@ void BalanceSoftLimits_Init(void)
 }
 
 uint8_t BalanceSoftLimits_BeginAtCurrentAsZero(void)
+{
+    return 0U;
+}
+
+uint8_t BalanceSoftLimits_BeginFullCalibrationAtCurrentAsZero(void)
 {
     return 0U;
 }

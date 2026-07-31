@@ -5,6 +5,7 @@
 
 #include "app_features.h"
 #include "balance_ball_control.h"
+#include "balance_encoder.h"
 #include "balance_position_control.h"
 #include "balance_soft_limits.h"
 #include "gimbal_stepper.h"
@@ -38,6 +39,8 @@ static char g_line[TUNING_LINE_SIZE];
 static uint8_t g_lineLength;
 static uint8_t g_discardLine;
 static uint8_t g_forceDebugSnapshot;
+static uint8_t g_serialCalibrationMode;
+static int16_t g_tuningTargetMm;
 static volatile BalanceTuningStatus g_status;
 
 typedef struct {
@@ -109,6 +112,44 @@ static uint8_t parse_u16(const char *text, uint16_t *value)
         return 0U;
     }
     *value = (uint16_t)result;
+    return 1U;
+}
+
+static uint8_t parse_i16(const char *text, int16_t *value)
+{
+    int32_t result = 0;
+    int32_t sign = 1;
+    uint8_t digit_seen = 0U;
+
+    if ((text == (const char *)0) ||
+        (value == (int16_t *)0)) {
+        return 0U;
+    }
+    if (*text == '-') {
+        sign = -1;
+        text++;
+    } else if (*text == '+') {
+        text++;
+    }
+    while (*text != '\0') {
+        if ((*text < '0') || (*text > '9')) {
+            return 0U;
+        }
+        digit_seen = 1U;
+        result = result * 10 + (int32_t)(*text - '0');
+        if (result > 32768) {
+            return 0U;
+        }
+        text++;
+    }
+    if (digit_seen == 0U) {
+        return 0U;
+    }
+    result *= sign;
+    if ((result < INT16_MIN) || (result > INT16_MAX)) {
+        return 0U;
+    }
+    *value = (int16_t)result;
     return 1U;
 }
 
@@ -624,6 +665,143 @@ static void enqueue_debug_events(uint32_t now_ms)
     g_debug.clamp_count = limits.clamp_count;
 }
 
+static const char *calibration_stage_text(
+    const BalanceSoftLimitsRuntime *limits)
+{
+    if (g_serialCalibrationMode == 0U) {
+        return "OFF";
+    }
+    if (limits->calibration_active == 0U) {
+        return "ZERO";
+    }
+    switch (limits->calibration_stage) {
+        case BALANCE_SOFT_LIMIT_CAL_LOW: return "LOW";
+        case BALANCE_SOFT_LIMIT_CAL_HIGH: return "HIGH";
+        case BALANCE_SOFT_LIMIT_CAL_COMPLETE: return "DONE";
+        case BALANCE_SOFT_LIMIT_CAL_IDLE:
+        default: return "ZERO";
+    }
+}
+
+static void send_calibration_status(void)
+{
+    BalanceSoftLimitsRuntime limits;
+    char response[176];
+    uint8_t length = 0U;
+
+    BalanceSoftLimits_GetSnapshot(&limits);
+    append_text(response, &length, sizeof(response), "CAL,STAGE=");
+    append_text(response, &length, sizeof(response),
+        calibration_stage_text(&limits));
+    append_text(response, &length, sizeof(response), ",RAW=");
+    append_i32(response, &length, sizeof(response),
+        BalanceEncoder_GetCountAtomic());
+    append_text(response, &length, sizeof(response), ",POS=");
+    append_i32(response, &length, sizeof(response),
+        limits.current_logical_count);
+    append_text(response, &length, sizeof(response), ",L=");
+    append_i32(response, &length, sizeof(response),
+        limits.low_logical_count);
+    append_text(response, &length, sizeof(response), ",H=");
+    append_i32(response, &length, sizeof(response),
+        limits.high_logical_count);
+    append_text(response, &length, sizeof(response), ",ERR=");
+    append_u32(response, &length, sizeof(response), limits.error);
+    append_text(response, &length, sizeof(response), ",FLASH=");
+    append_u32(response, &length, sizeof(response), limits.flash_status);
+    append_text(response, &length, sizeof(response), "\r\n");
+    (void)tx_enqueue_atomic((const uint8_t *)response, length);
+}
+
+static uint8_t start_serial_calibration(void)
+{
+    BalanceSoftLimitsRuntime limits;
+    BalancePositionRuntime position;
+
+    BalanceSoftLimits_GetSnapshot(&limits);
+    BalancePositionControl_GetSnapshot(&position);
+    if ((g_serialCalibrationMode != 0U) ||
+        (limits.calibration_active != 0U) ||
+        (limits.test_active != 0U) ||
+        (limits.oscillation_active != 0U) ||
+        (GimbalStepper_GetFeedback()->running != 0U)) {
+        return 0U;
+    }
+    BalanceBallControl_ForceStop();
+    BalanceSoftLimits_StopMotion();
+    if ((position.fault != BALANCE_POSITION_FAULT_NONE) &&
+        (BalancePositionControl_ResetFault() == 0U)) {
+        return 0U;
+    }
+    BalanceSoftLimits_GetSnapshot(&limits);
+    if ((limits.zero_valid != 0U) &&
+        (limits.limits_valid != 0U) &&
+        (BalanceSoftLimits_ArmRecalibration() == 0U)) {
+        return 0U;
+    }
+    GimbalStepper_StopHold();
+    g_serialCalibrationMode = 1U;
+    return 1U;
+}
+
+static uint8_t serial_calibration_jog(int32_t steps)
+{
+    if ((g_serialCalibrationMode == 0U) ||
+        (steps == 0) ||
+        (GimbalStepper_GetFeedback()->running != 0U)) {
+        return 0U;
+    }
+    GimbalStepper_SetStepHalfPeriodTicks(
+        BALANCE_STEPPER_TEST_HALF_PERIOD_TICKS);
+    GimbalStepper_MoveRelativeSteps(steps);
+    return 1U;
+}
+
+static uint8_t serial_calibration_confirm(void)
+{
+    BalanceSoftLimitsRuntime before;
+    BalanceSoftLimitsRuntime after;
+
+    if ((g_serialCalibrationMode == 0U) ||
+        (GimbalStepper_GetFeedback()->running != 0U)) {
+        return 0U;
+    }
+    BalanceSoftLimits_GetSnapshot(&before);
+    if (before.calibration_active == 0U) {
+        return BalanceSoftLimits_BeginFullCalibrationAtCurrentAsZero();
+    }
+    if (BalanceSoftLimits_CaptureCurrentStage() == 0U) {
+        return 0U;
+    }
+    BalanceSoftLimits_GetSnapshot(&after);
+    if (after.calibration_stage == BALANCE_SOFT_LIMIT_CAL_COMPLETE) {
+        /* Leave CAL_COMPLETE, then use the existing encoder position loop to
+         * return to the newly confirmed physical horizontal position. */
+        if (BalanceSoftLimits_CaptureCurrentStage() == 0U) {
+            return 0U;
+        }
+        g_serialCalibrationMode = 0U;
+        if (BalanceSoftLimits_StartPositionMoveToLogicalCount(0) == 0U) {
+            return 0U;
+        }
+    }
+    return 1U;
+}
+
+static void abort_serial_calibration(void)
+{
+    BalanceSoftLimitsRuntime limits;
+
+    GimbalStepper_StopHold();
+    BalanceSoftLimits_GetSnapshot(&limits);
+    if (limits.calibration_active != 0U) {
+        BalanceSoftLimits_AbortCalibration();
+    } else if (limits.recalibration_armed != 0U) {
+        BalanceSoftLimits_CancelRecalibration();
+    }
+    g_serialCalibrationMode = 0U;
+}
+
 static void send_config(void)
 {
     BalanceBallControlConfig config;
@@ -649,6 +827,8 @@ static void send_config(void)
     append_text(response, &length, sizeof(response), ",RG=");
     append_u32(response, &length, sizeof(response),
         config.tracking_reengage_count);
+    append_text(response, &length, sizeof(response), ",T=");
+    append_i32(response, &length, sizeof(response), g_tuningTargetMm);
     append_text(response, &length, sizeof(response), "\r\n");
     (void)tx_enqueue_atomic((const uint8_t *)response, length);
 }
@@ -710,7 +890,8 @@ static void process_line(void)
 
     g_status.rx_line_count++;
     if (strcmp(g_line, "RUN") == 0) {
-        if (BalanceBallControl_Enable(0) != 0U) {
+        if ((g_serialCalibrationMode == 0U) &&
+            (BalanceBallControl_Enable(g_tuningTargetMm) != 0U)) {
             send_text("ACK,RUN\r\n");
         } else {
             send_text("ERR,RUN\r\n");
@@ -727,6 +908,76 @@ static void process_line(void)
     if ((strcmp(g_line, "GET") == 0) ||
         (strcmp(g_line, "?") == 0)) {
         send_config();
+        return;
+    }
+    if (strcmp(g_line, "CAL") == 0) {
+        if (start_serial_calibration() != 0U) {
+            send_text("ACK,CAL\r\n");
+            send_calibration_status();
+        } else {
+            send_text("ERR,CAL,BUSY_OR_FAULT\r\n");
+            g_status.command_error_count++;
+        }
+        return;
+    }
+    if ((strcmp(g_line, "CAL?") == 0) ||
+        (strcmp(g_line, "C?") == 0)) {
+        send_calibration_status();
+        return;
+    }
+    if ((strcmp(g_line, "CALX") == 0) ||
+        (strcmp(g_line, "CX") == 0)) {
+        abort_serial_calibration();
+        send_text("ACK,CALX\r\n");
+        send_calibration_status();
+        return;
+    }
+    if ((strcmp(g_line, "J+") == 0) ||
+        (strcmp(g_line, "J-") == 0) ||
+        (strcmp(g_line, "J++") == 0) ||
+        (strcmp(g_line, "J--") == 0)) {
+        int32_t steps = BALANCE_STEPPER_CAL_JOG_STEPS;
+
+        if ((strcmp(g_line, "J++") == 0) ||
+            (strcmp(g_line, "J--") == 0)) {
+            steps *= 5;
+        }
+        if ((strcmp(g_line, "J-") == 0) ||
+            (strcmp(g_line, "J--") == 0)) {
+            steps = -steps;
+        }
+        if (serial_calibration_jog(steps) != 0U) {
+            send_text("ACK,JOG\r\n");
+        } else {
+            send_text("ERR,JOG,BUSY_OR_MODE\r\n");
+            g_status.command_error_count++;
+        }
+        return;
+    }
+    if ((strcmp(g_line, "SET") == 0) ||
+        (strcmp(g_line, "ENTER") == 0)) {
+        if (serial_calibration_confirm() != 0U) {
+            send_text("ACK,CAL,SET\r\n");
+            send_calibration_status();
+        } else {
+            send_text("ERR,CAL,SET\r\n");
+            send_calibration_status();
+            g_status.command_error_count++;
+        }
+        return;
+    }
+    if (strncmp(g_line, "T=", 2U) == 0) {
+        int16_t target_mm;
+
+        if ((parse_i16(&g_line[2], &target_mm) == 0U) ||
+            (BalanceBallControl_SetTargetMm(target_mm) == 0U)) {
+            send_text("ERR,TARGET,RANGE\r\n");
+            g_status.command_error_count++;
+        } else {
+            g_tuningTargetMm = target_mm;
+            send_text("ACK,TARGET\r\n");
+            send_config();
+        }
         return;
     }
     if ((strcmp(g_line, "LOG") == 0) ||
@@ -868,6 +1119,8 @@ void BalanceTuning_Init(void)
     g_lineLength = 0U;
     g_discardLine = 0U;
     g_forceDebugSnapshot = 0U;
+    g_serialCalibrationMode = 0U;
+    g_tuningTargetMm = 0;
     g_status = (BalanceTuningStatus){0};
     g_debug = (BalanceTuningDebugState){0};
     NVIC_ClearPendingIRQ(UART_BALANCE_TUNING_INST_INT_IRQN);

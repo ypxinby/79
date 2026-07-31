@@ -70,6 +70,7 @@ PARAMETER_STEPS = {
     "SLEW": 1.0,
     "DB": 1.0,
     "RG": 1.0,
+    "T": 5.0,
 }
 
 
@@ -155,7 +156,7 @@ class BalanceSerial:
                 line = raw_line.decode("ascii").strip()
             except UnicodeDecodeError:
                 continue
-            if line.startswith(("ACK,", "ERR,", "CFG,", "DBG,")):
+            if line.startswith(("ACK,", "ERR,", "CFG,", "DBG,", "CAL,")):
                 with self.data_lock:
                     self.messages.append(line)
 
@@ -273,6 +274,7 @@ class Monitor:
         self.pending_parameter_save = False
         self.last_config: dict[str, str] = {}
         self.active_parameter = "KP"
+        self.calibration_mode = False
 
         plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "DejaVu Sans"]
         plt.rcParams["axes.unicode_minus"] = False
@@ -310,9 +312,12 @@ class Monitor:
         self.pos_line, = ax_pos.plot([], [], label="pos")
         self.pred_line, = ax_pos.plot([], [], label="pred", linestyle="--")
         self.err_line, = ax_pos.plot([], [], label="error")
+        self.target_line = ax_pos.axhline(
+            0, color="purple", linestyle="-.", label="target"
+        )
         ax_pos.axhline(10, color="gray", linestyle=":")
         ax_pos.axhline(-10, color="gray", linestyle=":")
-        ax_pos.legend(loc="upper left", ncol=3)
+        ax_pos.legend(loc="upper left", ncol=4)
 
         ax_pd.set_title("PD输出")
         ax_pd.set_ylabel("count")
@@ -336,6 +341,7 @@ class Monitor:
         fields = (
             ("KP", "6.00"), ("KD", "0.10"), ("DIR", "1"),
             ("MAX", "200"), ("SLEW", "5"), ("DB", "2"), ("RG", "3"),
+            ("T", "0"),
         )
         self.boxes: dict[str, TextBox] = {}
         for index, (name, initial) in enumerate(fields):
@@ -346,7 +352,7 @@ class Monitor:
                 f"{name} ", initial=initial,
             )
         self.buttons = [
-            Button(self.figure.add_axes([0.76, 0.22, 0.10, 0.045]), "应用PD"),
+            Button(self.figure.add_axes([0.76, 0.22, 0.10, 0.045]), "应用PD/目标"),
             Button(self.figure.add_axes([0.87, 0.22, 0.11, 0.045]), "应用轴参数"),
             Button(self.figure.add_axes([0.76, 0.16, 0.065, 0.045]), "RUN"),
             Button(self.figure.add_axes([0.835, 0.16, 0.065, 0.045]), "STOP"),
@@ -355,16 +361,18 @@ class Monitor:
             Button(self.figure.add_axes([0.85, 0.10, 0.08, 0.045]), "CSV"),
             Button(self.figure.add_axes([0.94, 0.10, 0.05, 0.045]), "PARAM"),
             Button(self.figure.add_axes([0.76, 0.04, 0.10, 0.045]), "诊断"),
+            Button(self.figure.add_axes([0.87, 0.04, 0.11, 0.045]), "校准"),
         ]
         self.buttons[0].on_clicked(self._apply_pd)
         self.buttons[1].on_clicked(self._apply_axis)
-        self.buttons[2].on_clicked(lambda _e: self._send("RUN"))
+        self.buttons[2].on_clicked(self._run)
         self.buttons[3].on_clicked(lambda _e: self._send("STOP"))
         self.buttons[4].on_clicked(lambda _e: self._send("GET"))
         self.buttons[5].on_clicked(lambda _e: self._send("DEF"))
         self.buttons[6].on_clicked(lambda _e: self.save_csv())
         self.buttons[7].on_clicked(self._request_parameter_save)
         self.buttons[8].on_clicked(lambda _e: self._send("LOG"))
+        self.buttons[9].on_clicked(self._start_calibration)
 
     def _select_parameter(self, event) -> None:
         for name, box in self.boxes.items():
@@ -382,6 +390,21 @@ class Monitor:
         key = (event.key or "").lower()
         direction = 0
         multiplier = 1.0
+
+        if self.calibration_mode:
+            if key == "up":
+                self._send("J+")
+            elif key == "shift+up":
+                self._send("J++")
+            elif key == "down":
+                self._send("J-")
+            elif key == "shift+down":
+                self._send("J--")
+            elif key in ("enter", "return"):
+                self._send("SET")
+            elif key in ("escape", "esc"):
+                self._send("CALX")
+            return
 
         if key in ("up", "shift+up"):
             direction = 1
@@ -424,11 +447,14 @@ class Monitor:
             maximum = max(0, min(32, self._parameter_int("RG", 3) - 1))
             value = min(maximum, max(0, round(value)))
             text = str(int(value))
-        else:  # RG
+        elif name == "RG":
             minimum = max(1, self._parameter_int("DB", 2) + 1)
             maximum = max(minimum,
                 min(64, self._parameter_int("MAX", 128)))
             value = min(maximum, max(minimum, round(value)))
+            text = str(int(value))
+        else:  # T, physical millimetres relative to O
+            value = min(125, max(-125, round(value)))
             text = str(int(value))
         box.set_val(text)
         self.last_message = f"{name}={text}，尚未应用"
@@ -444,7 +470,7 @@ class Monitor:
                 break
 
     def _apply_pd(self, _event) -> None:
-        self._apply_names(("KP", "KD"))
+        self._apply_names(("KP", "KD", "T"))
 
     def _apply_axis(self, _event) -> None:
         self._apply_names(("DIR", "MAX", "SLEW", "DB", "RG"))
@@ -460,11 +486,60 @@ class Monitor:
             for name in ("DIR", "MAX", "SLEW", "DB", "RG"):
                 if name in values:
                     self.boxes[name].set_val(values[name])
+            if "T" in values:
+                self.boxes["T"].set_val(values["T"])
             if self.pending_parameter_save:
                 self.pending_parameter_save = False
                 self._write_parameter_snapshot(values)
         except (ValueError, KeyError):
             self.last_message = f"CFG解析失败: {message}"
+
+    def _run(self, _event) -> None:
+        ok, self.last_message = self.link.send(
+            f"T={self.boxes['T'].text.strip()}"
+        )
+        if ok:
+            _ok, self.last_message = self.link.send("RUN")
+
+    def _start_calibration(self, _event) -> None:
+        ok, self.last_message = self.link.send("CAL")
+        if ok:
+            self.calibration_mode = True
+            self.shortcut_text.set_text(
+                "校准：↑/↓点动，Shift+↑/↓快速点动\n"
+                "回车确认当前点，Esc取消"
+            )
+
+    def _handle_calibration_status(self, message: str) -> None:
+        try:
+            values = dict(item.split("=", 1) for item in message.split(",")[1:])
+            stage = values.get("STAGE", "?")
+            raw = values.get("RAW", "?")
+            pos = values.get("POS", "?")
+            low = values.get("L", "?")
+            high = values.get("H", "?")
+            if stage == "ZERO":
+                instruction = "调至机械水平，回车确认ZERO"
+                self.calibration_mode = True
+            elif stage == "LOW":
+                instruction = "调至第一端点，回车确认"
+                self.calibration_mode = True
+            elif stage == "HIGH":
+                instruction = "调至另一端点，回车保存"
+                self.calibration_mode = True
+            else:
+                instruction = "校准结束/取消，等待电机回水平"
+                self.calibration_mode = False
+                self.shortcut_text.set_text(
+                    "参数框：↑/↓微调，Shift+↑/↓快调\n"
+                    "修改后仍需点击应用按钮"
+                )
+            self.last_message = (
+                f"CAL {stage}: {instruction}\n"
+                f"RAW={raw} POS={pos} L={low} H={high}"
+            )
+        except (ValueError, KeyError):
+            self.last_message = f"CAL状态解析失败: {message}"
 
     def _request_parameter_save(self, _event) -> None:
         self.pending_parameter_save = True
@@ -473,7 +548,7 @@ class Monitor:
             self.pending_parameter_save = False
 
     def _write_parameter_snapshot(self, values: dict[str, str]) -> None:
-        required = ("KP", "KD", "DIR", "MAX", "SLEW", "DB", "RG")
+        required = ("KP", "KD", "DIR", "MAX", "SLEW", "DB", "RG", "T")
         if any(name not in values for name in required):
             self.last_message = "PARAM CFG incomplete"
             return
@@ -487,6 +562,7 @@ class Monitor:
             f"SLEW={values['SLEW']}",
             f"DB={values['DB']}",
             f"RG={values['RG']}",
+            f"T={values['T']}",
             "",
             "# app_features.h defaults",
             f"BALANCE_BALL_PD_KP_COUNTS_PER_MM_X100={values['KP']}",
@@ -619,8 +695,18 @@ class Monitor:
                 if message.startswith("DBG,"):
                     self._record_debug(message)
                     continue
+                if message.startswith("CAL,"):
+                    self._handle_calibration_status(message)
+                    print(f"[{datetime.now():%H:%M:%S.%f}] {message}", flush=True)
+                    continue
                 if message.startswith("CFG,"):
                     self._load_cfg(message)
+                if message.startswith("ERR,CAL,BUSY_OR_FAULT"):
+                    self.calibration_mode = False
+                    self.shortcut_text.set_text(
+                        "参数框：↑/↓微调，Shift+↑/↓快调\n"
+                        "修改后仍需点击应用按钮"
+                    )
                 self.last_message = message
         self.status_text.set_text(
             f"{status}\nFPS={self.receive_fps:5.1f} "
@@ -648,8 +734,14 @@ class Monitor:
                 axis.autoscale_view()
             self.last_autoscale_time = now
         self.axes[-1].set_xlim(max(0.0, t[-1] - self.window), max(self.window, t[-1]))
+        try:
+            target_mm = float(self.boxes["T"].text.strip())
+        except ValueError:
+            target_mm = 0.0
+        self.target_line.set_ydata([target_mm, target_mm])
         self.value_text.set_text(
             "当前值\n"
+            f"target{target_mm:+8.1f} mm\n"
             f"pos   {c[0][-1]:+8.1f} mm\n"
             f"error {c[3][-1]:+8.1f} mm\n"
             f"vel   {c[2][-1]:+8.1f} mm/s\n"

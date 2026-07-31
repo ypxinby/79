@@ -1,7 +1,7 @@
 # FIXED
 
 balance_tuning.o: ../balance_tuning.c ../balance_tuning.h \
- ../app_features.h ../balance_ball_control.h \
+ ../app_features.h ../balance_ball_control.h ../balance_encoder.h \
  ../balance_position_control.h ../balance_soft_limits.h \
  ../balance_calibration_store.h ../gimbal_stepper.h \
  ti_msp_dl_config.h \
@@ -82,6 +82,7 @@ balance_tuning.o: ../balance_tuning.c ../balance_tuning.h \
 ../balance_tuning.h:
 ../app_features.h:
 ../balance_ball_control.h:
+../balance_encoder.h:
 ../balance_position_control.h:
 ../balance_soft_limits.h:
 ../balance_calibration_store.h:

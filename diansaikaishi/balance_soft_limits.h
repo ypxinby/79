@@ -87,6 +87,10 @@ typedef struct {
 
 void BalanceSoftLimits_Init(void);
 uint8_t BalanceSoftLimits_BeginAtCurrentAsZero(void);
+/* Serial/OLED service helper: deliberately discard the restored LOW/HIGH
+ * offsets and start a complete ZERO -> endpoint 1 -> endpoint 2 calibration
+ * from the current physical horizontal position. */
+uint8_t BalanceSoftLimits_BeginFullCalibrationAtCurrentAsZero(void);
 uint8_t BalanceSoftLimits_CaptureCurrentStage(void);
 void BalanceSoftLimits_AbortCalibration(void);
 uint8_t BalanceSoftLimits_IsCalibrationActive(void);
