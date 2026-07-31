@@ -182,6 +182,30 @@ static const char *mission_status_to_string(MissionStatus status)
     }
 }
 
+static const char *balance_start_result_to_string(
+    BalanceBallStartResult result)
+{
+    switch (result) {
+        case BALANCE_BALL_START_NO_ZERO:
+            return "NOZERO";
+        case BALANCE_BALL_START_LIMIT_INVALID:
+            return "LIMIT";
+        case BALANCE_BALL_START_POSITION_FAULT:
+            return "PFAULT";
+        case BALANCE_BALL_START_ESTOP:
+            return "ESTOP";
+        case BALANCE_BALL_START_BUSY:
+            return "BUSY";
+        case BALANCE_BALL_START_TARGET_INVALID:
+            return "TARGET";
+        case BALANCE_BALL_START_DATA_INVALID:
+            return "DATA";
+        case BALANCE_BALL_START_OK:
+        default:
+            return "OK";
+    }
+}
+
 static void print_elapsed_mm_ss_t(uint32_t elapsed_ms)
 {
     uint32_t total_tenths = elapsed_ms / 100U;
@@ -248,6 +272,11 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
     const FaultRecord *fault = Fault_GetRecord();
     uint16_t missionIndex = MissionManager_GetSelectedMissionIndex();
     uint16_t missionCount = MissionManager_GetMissionCount();
+#if FEATURE_BALANCE_BALL_PD_CONTROL
+    BalanceBallControlRuntime balance;
+
+    BalanceBallControl_GetSnapshot(&balance);
+#endif
 
     (void)raw;
     (void)error;
@@ -301,6 +330,14 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
         OLED_PrintInt16((int16_t)mission->last_error_code);
         OLED_PrintString(" AE:");
         OLED_PrintInt16((int16_t)action->error_code);
+#if FEATURE_BALANCE_BALL_PD_CONTROL
+    } else if ((MissionManager_GetSelectedMissionId() ==
+            MISSION_ID_TEST_BALL_CENTER) &&
+        (balance.start_result != BALANCE_BALL_START_OK)) {
+        OLED_PrintString("BALL:");
+        OLED_PrintString(balance_start_result_to_string(
+            balance.start_result));
+#endif
     } else {
         OLED_PrintString("F:NONE R:");
         OLED_PrintString(motion_result_to_string(action->result));
@@ -1556,7 +1593,11 @@ static void print_balance_vision_page(void)
     OLED_PrintString(balance_ball_state_to_string(control.state));
 
     OLED_SetCursor(6, 0);
-    if (ball->available == 0U) {
+    if (control.start_result != BALANCE_BALL_START_OK) {
+        OLED_PrintString("START:");
+        OLED_PrintString(balance_start_result_to_string(
+            control.start_result));
+    } else if (ball->available == 0U) {
         OLED_PrintString("X:");
         print_uint64_decimal((receiver->rx_byte_count > 999U) ?
             999U : receiver->rx_byte_count);

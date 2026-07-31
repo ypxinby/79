@@ -25,6 +25,17 @@ typedef enum {
     BALANCE_BALL_OBSERVATION_POSITION_JUMP
 } BalanceBallObservationResult;
 
+typedef enum {
+    BALANCE_BALL_START_OK = 0,
+    BALANCE_BALL_START_NO_ZERO,
+    BALANCE_BALL_START_LIMIT_INVALID,
+    BALANCE_BALL_START_POSITION_FAULT,
+    BALANCE_BALL_START_ESTOP,
+    BALANCE_BALL_START_BUSY,
+    BALANCE_BALL_START_TARGET_INVALID,
+    BALANCE_BALL_START_DATA_INVALID
+} BalanceBallStartResult;
+
 typedef struct {
     int32_t kp_x100;
     int32_t kd_x100;
@@ -61,6 +72,7 @@ typedef struct {
      * still inside the short hold window. */
     uint8_t measurement_valid;
     uint8_t valid_streak;
+    BalanceBallStartResult start_result;
     BalanceBallObservationResult last_observation_result;
     BalanceBallControlState state;
 } BalanceBallControlRuntime;

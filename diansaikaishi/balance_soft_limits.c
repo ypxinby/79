@@ -13,6 +13,7 @@
 static volatile BalanceSoftLimitsRuntime g_runtime;
 static BalanceCalibrationStoredLimits g_storedLimits;
 static uint8_t g_storedLimitsValid;
+static volatile uint8_t g_calibrationJogActive;
 
 static int32_t clamp_i64_to_i32(int64_t value)
 {
@@ -83,6 +84,7 @@ void BalanceSoftLimits_Init(void)
 
     g_runtime = (BalanceSoftLimitsRuntime){0};
     g_storedLimits = (BalanceCalibrationStoredLimits){0};
+    g_calibrationJogActive = 0U;
     flash_status = BalanceCalibrationStore_Load(&g_storedLimits);
     g_storedLimitsValid =
         (flash_status == BALANCE_CALIBRATION_FLASH_VALID) ? 1U : 0U;
@@ -578,6 +580,34 @@ uint8_t BalanceSoftLimits_StartRelativePositionMoveSteps(
         target_count);
 }
 
+uint8_t BalanceSoftLimits_StartCalibrationJogSteps(
+    int32_t delta_steps, uint16_t half_period_ticks)
+{
+    if ((delta_steps == 0) || (half_period_ticks == 0U) ||
+        (GimbalStepper_GetFeedback()->running != 0U) ||
+        (BalancePositionControl_IsBusy() != 0U) ||
+        (g_runtime.test_active != 0U) ||
+        (g_runtime.oscillation_active != 0U)) {
+        return 0U;
+    }
+
+    /* Enforce100us normally rejects every uncalibrated movement.  Open a
+     * one-shot exception only for this explicit calibration jog. */
+    g_calibrationJogActive = 1U;
+    GimbalStepper_SetStepHalfPeriodTicks(half_period_ticks);
+    GimbalStepper_MoveRelativeSteps(delta_steps);
+    if (GimbalStepper_GetFeedback()->running == 0U) {
+        g_calibrationJogActive = 0U;
+        return 0U;
+    }
+    return 1U;
+}
+
+void BalanceSoftLimits_CancelCalibrationJog(void)
+{
+    g_calibrationJogActive = 0U;
+}
+
 uint8_t BalanceSoftLimits_StartPositionMoveToLogicalCount(
     int32_t target_count)
 {
@@ -665,6 +695,11 @@ void BalanceSoftLimits_Update20ms(uint32_t elapsed_ms)
     int64_t span;
     int64_t inset;
     BalancePositionRuntime position;
+
+    if ((g_calibrationJogActive != 0U) &&
+        (GimbalStepper_GetFeedback()->running == 0U)) {
+        g_calibrationJogActive = 0U;
+    }
 
     if ((g_runtime.zero_valid == 0U) ||
         (g_runtime.limits_valid == 0U) ||
@@ -821,7 +856,8 @@ void BalanceSoftLimits_Enforce100usFromIsr(void)
     /* Outside calibration, an uncalibrated axis must fail closed. */
     if ((g_runtime.limits_valid == 0U) ||
         (g_runtime.zero_valid == 0U)) {
-        if (g_runtime.calibration_active != 0U) {
+        if ((g_runtime.calibration_active != 0U) ||
+            (g_calibrationJogActive != 0U)) {
             return;
         }
         rejected_direction = stepper->direction;
@@ -941,6 +977,18 @@ uint8_t BalanceSoftLimits_StartRelativePositionMoveSteps(
 {
     (void)delta_steps;
     return 0U;
+}
+
+uint8_t BalanceSoftLimits_StartCalibrationJogSteps(
+    int32_t delta_steps, uint16_t half_period_ticks)
+{
+    (void)delta_steps;
+    (void)half_period_ticks;
+    return 0U;
+}
+
+void BalanceSoftLimits_CancelCalibrationJog(void)
+{
 }
 
 void BalanceSoftLimits_CancelPositionMove(void)

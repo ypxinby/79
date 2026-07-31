@@ -104,6 +104,12 @@ void BalanceSoftLimits_CancelOscillationTest(void);
 uint8_t BalanceSoftLimits_IsOscillationTestActive(void);
 uint8_t BalanceSoftLimits_StartRelativePositionMoveSteps(
     int32_t delta_steps);
+/* One guarded open-loop jog used only while selecting a calibration point.
+ * It temporarily permits motion before ZERO/limits are valid and revokes the
+ * permit automatically when the commanded step burst finishes. */
+uint8_t BalanceSoftLimits_StartCalibrationJogSteps(
+    int32_t delta_steps, uint16_t half_period_ticks);
+void BalanceSoftLimits_CancelCalibrationJog(void);
 uint8_t BalanceSoftLimits_StartPositionMoveToLogicalCount(
     int32_t target_count);
 void BalanceSoftLimits_CancelPositionMove(void);

@@ -348,14 +348,62 @@ void BalanceBallControl_Init(void)
 
 uint8_t BalanceBallControl_Enable(int16_t target_mm)
 {
+    BalanceSoftLimitsRuntime limits;
+    BalancePositionRuntime position;
+
     if (magnitude_i32(target_mm) >
         BALANCE_BALL_PD_MAX_TARGET_ABS_MM ||
         ((g_runtime.axis_span_mm != 0U) &&
          (magnitude_i32(target_mm) * 2U >
             g_runtime.axis_span_mm))) {
+        g_runtime.start_result = BALANCE_BALL_START_TARGET_INVALID;
         return 0U;
     }
+    if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
+        g_runtime.start_result = BALANCE_BALL_START_ESTOP;
+        return 0U;
+    }
+
+    BalanceSoftLimits_GetSnapshot(&limits);
+    if (limits.zero_valid == 0U) {
+        g_runtime.start_result = BALANCE_BALL_START_NO_ZERO;
+        return 0U;
+    }
+    if (limits.limits_valid == 0U) {
+        g_runtime.start_result = BALANCE_BALL_START_LIMIT_INVALID;
+        return 0U;
+    }
+    if ((limits.calibration_active != 0U) ||
+        (limits.recalibration_armed != 0U) ||
+        (limits.test_active != 0U) ||
+        (limits.oscillation_active != 0U)) {
+        g_runtime.start_result = BALANCE_BALL_START_BUSY;
+        return 0U;
+    }
+
+    /* A fresh Task5/RUN request owns the axis from this point onward.  Stop
+     * stale test/tracking work first, then clear only a stopped, recoverable
+     * position-loop latch.  If the physical problem remains it will trip
+     * again normally after motion restarts. */
+    BalanceBallControl_ForceStop();
+    BalanceSoftLimits_StopMotion();
+    BalancePositionControl_GetSnapshot(&position);
+    if (position.fault != BALANCE_POSITION_FAULT_NONE) {
+        if (BalanceSoftLimits_ResetPositionFault() == 0U) {
+            g_runtime.start_result = BALANCE_BALL_START_POSITION_FAULT;
+            return 0U;
+        }
+    }
+
     g_runtime.target_mm = target_mm;
+    g_runtime.measurement_valid = 0U;
+    g_runtime.raw_vision_valid = 0U;
+    g_runtime.valid_streak = 0U;
+    g_runtime.velocity_mm_s = 0;
+    g_runtime.last_measurement_time_ms = 0U;
+    g_velocityInitialized = 0U;
+    g_lastPositionTimeMs = 0U;
+    g_runtime.start_result = BALANCE_BALL_START_OK;
     g_runtime.enable_requested = 1U;
     g_runtime.state = BALANCE_BALL_STATE_WAIT_AXIS;
     return 1U;
@@ -405,6 +453,7 @@ void BalanceBallControl_Update20ms(uint32_t now_ms,
     process_observation(now_ms);
 
     if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
+        g_runtime.start_result = BALANCE_BALL_START_ESTOP;
         BalanceBallControl_ForceStop();
         return;
     }
@@ -412,6 +461,7 @@ void BalanceBallControl_Update20ms(uint32_t now_ms,
     BalanceSoftLimits_GetSnapshot(&limits);
     BalancePositionControl_GetSnapshot(&position);
     if (position.fault != BALANCE_POSITION_FAULT_NONE) {
+        g_runtime.start_result = BALANCE_BALL_START_POSITION_FAULT;
         g_runtime.enable_requested = 0U;
         g_runtime.tracking_owned = 0U;
         g_runtime.state = BALANCE_BALL_STATE_FAULT;
@@ -439,9 +489,19 @@ void BalanceBallControl_Update20ms(uint32_t now_ms,
             BalancePositionControl_Cancel();
             g_runtime.tracking_owned = 0U;
         }
+        if (limits.zero_valid == 0U) {
+            g_runtime.start_result = BALANCE_BALL_START_NO_ZERO;
+        } else if (limits.limits_valid == 0U) {
+            g_runtime.start_result = BALANCE_BALL_START_LIMIT_INVALID;
+        } else if (position.fault != BALANCE_POSITION_FAULT_NONE) {
+            g_runtime.start_result = BALANCE_BALL_START_POSITION_FAULT;
+        } else {
+            g_runtime.start_result = BALANCE_BALL_START_BUSY;
+        }
         g_runtime.state = BALANCE_BALL_STATE_WAIT_AXIS;
         return;
     }
+    g_runtime.start_result = BALANCE_BALL_START_OK;
 
     if (g_runtime.last_measurement_time_ms == 0U) {
         measurement_age_ms = UINT32_MAX;
@@ -492,6 +552,7 @@ void BalanceBallControl_Update20ms(uint32_t now_ms,
         if (command_offset(&limits,
             g_runtime.pd_output_count) == 0U) {
             BalancePositionControl_Cancel();
+            g_runtime.start_result = BALANCE_BALL_START_POSITION_FAULT;
             g_runtime.enable_requested = 0U;
             g_runtime.tracking_owned = 0U;
             g_runtime.state = BALANCE_BALL_STATE_FAULT;
@@ -504,6 +565,7 @@ void BalanceBallControl_Update20ms(uint32_t now_ms,
     if ((g_runtime.axis_span_mm == 0U) ||
         (magnitude_i32(g_runtime.target_mm) * 2U >
             g_runtime.axis_span_mm)) {
+        g_runtime.start_result = BALANCE_BALL_START_DATA_INVALID;
         BalancePositionControl_Cancel();
         g_runtime.enable_requested = 0U;
         g_runtime.tracking_owned = 0U;
@@ -532,6 +594,7 @@ void BalanceBallControl_Update20ms(uint32_t now_ms,
     g_runtime.pd_output_count = requested_offset;
     if (command_offset(&limits, requested_offset) == 0U) {
         BalancePositionControl_Cancel();
+        g_runtime.start_result = BALANCE_BALL_START_POSITION_FAULT;
         g_runtime.enable_requested = 0U;
         g_runtime.tracking_owned = 0U;
         g_runtime.state = BALANCE_BALL_STATE_FAULT;

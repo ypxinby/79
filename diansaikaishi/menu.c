@@ -7,6 +7,7 @@
 #include "balance_encoder.h"
 #include "balance_position_control.h"
 #include "balance_soft_limits.h"
+#include "balance_tuning.h"
 #include "car_controller.h"
 #include "car_state.h"
 #include "emergency_stop.h"
@@ -104,87 +105,72 @@ static void menu_enter_param_page(ParamItem item, uint8_t select_item)
 
 static void menu_next_main_page(void)
 {
-#if FEATURE_OLED_LEGACY_DIAG_PAGES
+#if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
     if (g_oledPage == OLED_PAGE_STATUS) {
-        g_oledPage = OLED_PAGE_SENSOR;
-    } else if (g_oledPage == OLED_PAGE_SENSOR) {
-        g_oledPage = OLED_PAGE_IMU;
-    } else if (g_oledPage == OLED_PAGE_IMU) {
-        g_oledPage = OLED_PAGE_IMU_DETAIL;
-    } else if (g_oledPage == OLED_PAGE_IMU_DETAIL) {
-        g_oledPage = OLED_PAGE_IMU_COUNTERS;
-    } else if (g_oledPage == OLED_PAGE_IMU_COUNTERS) {
-        g_oledPage = OLED_PAGE_HEADING;
-    } else if (g_oledPage == OLED_PAGE_HEADING) {
-        g_oledPage = OLED_PAGE_DISTANCE;
-    } else if (g_oledPage == OLED_PAGE_DISTANCE) {
-        g_oledPage = OLED_PAGE_OBSTACLE;
-    } else if (g_oledPage == OLED_PAGE_OBSTACLE) {
-        g_oledPage = OLED_PAGE_ENCODER;
-    } else if (g_oledPage == OLED_PAGE_ENCODER) {
-        g_oledPage = OLED_PAGE_MOTOR_CONTROL;
-    } else if (g_oledPage == OLED_PAGE_MOTOR_CONTROL) {
-        g_oledPage = OLED_PAGE_MOTOR_CONTROL_DETAIL;
-#if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
-    } else if (g_oledPage == OLED_PAGE_MOTOR_CONTROL_DETAIL) {
         g_oledPage = OLED_PAGE_BALANCE_STEPPER_TEST;
-#endif
-#if FEATURE_BALANCE_VISION_MONITOR
-#if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
-    } else if (g_oledPage == OLED_PAGE_BALANCE_STEPPER_TEST) {
-#else
-    } else if (g_oledPage == OLED_PAGE_MOTOR_CONTROL_DETAIL) {
-#endif
-        g_oledPage = OLED_PAGE_BALANCE_VISION;
-    } else if (g_oledPage == OLED_PAGE_BALANCE_VISION) {
-        g_oledPage = OLED_PAGE_VISION_RX_DEBUG;
-#endif
-#if FEATURE_BLUETOOTH_UART
-#if FEATURE_BALANCE_VISION_MONITOR
-    } else if (g_oledPage == OLED_PAGE_VISION_RX_DEBUG) {
-#elif FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
-    } else if (g_oledPage == OLED_PAGE_BALANCE_STEPPER_TEST) {
-#else
-    } else if (g_oledPage == OLED_PAGE_MOTOR_CONTROL_DETAIL) {
-#endif
-        g_oledPage = OLED_PAGE_BLUETOOTH;
-#endif
     } else {
         g_oledPage = OLED_PAGE_STATUS;
     }
 #else
-    if (g_oledPage == OLED_PAGE_STATUS) {
-        g_oledPage = OLED_PAGE_SENSOR;
-    } else if (g_oledPage == OLED_PAGE_SENSOR) {
-        g_oledPage = OLED_PAGE_HEADING;
-    } else if (g_oledPage == OLED_PAGE_HEADING) {
-        g_oledPage = OLED_PAGE_DISTANCE;
-#if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
-    } else if (g_oledPage == OLED_PAGE_DISTANCE) {
-        g_oledPage = OLED_PAGE_BALANCE_STEPPER_TEST;
+    g_oledPage = OLED_PAGE_STATUS;
 #endif
-#if FEATURE_BALANCE_VISION_MONITOR
-#if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
-    } else if (g_oledPage == OLED_PAGE_BALANCE_STEPPER_TEST) {
-#else
-    } else if (g_oledPage == OLED_PAGE_DISTANCE) {
+}
+
+static void menu_stop_balance_axis_for_safety(void)
+{
+#if FEATURE_BALANCE_SERIAL_TUNING
+    BalanceTuning_AbortCalibrationSession();
 #endif
-        g_oledPage = OLED_PAGE_BALANCE_VISION;
-    } else if (g_oledPage == OLED_PAGE_BALANCE_VISION) {
-        g_oledPage = OLED_PAGE_VISION_RX_DEBUG;
+#if FEATURE_BALANCE_SOFT_LIMITS
+    BalanceSoftLimitsRuntime limits;
+
+    BalanceSoftLimits_GetSnapshot(&limits);
+#if FEATURE_BALANCE_BALL_PD_CONTROL
+    BalanceBallControl_ForceStop();
 #endif
-#if FEATURE_BLUETOOTH_UART
-#if FEATURE_BALANCE_VISION_MONITOR
-    } else if (g_oledPage == OLED_PAGE_VISION_RX_DEBUG) {
-#elif FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
-    } else if (g_oledPage == OLED_PAGE_BALANCE_STEPPER_TEST) {
-#else
-    } else if (g_oledPage == OLED_PAGE_DISTANCE) {
-#endif
-        g_oledPage = OLED_PAGE_BLUETOOTH;
-#endif
+    BalanceSoftLimits_StopMotion();
+    if ((limits.calibration_active != 0U) ||
+        (limits.recalibration_armed != 0U)) {
+        /* An interrupted calibration cannot be trusted. */
+        BalanceSoftLimits_AbortCalibration();
+    } else if ((limits.zero_valid != 0U) &&
+        (limits.limits_valid != 0U)) {
+        /* Preserve a completed calibration across ESTOP. */
+        GimbalStepper_StopHold();
     } else {
-        g_oledPage = OLED_PAGE_STATUS;
+        GimbalStepper_Release();
+    }
+#else
+#if FEATURE_BALANCE_BALL_PD_CONTROL
+    BalanceBallControl_ForceStop();
+#endif
+#if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
+    GimbalStepper_StopHold();
+#endif
+#endif
+}
+
+static void menu_recover_balance_axis_after_reset(void)
+{
+#if FEATURE_BALANCE_SERIAL_TUNING
+    BalanceTuning_AbortCalibrationSession();
+#endif
+#if FEATURE_BALANCE_SOFT_LIMITS
+    BalanceSoftLimitsRuntime limits;
+
+#if FEATURE_BALANCE_BALL_PD_CONTROL
+    BalanceBallControl_ForceStop();
+#endif
+    BalanceSoftLimits_StopMotion();
+    BalanceSoftLimits_GetSnapshot(&limits);
+    if ((limits.zero_valid != 0U) &&
+        (limits.limits_valid != 0U)) {
+        if (BalancePositionControl_HasFault() != 0U) {
+            (void)BalanceSoftLimits_ResetPositionFault();
+        }
+        GimbalStepper_StopHold();
+    } else {
+        GimbalStepper_Release();
     }
 #endif
 }
@@ -392,7 +378,13 @@ static void menu_handle_status_key(KeyEvent event)
     if (g_oledPage == OLED_PAGE_BALANCE_VISION) {
         switch (event) {
             case KEY1_SHORT:
-                menu_next_main_page();
+                /* BALL is an execution page, not part of the normal page
+                 * carousel.  Leaving it relinquishes tracking and requests
+                 * a controlled return to logical ZERO. */
+#if FEATURE_BALANCE_BALL_PD_CONTROL
+                BalanceBallControl_Disable();
+#endif
+                g_oledPage = OLED_PAGE_STATUS;
                 break;
 #if FEATURE_BALANCE_BALL_PD_CONTROL
             case KEY2_SHORT:
@@ -814,6 +806,7 @@ static void menu_handle_status_key(KeyEvent event)
             break;
         case KEY3_LONG:
             (void)App_ResetToReady();
+            menu_recover_balance_axis_after_reset();
             g_oledPage = OLED_PAGE_STATUS;
             break;
         default:
@@ -866,41 +859,29 @@ void Menu_HandleKeyEvent(KeyEvent event)
 
     if (EmergencyStop_IsActive()) {
         if (event == KEY3_LONG) {
-#if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
-            GimbalStepper_Release();
-#endif
-#if FEATURE_BALANCE_SOFT_LIMITS
-            BalanceSoftLimits_AbortCalibration();
-#endif
-#if FEATURE_BALANCE_BALL_PD_CONTROL
-            BalanceBallControl_ForceStop();
-#endif
             (void)App_ResetToReady();
+            menu_recover_balance_axis_after_reset();
             g_oledPage = OLED_PAGE_STATUS;
         }
         return;
     }
 
+    /* The parameter page deliberately owns K2_LONG for fast increment.
+     * Previously the global ESTOP branch intercepted it first, so one normal
+     * parameter edit could silently invalidate the whole balance axis. */
+    if (g_oledPage == OLED_PAGE_PARAM) {
+        menu_handle_param_key(event);
+        return;
+    }
+
     if (event == KEY2_LONG) {
-#if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
-        GimbalStepper_StopHold();
-#endif
-#if FEATURE_BALANCE_SOFT_LIMITS
-        BalanceSoftLimits_AbortCalibration();
-#endif
-#if FEATURE_BALANCE_BALL_PD_CONTROL
-        BalanceBallControl_ForceStop();
-#endif
+        menu_stop_balance_axis_for_safety();
         EmergencyStop_Trigger();
         g_oledPage = OLED_PAGE_STATUS;
         return;
     }
 
-    if (g_oledPage == OLED_PAGE_PARAM) {
-        menu_handle_param_key(event);
-    } else {
-        menu_handle_status_key(event);
-    }
+    menu_handle_status_key(event);
 }
 
 OledPage Menu_GetPage(void)

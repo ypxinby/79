@@ -5,6 +5,7 @@
 
 #define KEY_DEBOUNCE_TICKS      (2U)
 #define KEY_LONG_TICKS          (40U)
+#define KEY2_ESTOP_LONG_TICKS   (75U)
 
 typedef struct {
     bool stablePressed;
@@ -54,7 +55,7 @@ static void post_event(KeyEvent event)
 }
 
 static void key_update_one(KeyState *key, bool rawPressed,
-    KeyEvent shortEvent, KeyEvent longEvent)
+    KeyEvent shortEvent, KeyEvent longEvent, uint16_t longTicks)
 {
     if (rawPressed != key->lastRawPressed) {
         key->lastRawPressed = rawPressed;
@@ -89,7 +90,7 @@ static void key_update_one(KeyState *key, bool rawPressed,
     }
 
     if (!key->longReported) {
-        if (key->holdTicks >= KEY_LONG_TICKS) {
+        if (key->holdTicks >= longTicks) {
             key->longReported = true;
             post_event(longEvent);
         }
@@ -106,9 +107,12 @@ void Key_Init(void)
 
 void Key_Update_20ms(void)
 {
-    key_update_one(&g_key1, read_key1_raw(), KEY1_SHORT, KEY1_LONG);
-    key_update_one(&g_key2, read_key2_raw(), KEY2_SHORT, KEY2_LONG);
-    key_update_one(&g_key3, read_key3_raw(), KEY3_SHORT, KEY3_LONG);
+    key_update_one(&g_key1, read_key1_raw(), KEY1_SHORT, KEY1_LONG,
+        KEY_LONG_TICKS);
+    key_update_one(&g_key2, read_key2_raw(), KEY2_SHORT, KEY2_LONG,
+        KEY2_ESTOP_LONG_TICKS);
+    key_update_one(&g_key3, read_key3_raw(), KEY3_SHORT, KEY3_LONG,
+        KEY_LONG_TICKS);
 }
 
 KeyEvent Key_GetEvent(void)

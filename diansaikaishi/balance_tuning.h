@@ -17,5 +17,6 @@ void BalanceTuning_Init(void);
 void BalanceTuning_Process(void);
 void BalanceTuning_Update20ms(uint32_t now_ms);
 void BalanceTuning_GetStatus(BalanceTuningStatus *status);
+void BalanceTuning_AbortCalibrationSession(void);
 
 #endif

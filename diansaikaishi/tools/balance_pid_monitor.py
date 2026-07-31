@@ -357,7 +357,7 @@ class Monitor:
 
     def _make_controls(self) -> None:
         fields = (
-            ("KP", "6.00"), ("KD", "0.10"), ("DIR", "1"),
+            ("KP", "6.00"), ("KD", "0.10"), ("DIR", "-1"),
             ("MAX", "200"), ("SLEW", "5"), ("DB", "2"), ("RG", "3"),
             ("T", "0"),
         )

@@ -739,7 +739,9 @@ static uint8_t start_serial_calibration(void)
         (BalanceSoftLimits_ArmRecalibration() == 0U)) {
         return 0U;
     }
-    GimbalStepper_StopHold();
+    /* Entering CAL only arms the service mode.  Do not energize the axis
+     * until the operator actually sends a jog command. */
+    GimbalStepper_Release();
     g_serialCalibrationMode = 1U;
     return 1U;
 }
@@ -751,10 +753,8 @@ static uint8_t serial_calibration_jog(int32_t steps)
         (GimbalStepper_GetFeedback()->running != 0U)) {
         return 0U;
     }
-    GimbalStepper_SetStepHalfPeriodTicks(
+    return BalanceSoftLimits_StartCalibrationJogSteps(steps,
         BALANCE_STEPPER_TEST_HALF_PERIOD_TICKS);
-    GimbalStepper_MoveRelativeSteps(steps);
-    return 1U;
 }
 
 static uint8_t serial_calibration_confirm(void)
@@ -768,7 +768,10 @@ static uint8_t serial_calibration_confirm(void)
     }
     BalanceSoftLimits_GetSnapshot(&before);
     if (before.calibration_active == 0U) {
-        return BalanceSoftLimits_BeginFullCalibrationAtCurrentAsZero();
+        uint8_t result =
+            BalanceSoftLimits_BeginFullCalibrationAtCurrentAsZero();
+        BalanceSoftLimits_CancelCalibrationJog();
+        return result;
     }
     if (BalanceSoftLimits_CaptureCurrentStage() == 0U) {
         return 0U;
@@ -793,6 +796,7 @@ static void abort_serial_calibration(void)
     BalanceSoftLimitsRuntime limits;
 
     GimbalStepper_StopHold();
+    BalanceSoftLimits_CancelCalibrationJog();
     BalanceSoftLimits_GetSnapshot(&limits);
     if (limits.calibration_active != 0U) {
         BalanceSoftLimits_AbortCalibration();
@@ -800,6 +804,14 @@ static void abort_serial_calibration(void)
         BalanceSoftLimits_CancelRecalibration();
     }
     g_serialCalibrationMode = 0U;
+    GimbalStepper_Release();
+}
+
+void BalanceTuning_AbortCalibrationSession(void)
+{
+    if (g_serialCalibrationMode != 0U) {
+        abort_serial_calibration();
+    }
 }
 
 static void send_config(void)
@@ -1222,6 +1234,10 @@ void BalanceTuning_GetStatus(BalanceTuningStatus *status)
     if (status != (BalanceTuningStatus *)0) {
         *status = g_status;
     }
+}
+
+void BalanceTuning_AbortCalibrationSession(void)
+{
 }
 
 #endif

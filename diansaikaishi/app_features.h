@@ -93,7 +93,7 @@
  * the calibrated software limits. */
 #define BALANCE_BALL_PD_KP_COUNTS_PER_MM_X100         (600)
 #define BALANCE_BALL_PD_KD_COUNTS_PER_MM_S_X100       (10)
-#define BALANCE_BALL_PD_TILT_SIGN                     (1)
+#define BALANCE_BALL_PD_TILT_SIGN                     (-1)
 #define BALANCE_BALL_PD_MAX_OFFSET_COUNTS             (200U)
 /* 5 count/20 ms = 250 count/s. The current 200 STEP/s actuator limit is
  * about 256 encoder count/s at 4096 count / 3200 STEP, so increasing this
