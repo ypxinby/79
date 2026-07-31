@@ -37,7 +37,26 @@ static volatile uint16_t g_txTail;
 static char g_line[TUNING_LINE_SIZE];
 static uint8_t g_lineLength;
 static uint8_t g_discardLine;
+static uint8_t g_forceDebugSnapshot;
 static volatile BalanceTuningStatus g_status;
+
+typedef struct {
+    uint8_t initialized;
+    BalanceBallControlState controller_state;
+    BalanceBallObservationResult observation_result;
+    BalancePositionFault position_fault;
+    uint32_t rx_byte_count;
+    uint32_t last_rx_progress_ms;
+    uint32_t ring_overflow_count;
+    uint32_t protocol_error_count;
+    uint32_t duplicate_count;
+    uint32_t old_sequence_count;
+    uint32_t rejected_jump_count;
+    uint32_t clamp_count;
+    BalanceSoftLimitError soft_limit_error;
+} BalanceTuningDebugState;
+
+static BalanceTuningDebugState g_debug;
 
 static uint16_t tx_free_count(void)
 {
@@ -202,6 +221,408 @@ static void append_text(char *buffer, uint8_t *length,
     }
 }
 
+static const char *controller_state_text(BalanceBallControlState state)
+{
+    switch (state) {
+        case BALANCE_BALL_STATE_DISABLED: return "DIS";
+        case BALANCE_BALL_STATE_WAIT_AXIS: return "AXIS";
+        case BALANCE_BALL_STATE_WAIT_VISION: return "VIS";
+        case BALANCE_BALL_STATE_ACTIVE: return "ACT";
+        case BALANCE_BALL_STATE_RETURN_ZERO: return "ZERO";
+        case BALANCE_BALL_STATE_VISION_LOST: return "LOST";
+        case BALANCE_BALL_STATE_FAULT: return "FAULT";
+        default: return "UNKNOWN";
+    }
+}
+
+static const char *observation_result_text(
+    BalanceBallObservationResult result)
+{
+    switch (result) {
+        case BALANCE_BALL_OBSERVATION_ACCEPTED: return "ACCEPT";
+        case BALANCE_BALL_OBSERVATION_TARGET_INVALID: return "VALID_0";
+        case BALANCE_BALL_OBSERVATION_NOT_MEASURED: return "MEASURED_0";
+        case BALANCE_BALL_OBSERVATION_STALE: return "STALE_FRAME";
+        case BALANCE_BALL_OBSERVATION_POSITION_JUMP: return "POS_JUMP";
+        default: return "UNKNOWN";
+    }
+}
+
+static const char *vision_event_text(VisionReceiverEvent event)
+{
+    switch (event) {
+        case VISION_RECEIVER_EVENT_WAITING: return "WAIT";
+        case VISION_RECEIVER_EVENT_TARGET: return "TARGET";
+        case VISION_RECEIVER_EVENT_NO_TARGET: return "NO_TARGET";
+        case VISION_RECEIVER_EVENT_NEW_SESSION: return "NEW_SESSION";
+        case VISION_RECEIVER_EVENT_DUPLICATE: return "DUP";
+        case VISION_RECEIVER_EVENT_OLD_SEQUENCE: return "OLD_SEQ";
+        case VISION_RECEIVER_EVENT_LENGTH_ERROR: return "LENGTH";
+        case VISION_RECEIVER_EVENT_CRC_ERROR: return "CRC";
+        case VISION_RECEIVER_EVENT_VERSION_ERROR: return "VERSION";
+        case VISION_RECEIVER_EVENT_TYPE_ERROR: return "TYPE";
+        case VISION_RECEIVER_EVENT_RESERVED_ERROR: return "RESERVED";
+        case VISION_RECEIVER_EVENT_FLAGS_ERROR: return "FLAGS";
+        case VISION_RECEIVER_EVENT_FIELD_ERROR: return "FIELD";
+        case VISION_RECEIVER_EVENT_DISCARDED: return "DISCARD";
+        default: return "UNKNOWN";
+    }
+}
+
+static const char *position_fault_text(BalancePositionFault fault)
+{
+    switch (fault) {
+        case BALANCE_POSITION_FAULT_NONE: return "NONE";
+        case BALANCE_POSITION_FAULT_SOFT_LIMIT: return "LIMIT";
+        case BALANCE_POSITION_FAULT_TIMEOUT: return "TIMEOUT";
+        case BALANCE_POSITION_FAULT_NO_FEEDBACK: return "NOENC";
+        case BALANCE_POSITION_FAULT_FOLLOW_ERROR: return "FOLLOW";
+        case BALANCE_POSITION_FAULT_DIRECTION: return "DIR";
+        default: return "UNKNOWN";
+    }
+}
+
+static uint32_t age_from(uint32_t now_ms, uint32_t timestamp_ms)
+{
+    return (timestamp_ms == 0U) ? UINT32_MAX :
+        (now_ms - timestamp_ms);
+}
+
+static const char *lost_cause_text(uint32_t now_ms,
+    const BalanceBallControlRuntime *ball,
+    const VisionReceiverStatus *vision_status)
+{
+    if (ball->last_observation_result !=
+        BALANCE_BALL_OBSERVATION_ACCEPTED) {
+        return observation_result_text(ball->last_observation_result);
+    }
+    if (age_from(now_ms, g_debug.last_rx_progress_ms) >
+        BALANCE_BALL_PD_VISION_LOST_TIMEOUT_MS) {
+        return "UART_NO_BYTES";
+    }
+    if ((vision_status->last_event ==
+            VISION_RECEIVER_EVENT_DUPLICATE) ||
+        (vision_status->last_event ==
+            VISION_RECEIVER_EVENT_OLD_SEQUENCE)) {
+        return "SEQ_REJECT";
+    }
+    if ((vision_status->last_event ==
+            VISION_RECEIVER_EVENT_LENGTH_ERROR) ||
+        (vision_status->last_event ==
+            VISION_RECEIVER_EVENT_CRC_ERROR) ||
+        (vision_status->last_event ==
+            VISION_RECEIVER_EVENT_FIELD_ERROR) ||
+        (vision_status->last_event ==
+            VISION_RECEIVER_EVENT_DISCARDED)) {
+        return "PARSE_REJECT";
+    }
+    if (age_from(now_ms,
+        vision_status->last_valid_packet_time_ms) >
+        BALANCE_BALL_PD_VISION_LOST_TIMEOUT_MS) {
+        return "NO_ACCEPTED_FRAME";
+    }
+    return "MEAS_TIMEOUT";
+}
+
+static void send_debug_controller(uint32_t now_ms,
+    BalanceBallControlState previous_state,
+    const BalanceBallControlRuntime *ball,
+    const VisionBallPositionObservation *vision,
+    const VisionReceiverStatus *vision_status)
+{
+    char response[240];
+    uint8_t length = 0U;
+    uint32_t measurement_age = age_from(now_ms,
+        ball->last_measurement_time_ms);
+    uint32_t rx_age = age_from(now_ms, g_debug.last_rx_progress_ms);
+
+    append_text(response, &length, sizeof(response), "DBG,CTRL,t=");
+    append_u32(response, &length, sizeof(response), now_ms);
+    append_text(response, &length, sizeof(response), ",old=");
+    append_text(response, &length, sizeof(response),
+        controller_state_text(previous_state));
+    append_text(response, &length, sizeof(response), ",new=");
+    append_text(response, &length, sizeof(response),
+        controller_state_text(ball->state));
+    if (ball->state == BALANCE_BALL_STATE_VISION_LOST) {
+        append_text(response, &length, sizeof(response), ",cause=");
+        append_text(response, &length, sizeof(response),
+            lost_cause_text(now_ms, ball, vision_status));
+    }
+    append_text(response, &length, sizeof(response), ",mage=");
+    append_i32(response, &length, sizeof(response),
+        (measurement_age == UINT32_MAX) ? -1 :
+            (int32_t)measurement_age);
+    append_text(response, &length, sizeof(response), ",rxage=");
+    append_i32(response, &length, sizeof(response),
+        (rx_age == UINT32_MAX) ? -1 : (int32_t)rx_age);
+    append_text(response, &length, sizeof(response), ",seq=");
+    append_u32(response, &length, sizeof(response), vision->sequence);
+    append_text(response, &length, sizeof(response), ",valid=");
+    append_u32(response, &length, sizeof(response), vision->target_valid);
+    append_text(response, &length, sizeof(response), ",meas=");
+    append_u32(response, &length, sizeof(response), vision->measured);
+    append_text(response, &length, sizeof(response), ",streak=");
+    append_u32(response, &length, sizeof(response), ball->valid_streak);
+    append_text(response, &length, sizeof(response), ",event=");
+    append_text(response, &length, sizeof(response),
+        vision_event_text(vision_status->last_event));
+    append_text(response, &length, sizeof(response), "\r\n");
+    (void)tx_enqueue_atomic((const uint8_t *)response, length);
+}
+
+static void send_debug_filter(uint32_t now_ms,
+    const BalanceBallControlRuntime *ball,
+    const VisionBallPositionObservation *vision)
+{
+    char response[192];
+    uint8_t length = 0U;
+
+    append_text(response, &length, sizeof(response), "DBG,FILTER,t=");
+    append_u32(response, &length, sizeof(response), now_ms);
+    append_text(response, &length, sizeof(response), ",result=");
+    append_text(response, &length, sizeof(response),
+        observation_result_text(ball->last_observation_result));
+    append_text(response, &length, sizeof(response), ",seq=");
+    append_u32(response, &length, sizeof(response), vision->sequence);
+    append_text(response, &length, sizeof(response), ",valid=");
+    append_u32(response, &length, sizeof(response), vision->target_valid);
+    append_text(response, &length, sizeof(response), ",meas=");
+    append_u32(response, &length, sizeof(response), vision->measured);
+    append_text(response, &length, sizeof(response), ",pos=");
+    append_i32(response, &length, sizeof(response), vision->position_mm);
+    append_text(response, &length, sizeof(response), ",accepted=");
+    append_u32(response, &length, sizeof(response),
+        ball->accepted_measurement_count);
+    append_text(response, &length, sizeof(response), ",jump=");
+    append_u32(response, &length, sizeof(response),
+        ball->rejected_jump_count);
+    append_text(response, &length, sizeof(response), ",hold=");
+    append_u32(response, &length, sizeof(response),
+        ball->held_invalid_count);
+    append_text(response, &length, sizeof(response), "\r\n");
+    (void)tx_enqueue_atomic((const uint8_t *)response, length);
+}
+
+static void send_debug_receiver(uint32_t now_ms,
+    const VisionReceiverStatus *status)
+{
+    char response[224];
+    uint8_t length = 0U;
+
+    append_text(response, &length, sizeof(response), "DBG,RX,t=");
+    append_u32(response, &length, sizeof(response), now_ms);
+    append_text(response, &length, sizeof(response), ",event=");
+    append_text(response, &length, sizeof(response),
+        vision_event_text(status->last_event));
+    append_text(response, &length, sizeof(response), ",bytes=");
+    append_u32(response, &length, sizeof(response), status->rx_byte_count);
+    append_text(response, &length, sizeof(response), ",parsed=");
+    append_u32(response, &length, sizeof(response),
+        status->parsed_frame_count);
+    append_text(response, &length, sizeof(response), ",accepted=");
+    append_u32(response, &length, sizeof(response),
+        status->accepted_frame_count);
+    append_text(response, &length, sizeof(response), ",len=");
+    append_u32(response, &length, sizeof(response),
+        status->length_error_count);
+    append_text(response, &length, sizeof(response), ",crc=");
+    append_u32(response, &length, sizeof(response),
+        status->crc_error_count);
+    append_text(response, &length, sizeof(response), ",field=");
+    append_u32(response, &length, sizeof(response),
+        status->field_error_count);
+    append_text(response, &length, sizeof(response), ",dup=");
+    append_u32(response, &length, sizeof(response),
+        status->duplicate_count);
+    append_text(response, &length, sizeof(response), ",old=");
+    append_u32(response, &length, sizeof(response),
+        status->old_sequence_count);
+    append_text(response, &length, sizeof(response), ",ovf=");
+    append_u32(response, &length, sizeof(response),
+        status->ring_overflow_count);
+    append_text(response, &length, sizeof(response), "\r\n");
+    (void)tx_enqueue_atomic((const uint8_t *)response, length);
+}
+
+static void send_debug_axis(uint32_t now_ms,
+    const BalanceSoftLimitsRuntime *limits,
+    const BalancePositionRuntime *position)
+{
+    char response[192];
+    uint8_t length = 0U;
+
+    append_text(response, &length, sizeof(response), "DBG,AXIS,t=");
+    append_u32(response, &length, sizeof(response), now_ms);
+    append_text(response, &length, sizeof(response), ",zero=");
+    append_u32(response, &length, sizeof(response), limits->zero_valid);
+    append_text(response, &length, sizeof(response), ",limits=");
+    append_u32(response, &length, sizeof(response), limits->limits_valid);
+    append_text(response, &length, sizeof(response), ",cal=");
+    append_u32(response, &length, sizeof(response),
+        limits->calibration_active);
+    append_text(response, &length, sizeof(response), ",test=");
+    append_u32(response, &length, sizeof(response), limits->test_active);
+    append_text(response, &length, sizeof(response), ",osc=");
+    append_u32(response, &length, sizeof(response),
+        limits->oscillation_active);
+    append_text(response, &length, sizeof(response), ",busy=");
+    append_u32(response, &length, sizeof(response), position->busy);
+    append_text(response, &length, sizeof(response), ",pfault=");
+    append_text(response, &length, sizeof(response),
+        position_fault_text(position->fault));
+    append_text(response, &length, sizeof(response), "\r\n");
+    (void)tx_enqueue_atomic((const uint8_t *)response, length);
+}
+
+static void send_debug_position_fault(uint32_t now_ms,
+    const BalancePositionRuntime *position)
+{
+    char response[192];
+    uint8_t length = 0U;
+
+    append_text(response, &length, sizeof(response), "DBG,PCTRL,t=");
+    append_u32(response, &length, sizeof(response), now_ms);
+    append_text(response, &length, sizeof(response), ",fault=");
+    append_text(response, &length, sizeof(response),
+        position_fault_text(position->fault));
+    append_text(response, &length, sizeof(response), ",target=");
+    append_i32(response, &length, sizeof(response), position->target_count);
+    append_text(response, &length, sizeof(response), ",current=");
+    append_i32(response, &length, sizeof(response), position->current_count);
+    append_text(response, &length, sizeof(response), ",err=");
+    append_i32(response, &length, sizeof(response),
+        position->position_error_count);
+    append_text(response, &length, sizeof(response), ",follow=");
+    append_i32(response, &length, sizeof(response),
+        position->following_error_count);
+    append_text(response, &length, sizeof(response), ",noenc=");
+    append_u32(response, &length, sizeof(response),
+        position->steps_without_feedback);
+    append_text(response, &length, sizeof(response), "\r\n");
+    (void)tx_enqueue_atomic((const uint8_t *)response, length);
+}
+
+static void send_debug_limit(uint32_t now_ms,
+    const BalanceSoftLimitsRuntime *limits)
+{
+    char response[176];
+    uint8_t length = 0U;
+
+    append_text(response, &length, sizeof(response), "DBG,LIMIT,t=");
+    append_u32(response, &length, sizeof(response), now_ms);
+    append_text(response, &length, sizeof(response), ",count=");
+    append_u32(response, &length, sizeof(response), limits->clamp_count);
+    append_text(response, &length, sizeof(response), ",dir=");
+    append_i32(response, &length, sizeof(response),
+        limits->last_clamp_direction);
+    append_text(response, &length, sizeof(response), ",current=");
+    append_i32(response, &length, sizeof(response),
+        limits->current_logical_count);
+    append_text(response, &length, sizeof(response), ",min=");
+    append_i32(response, &length, sizeof(response),
+        limits->minimum_logical_count);
+    append_text(response, &length, sizeof(response), ",max=");
+    append_i32(response, &length, sizeof(response),
+        limits->maximum_logical_count);
+    append_text(response, &length, sizeof(response), ",err=");
+    append_u32(response, &length, sizeof(response), limits->error);
+    append_text(response, &length, sizeof(response), "\r\n");
+    (void)tx_enqueue_atomic((const uint8_t *)response, length);
+}
+
+static void enqueue_debug_events(uint32_t now_ms)
+{
+    BalanceBallControlRuntime ball;
+    BalancePositionRuntime position;
+    BalanceSoftLimitsRuntime limits;
+    const VisionReceiverStatus *vision_status =
+        VisionReceiver_GetStatus();
+    const VisionBallPositionObservation *vision =
+        VisionReceiver_GetBallPositionObservation();
+    uint32_t protocol_errors = VisionReceiver_GetProtocolErrorCount();
+
+    BalanceBallControl_GetSnapshot(&ball);
+    BalancePositionControl_GetSnapshot(&position);
+    BalanceSoftLimits_GetSnapshot(&limits);
+
+    if ((g_debug.initialized == 0U) ||
+        (vision_status->rx_byte_count != g_debug.rx_byte_count)) {
+        g_debug.last_rx_progress_ms = now_ms;
+    }
+
+    if (g_debug.initialized == 0U) {
+        g_debug.controller_state = ball.state;
+        g_debug.observation_result = ball.last_observation_result;
+        g_debug.position_fault = position.fault;
+        g_debug.soft_limit_error = limits.error;
+        send_debug_controller(now_ms, ball.state, &ball, vision,
+            vision_status);
+        send_debug_axis(now_ms, &limits, &position);
+        g_debug.initialized = 1U;
+    } else {
+        if (ball.state != g_debug.controller_state) {
+            send_debug_controller(now_ms, g_debug.controller_state,
+                &ball, vision, vision_status);
+            if ((ball.state == BALANCE_BALL_STATE_WAIT_AXIS) ||
+                (ball.state == BALANCE_BALL_STATE_FAULT)) {
+                send_debug_axis(now_ms, &limits, &position);
+            }
+            if (ball.state == BALANCE_BALL_STATE_VISION_LOST) {
+                send_debug_filter(now_ms, &ball, vision);
+                send_debug_receiver(now_ms, vision_status);
+            }
+            g_debug.controller_state = ball.state;
+        }
+        if ((ball.last_observation_result !=
+                g_debug.observation_result) ||
+            (ball.rejected_jump_count !=
+                g_debug.rejected_jump_count)) {
+            send_debug_filter(now_ms, &ball, vision);
+            g_debug.observation_result =
+                ball.last_observation_result;
+        }
+        if (position.fault != g_debug.position_fault) {
+            send_debug_position_fault(now_ms, &position);
+            g_debug.position_fault = position.fault;
+        }
+        if ((limits.clamp_count != g_debug.clamp_count) ||
+            (limits.error != g_debug.soft_limit_error)) {
+            send_debug_limit(now_ms, &limits);
+            g_debug.soft_limit_error = limits.error;
+        }
+        if ((vision_status->ring_overflow_count !=
+                g_debug.ring_overflow_count) ||
+            (protocol_errors != g_debug.protocol_error_count) ||
+            (vision_status->duplicate_count !=
+                g_debug.duplicate_count) ||
+            (vision_status->old_sequence_count !=
+                g_debug.old_sequence_count)) {
+            send_debug_receiver(now_ms, vision_status);
+        }
+    }
+
+    if (g_forceDebugSnapshot != 0U) {
+        send_debug_controller(now_ms, ball.state, &ball, vision,
+            vision_status);
+        send_debug_filter(now_ms, &ball, vision);
+        send_debug_receiver(now_ms, vision_status);
+        send_debug_axis(now_ms, &limits, &position);
+        send_debug_position_fault(now_ms, &position);
+        send_debug_limit(now_ms, &limits);
+        g_forceDebugSnapshot = 0U;
+    }
+
+    g_debug.rx_byte_count = vision_status->rx_byte_count;
+    g_debug.ring_overflow_count =
+        vision_status->ring_overflow_count;
+    g_debug.protocol_error_count = protocol_errors;
+    g_debug.duplicate_count = vision_status->duplicate_count;
+    g_debug.old_sequence_count = vision_status->old_sequence_count;
+    g_debug.rejected_jump_count = ball.rejected_jump_count;
+    g_debug.clamp_count = limits.clamp_count;
+}
+
 static void send_config(void)
 {
     BalanceBallControlConfig config;
@@ -305,6 +726,12 @@ static void process_line(void)
     if ((strcmp(g_line, "GET") == 0) ||
         (strcmp(g_line, "?") == 0)) {
         send_config();
+        return;
+    }
+    if ((strcmp(g_line, "LOG") == 0) ||
+        (strcmp(g_line, "DBG") == 0)) {
+        g_forceDebugSnapshot = 1U;
+        send_text("ACK,LOG\r\n");
         return;
     }
     if (strcmp(g_line, "DEF") == 0) {
@@ -439,7 +866,9 @@ void BalanceTuning_Init(void)
     g_txTail = 0U;
     g_lineLength = 0U;
     g_discardLine = 0U;
+    g_forceDebugSnapshot = 0U;
     g_status = (BalanceTuningStatus){0};
+    g_debug = (BalanceTuningDebugState){0};
     NVIC_ClearPendingIRQ(UART_BALANCE_TUNING_INST_INT_IRQN);
     NVIC_EnableIRQ(UART_BALANCE_TUNING_INST_INT_IRQN);
 }
@@ -479,6 +908,7 @@ void BalanceTuning_Process(void)
 
 void BalanceTuning_Update20ms(uint32_t now_ms)
 {
+    enqueue_debug_events(now_ms);
     enqueue_justfloat(now_ms);
 }
 

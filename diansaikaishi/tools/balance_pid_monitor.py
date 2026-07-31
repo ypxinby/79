@@ -155,7 +155,7 @@ class BalanceSerial:
                 line = raw_line.decode("ascii").strip()
             except UnicodeDecodeError:
                 continue
-            if line.startswith(("ACK,", "ERR,", "CFG,")):
+            if line.startswith(("ACK,", "ERR,", "CFG,", "DBG,")):
                 with self.data_lock:
                     self.messages.append(line)
 
@@ -266,6 +266,10 @@ class Monitor:
         self.receive_fps = 0.0
         self.last_autoscale_time = 0.0
         self.log_dir = Path(__file__).resolve().parent / "balance_logs"
+        self.debug_log_path = self.log_dir / (
+            f"balance_debug_{datetime.now():%Y%m%d_%H%M%S}.log"
+        )
+        self.debug_lines: deque[str] = deque(maxlen=5)
         self.pending_parameter_save = False
         self.last_config: dict[str, str] = {}
         self.active_parameter = "KP"
@@ -279,9 +283,15 @@ class Monitor:
         self._make_controls()
         self.status_text = self.figure.text(0.76, 0.93, "等待串口", va="top", family="monospace")
         self.value_text = self.figure.text(0.76, 0.82, "等待数据", va="top", family="monospace")
-        self.message_text = self.figure.text(0.76, 0.39, "", va="top", family="monospace")
+        self.message_text = self.figure.text(
+            0.76, 0.49, "", va="top", family="monospace", fontsize=9
+        )
+        self.debug_text = self.figure.text(
+            0.76, 0.43, "保护链日志：等待事件", va="top",
+            family="monospace", fontsize=7.5,
+        )
         self.shortcut_text = self.figure.text(
-            0.76, 0.32,
+            0.76, 0.30,
             "参数框：↑/↓微调，Shift+↑/↓快调\n修改后仍需点击应用按钮",
             va="top", fontsize=9,
         )
@@ -324,8 +334,8 @@ class Monitor:
 
     def _make_controls(self) -> None:
         fields = (
-            ("KP", "1.00"), ("KD", "0.08"), ("DIR", "1"),
-            ("MAX", "128"), ("SLEW", "8"), ("DB", "2"), ("RG", "3"),
+            ("KP", "6.00"), ("KD", "0.10"), ("DIR", "1"),
+            ("MAX", "200"), ("SLEW", "5"), ("DB", "2"), ("RG", "3"),
         )
         self.boxes: dict[str, TextBox] = {}
         for index, (name, initial) in enumerate(fields):
@@ -344,6 +354,7 @@ class Monitor:
             Button(self.figure.add_axes([0.76, 0.10, 0.08, 0.045]), "默认"),
             Button(self.figure.add_axes([0.85, 0.10, 0.08, 0.045]), "CSV"),
             Button(self.figure.add_axes([0.94, 0.10, 0.05, 0.045]), "PARAM"),
+            Button(self.figure.add_axes([0.76, 0.04, 0.10, 0.045]), "诊断"),
         ]
         self.buttons[0].on_clicked(self._apply_pd)
         self.buttons[1].on_clicked(self._apply_axis)
@@ -353,6 +364,7 @@ class Monitor:
         self.buttons[5].on_clicked(lambda _e: self._send("DEF"))
         self.buttons[6].on_clicked(lambda _e: self.save_csv())
         self.buttons[7].on_clicked(self._request_parameter_save)
+        self.buttons[8].on_clicked(lambda _e: self._send("LOG"))
 
     def _select_parameter(self, event) -> None:
         for name, box in self.boxes.items():
@@ -519,6 +531,76 @@ class Monitor:
             writer.writerows(zip(self.times, *self.channels))
         self.last_message = f"CSV {path.name}"
 
+    @staticmethod
+    def _compact_debug(message: str) -> str:
+        parts = message.split(",")
+        if len(parts) < 2:
+            return message
+        layer = parts[1]
+        fields = {}
+        for item in parts[2:]:
+            if "=" in item:
+                key, value = item.split("=", 1)
+                fields[key] = value
+        timestamp = fields.get("t", "?")
+        if layer == "CTRL":
+            text = (
+                f"{timestamp} CTRL {fields.get('old', '?')}→"
+                f"{fields.get('new', '?')}"
+            )
+            if "cause" in fields:
+                text += f" {fields['cause']}"
+            return (
+                f"{text} age={fields.get('mage', '?')} "
+                f"rx={fields.get('rxage', '?')} seq={fields.get('seq', '?')}"
+            )
+        if layer == "FILTER":
+            return (
+                f"{timestamp} FILTER {fields.get('result', '?')} "
+                f"seq={fields.get('seq', '?')} pos={fields.get('pos', '?')} "
+                f"v/m={fields.get('valid', '?')}/{fields.get('meas', '?')}"
+            )
+        if layer == "RX":
+            return (
+                f"{timestamp} RX {fields.get('event', '?')} "
+                f"len/crc/fld={fields.get('len', '?')}/"
+                f"{fields.get('crc', '?')}/{fields.get('field', '?')} "
+                f"dup/old/ovf={fields.get('dup', '?')}/"
+                f"{fields.get('old', '?')}/{fields.get('ovf', '?')}"
+            )
+        if layer == "AXIS":
+            return (
+                f"{timestamp} AXIS z/l={fields.get('zero', '?')}/"
+                f"{fields.get('limits', '?')} cal/test/osc="
+                f"{fields.get('cal', '?')}/{fields.get('test', '?')}/"
+                f"{fields.get('osc', '?')} fault={fields.get('pfault', '?')}"
+            )
+        if layer == "PCTRL":
+            return (
+                f"{timestamp} PCTRL {fields.get('fault', '?')} "
+                f"err={fields.get('err', '?')} follow={fields.get('follow', '?')} "
+                f"noenc={fields.get('noenc', '?')}"
+            )
+        if layer == "LIMIT":
+            return (
+                f"{timestamp} LIMIT count={fields.get('count', '?')} "
+                f"dir={fields.get('dir', '?')} cur={fields.get('current', '?')} "
+                f"[{fields.get('min', '?')},{fields.get('max', '?')}] "
+                f"err={fields.get('err', '?')}"
+            )
+        return message
+
+    def _record_debug(self, message: str) -> None:
+        self.debug_lines.append(self._compact_debug(message))
+        try:
+            self.log_dir.mkdir(parents=True, exist_ok=True)
+            with self.debug_log_path.open("a", encoding="utf-8") as handle:
+                handle.write(
+                    f"{datetime.now():%Y-%m-%d %H:%M:%S.%f} {message}\n"
+                )
+        except OSError as exc:
+            self.last_message = f"调试日志写入失败: {exc}"
+
     def _update(self, _frame):
         self._append_frames()
         status, good, bad, rx_bytes, messages = self.link.snapshot()
@@ -530,6 +612,9 @@ class Monitor:
             self.last_rate_time = now
         if messages:
             for message in messages:
+                if message.startswith("DBG,"):
+                    self._record_debug(message)
+                    continue
                 if message.startswith("CFG,"):
                     self._load_cfg(message)
                 self.last_message = message
@@ -538,6 +623,10 @@ class Monitor:
             f"frames={good} bad={bad}\nRX={rx_bytes}B"
         )
         self.message_text.set_text(f"最后消息\n{self.last_message}")
+        if self.debug_lines:
+            self.debug_text.set_text(
+                "保护链日志（自动保存）\n" + "\n".join(self.debug_lines)
+            )
         if not self.times:
             return ()
         t = np.asarray(self.times)

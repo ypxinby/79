@@ -145,9 +145,11 @@ static void reset_measurement_history(void)
     g_lastPositionTimeMs = 0U;
 }
 
-static void process_invalid_observation(void)
+static void process_invalid_observation(
+    BalanceBallObservationResult result)
 {
     g_runtime.raw_vision_valid = 0U;
+    g_runtime.last_observation_result = result;
 
     /* Once control is active, a single K230 invalid frame must not make the
      * axis return toward ZERO.  The update loop keeps the last valid sample
@@ -180,6 +182,7 @@ static void process_observation(uint32_t now_ms)
         return;
     }
     g_lastObservationUpdateCount = ball->update_count;
+    g_runtime.last_observation_time_ms = now_ms;
 
     if (ball->session_id != g_lastSessionId) {
         g_lastSessionId = ball->session_id;
@@ -191,11 +194,20 @@ static void process_observation(uint32_t now_ms)
      * HOLD/prediction frames remain available in VisionReceiver for
      * diagnostics, but the controller treats them as missing measurements
      * and relies on the existing 150 ms hold window instead. */
-    if ((ball->target_valid == 0U) ||
-        (ball->measured == 0U) ||
-        ((now_ms - ball->local_receive_timestamp_ms) >
-            BALANCE_VISION_STALE_TIMEOUT_MS)) {
-        process_invalid_observation();
+    if (ball->target_valid == 0U) {
+        process_invalid_observation(
+            BALANCE_BALL_OBSERVATION_TARGET_INVALID);
+        return;
+    }
+    if (ball->measured == 0U) {
+        process_invalid_observation(
+            BALANCE_BALL_OBSERVATION_NOT_MEASURED);
+        return;
+    }
+    if ((now_ms - ball->local_receive_timestamp_ms) >
+        BALANCE_VISION_STALE_TIMEOUT_MS) {
+        process_invalid_observation(
+            BALANCE_BALL_OBSERVATION_STALE);
         return;
     }
 
@@ -214,7 +226,8 @@ static void process_observation(uint32_t now_ms)
         if (magnitude_i32(delta_mm) >
             BALANCE_BALL_PD_MAX_JUMP_MM) {
             g_runtime.rejected_jump_count++;
-            process_invalid_observation();
+            process_invalid_observation(
+                BALANCE_BALL_OBSERVATION_POSITION_JUMP);
             return;
         }
         delta_ms = ball->local_receive_timestamp_ms -
@@ -238,6 +251,8 @@ static void process_observation(uint32_t now_ms)
     g_runtime.last_measurement_time_ms =
         ball->local_receive_timestamp_ms;
     g_runtime.accepted_measurement_count++;
+    g_runtime.last_observation_result =
+        BALANCE_BALL_OBSERVATION_ACCEPTED;
     g_runtime.raw_vision_valid = 1U;
     if (g_runtime.valid_streak <
         BALANCE_BALL_PD_VALID_FRAME_COUNT) {

@@ -13,6 +13,17 @@ typedef enum {
     BALANCE_BALL_STATE_FAULT
 } BalanceBallControlState;
 
+/* Latest reason why a newly received K230 observation was not admitted to
+ * the PD measurement chain.  This is diagnostic state only; it does not
+ * change the existing protection decisions. */
+typedef enum {
+    BALANCE_BALL_OBSERVATION_ACCEPTED = 0,
+    BALANCE_BALL_OBSERVATION_TARGET_INVALID,
+    BALANCE_BALL_OBSERVATION_NOT_MEASURED,
+    BALANCE_BALL_OBSERVATION_STALE,
+    BALANCE_BALL_OBSERVATION_POSITION_JUMP
+} BalanceBallObservationResult;
+
 typedef struct {
     int32_t kp_x100;
     int32_t kd_x100;
@@ -38,6 +49,7 @@ typedef struct {
     uint32_t rejected_jump_count;
     uint32_t held_invalid_count;
     uint32_t vision_lost_count;
+    uint32_t last_observation_time_ms;
     uint16_t axis_span_mm;
     uint16_t confidence;
     uint8_t enable_requested;
@@ -48,6 +60,7 @@ typedef struct {
      * still inside the short hold window. */
     uint8_t measurement_valid;
     uint8_t valid_streak;
+    BalanceBallObservationResult last_observation_result;
     BalanceBallControlState state;
 } BalanceBallControlRuntime;
 
