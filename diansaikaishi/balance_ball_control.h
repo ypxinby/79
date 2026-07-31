@@ -36,11 +36,13 @@ typedef struct {
     uint32_t last_measurement_time_ms;
     uint32_t accepted_measurement_count;
     uint32_t rejected_jump_count;
+    uint32_t held_invalid_count;
     uint32_t vision_lost_count;
     uint16_t axis_span_mm;
     uint16_t confidence;
     uint8_t enable_requested;
     uint8_t tracking_owned;
+    uint8_t raw_vision_valid;
     uint8_t measurement_valid;
     uint8_t valid_streak;
     BalanceBallControlState state;

@@ -64,6 +64,8 @@
  * while the balance profile accepts one meaningful pipe-axis coordinate:
  * frame_height=1, target_center_y=0, target_center_x=axis position. */
 #define FEATURE_BALANCE_VISION_MONITOR               (1)
+/* Keep the last valid position through roughly 2-3 missing K230 frames.
+ * Only after this grace period may the ball controller return toward ZERO. */
 #define BALANCE_VISION_STALE_TIMEOUT_MS              (150U)
 #define BALANCE_BALL_AXIS_SPAN_MM                     (300U)
 #define BALANCE_BALL_MAX_REPORTED_SPEED_MM_S          (3000U)

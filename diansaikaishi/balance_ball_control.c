@@ -139,7 +139,29 @@ static int32_t maximum_offset_count(
 
 static void reset_measurement_history(void)
 {
+    g_runtime.raw_vision_valid = 0U;
     g_runtime.measurement_valid = 0U;
+    g_runtime.valid_streak = 0U;
+    g_runtime.velocity_mm_s = 0;
+    g_runtime.last_measurement_time_ms = 0U;
+    g_velocityInitialized = 0U;
+    g_lastPositionTimeMs = 0U;
+}
+
+static void process_invalid_observation(void)
+{
+    g_runtime.raw_vision_valid = 0U;
+
+    /* Once control is active, a single K230 invalid frame must not make the
+     * axis return toward ZERO.  The update loop keeps the last valid sample
+     * until BALANCE_VISION_STALE_TIMEOUT_MS expires. */
+    if (g_runtime.measurement_valid != 0U) {
+        g_runtime.held_invalid_count++;
+        return;
+    }
+
+    /* During initial acquisition or recovery, validity must still be truly
+     * consecutive before the actuator is allowed to re-enter ACTIVE. */
     g_runtime.valid_streak = 0U;
     g_runtime.velocity_mm_s = 0;
     g_velocityInitialized = 0U;
@@ -171,11 +193,7 @@ static void process_observation(uint32_t now_ms)
         (ball->confidence < BALANCE_BALL_PD_MIN_CONFIDENCE) ||
         ((now_ms - ball->local_receive_timestamp_ms) >
             BALANCE_VISION_STALE_TIMEOUT_MS)) {
-        g_runtime.valid_streak = 0U;
-        g_runtime.measurement_valid = 0U;
-        g_runtime.velocity_mm_s = 0;
-        g_velocityInitialized = 0U;
-        g_lastPositionTimeMs = 0U;
+        process_invalid_observation();
         return;
     }
 
@@ -184,8 +202,7 @@ static void process_observation(uint32_t now_ms)
         if (magnitude_i32(delta_mm) >
             BALANCE_BALL_PD_MAX_JUMP_MM) {
             g_runtime.rejected_jump_count++;
-            g_runtime.valid_streak = 0U;
-            g_runtime.measurement_valid = 0U;
+            process_invalid_observation();
             return;
         }
         delta_ms = ball->local_receive_timestamp_ms -
@@ -209,6 +226,7 @@ static void process_observation(uint32_t now_ms)
     g_runtime.last_measurement_time_ms =
         ball->local_receive_timestamp_ms;
     g_runtime.accepted_measurement_count++;
+    g_runtime.raw_vision_valid = 1U;
     if (g_runtime.valid_streak <
         BALANCE_BALL_PD_VALID_FRAME_COUNT) {
         g_runtime.valid_streak++;
@@ -407,6 +425,7 @@ void BalanceBallControl_Update20ms(uint32_t now_ms,
     if ((g_runtime.measurement_valid == 0U) ||
         (measurement_age_ms > BALANCE_VISION_STALE_TIMEOUT_MS)) {
         if (measurement_age_ms > BALANCE_VISION_STALE_TIMEOUT_MS) {
+            g_runtime.raw_vision_valid = 0U;
             g_runtime.measurement_valid = 0U;
             g_runtime.valid_streak = 0U;
             g_runtime.velocity_mm_s = 0;
