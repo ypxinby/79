@@ -134,7 +134,7 @@ T     手动测试目标，正式中心任务固定为0
 编译默认值只作为安全起调值，不代表最终比赛参数：
 
 ```text
-KP=1.50 KD=0.60 VMAX=120 BIAS=0
+KP=1.50 KD=0.90 VMAX=90 BIAS=0
 AP=500 AN=500 TD=80 BM=5 VAPP=20
 DIR=-1 MAX=80 SLEW=5 DB=2 RG=3 T=0
 ```

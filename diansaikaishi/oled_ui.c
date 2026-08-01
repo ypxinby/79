@@ -862,6 +862,26 @@ static void print_param_page(uint8_t keyEvent)
         OLED_PrintInt16(g_appConfig.line_control_v2_base_command);
         OLED_PrintString(" C:");
         OLED_PrintInt16(g_appRuntime.correction);
+    } else if (item == PARAM_H_LINE_BASE) {
+        OLED_PrintString("TASK3-5 CMD");
+    } else if (item == PARAM_H_LINE_FEEDFORWARD) {
+        OLED_PrintString("X0.01 TASK3-5");
+    } else if (item == PARAM_H_LINE_KP) {
+        OLED_PrintString("X0.01 TASK3-5");
+    } else if (item == PARAM_H_LINE_KD) {
+        OLED_PrintString("X0.001 T3-5");
+    } else if (item == PARAM_H_LINE_MAX_CORRECTION) {
+        OLED_PrintString("TASK3-5 LIMIT");
+    } else if (item == PARAM_BALANCE_KP) {
+        OLED_PrintString("KPOS X0.01");
+    } else if (item == PARAM_BALANCE_KD) {
+        OLED_PrintString("KVEL X0.01");
+    } else if (item == PARAM_BALANCE_VMAX) {
+        OLED_PrintString("BALL MM/S");
+    } else if (item == PARAM_BALANCE_BIAS) {
+        OLED_PrintString("NEUTRAL COUNT");
+    } else if (item == PARAM_BALANCE_MAX) {
+        OLED_PrintString("TILT COUNT LIM");
     } else {
         OLED_PrintString("C:");
         OLED_PrintInt16(g_appRuntime.correction);

@@ -66,6 +66,17 @@ typedef struct {
     uint8_t recovery_count;
 } HTaskRuntime;
 
+/* Runtime chassis profile used by H4/H5/H6.  These fields deliberately use
+ * the same scaled units as the OLED line-tuning page so the operator can tune
+ * the H-task profile without changing the Task1 profile. */
+typedef struct {
+    int16_t normal_command;
+    int16_t feedforward_x100;
+    int16_t line_kp_x100;
+    int16_t line_kd_x1000;
+    int16_t max_correction;
+} HTaskChassisTuning;
+
 void HTaskController_Init(void);
 uint8_t HTaskController_Start(HTaskId task_id);
 void HTaskController_Update20ms(uint32_t elapsed_ms);
@@ -74,6 +85,9 @@ void HTaskController_Reset(void);
 uint8_t HTaskController_IsActive(void);
 uint8_t HTaskController_HasFault(void);
 void HTaskController_GetSnapshot(HTaskRuntime *snapshot);
+void HTaskController_GetChassisTuning(HTaskChassisTuning *tuning);
+uint8_t HTaskController_SetChassisTuning(
+    const HTaskChassisTuning *tuning);
 const char *HTaskController_StateToString(HTaskState state);
 const char *HTaskController_VehicleToString(HTaskVehicleLevel level);
 

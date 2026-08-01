@@ -17,6 +17,7 @@
 #include "gimbal_tracker.h"
 #include "gimbal_vision_pitch_tracker.h"
 #include "gimbal_vision_yaw_tracker.h"
+#include "h_task_controller.h"
 #include "line_controller.h"
 #include "mission_manager.h"
 #include "motion_action.h"
@@ -84,6 +85,20 @@ static uint8_t menu_selected_is_task1(void)
         MISSION_ID_TASK1_LAP;
 }
 
+static uint8_t menu_selected_is_task2(void)
+{
+    return MissionManager_GetSelectedMissionId() ==
+        MISSION_ID_H3_BALL_50;
+}
+
+static uint8_t menu_selected_is_h_car_task(void)
+{
+    uint8_t missionId = MissionManager_GetSelectedMissionId();
+
+    return (missionId >= MISSION_ID_H4_AB_CENTER) &&
+        (missionId <= MISSION_ID_H6_LAP_LOCK);
+}
+
 static uint8_t menu_is_line_tuning_param(ParamItem item)
 {
     return (item == PARAM_BASE_SPEED) ||
@@ -91,6 +106,42 @@ static uint8_t menu_is_line_tuning_param(ParamItem item)
         (item == PARAM_KP) ||
         (item == PARAM_KD) ||
         (item == PARAM_MAX_CORRECTION);
+}
+
+static uint8_t menu_is_h_line_tuning_param(ParamItem item)
+{
+    return (item == PARAM_H_LINE_BASE) ||
+        (item == PARAM_H_LINE_FEEDFORWARD) ||
+        (item == PARAM_H_LINE_KP) ||
+        (item == PARAM_H_LINE_KD) ||
+        (item == PARAM_H_LINE_MAX_CORRECTION);
+}
+
+static uint8_t menu_is_balance_tuning_param(ParamItem item)
+{
+    return (item == PARAM_BALANCE_KP) ||
+        (item == PARAM_BALANCE_KD) ||
+        (item == PARAM_BALANCE_VMAX) ||
+        (item == PARAM_BALANCE_BIAS) ||
+        (item == PARAM_BALANCE_MAX);
+}
+
+static uint8_t menu_param_matches_selected_task(ParamItem item)
+{
+    if (item == PARAM_TASK) {
+        return 1U;
+    }
+    if (menu_selected_is_task1() != 0U) {
+        return menu_is_line_tuning_param(item);
+    }
+    if (menu_selected_is_task2() != 0U) {
+        return menu_is_balance_tuning_param(item);
+    }
+    if (menu_selected_is_h_car_task() != 0U) {
+        return (menu_is_h_line_tuning_param(item) != 0U) ||
+            (menu_is_balance_tuning_param(item) != 0U);
+    }
+    return 0U;
 }
 
 static void menu_limit_line_tuning(void)
@@ -135,6 +186,9 @@ static void menu_enter_param_page(ParamItem item, uint8_t select_item)
     if ((g_paramLiveTuning != 0U) &&
         (menu_is_line_tuning_param(g_paramItem) == 0U)) {
         g_paramItem = PARAM_BASE_SPEED;
+    } else if ((g_paramLiveTuning == 0U) &&
+        (menu_param_matches_selected_task(g_paramItem) == 0U)) {
+        g_paramItem = PARAM_TASK;
     }
     g_oledPage = OLED_PAGE_PARAM;
     if (g_paramLiveTuning == 0U) {
@@ -271,8 +325,47 @@ static void menu_next_param(void)
         return;
     }
 
-    g_paramItem = (ParamItem)(g_paramItem + 1);
-    if (g_paramItem >= PARAM_COUNT) {
+    if (menu_selected_is_task1() != 0U) {
+        switch (g_paramItem) {
+            case PARAM_TASK: g_paramItem = PARAM_BASE_SPEED; break;
+            case PARAM_BASE_SPEED:
+                g_paramItem = PARAM_WHEEL_FEEDFORWARD; break;
+            case PARAM_WHEEL_FEEDFORWARD: g_paramItem = PARAM_KP; break;
+            case PARAM_KP: g_paramItem = PARAM_KD; break;
+            case PARAM_KD: g_paramItem = PARAM_MAX_CORRECTION; break;
+            case PARAM_MAX_CORRECTION:
+            default: g_paramItem = PARAM_TASK; break;
+        }
+    } else if (menu_selected_is_task2() != 0U) {
+        switch (g_paramItem) {
+            case PARAM_TASK: g_paramItem = PARAM_BALANCE_KP; break;
+            case PARAM_BALANCE_KP: g_paramItem = PARAM_BALANCE_KD; break;
+            case PARAM_BALANCE_KD: g_paramItem = PARAM_BALANCE_VMAX; break;
+            case PARAM_BALANCE_VMAX: g_paramItem = PARAM_BALANCE_BIAS; break;
+            case PARAM_BALANCE_BIAS: g_paramItem = PARAM_BALANCE_MAX; break;
+            case PARAM_BALANCE_MAX:
+            default: g_paramItem = PARAM_TASK; break;
+        }
+    } else if (menu_selected_is_h_car_task() != 0U) {
+        switch (g_paramItem) {
+            case PARAM_TASK: g_paramItem = PARAM_H_LINE_BASE; break;
+            case PARAM_H_LINE_BASE:
+                g_paramItem = PARAM_H_LINE_FEEDFORWARD; break;
+            case PARAM_H_LINE_FEEDFORWARD:
+                g_paramItem = PARAM_H_LINE_KP; break;
+            case PARAM_H_LINE_KP: g_paramItem = PARAM_H_LINE_KD; break;
+            case PARAM_H_LINE_KD:
+                g_paramItem = PARAM_H_LINE_MAX_CORRECTION; break;
+            case PARAM_H_LINE_MAX_CORRECTION:
+                g_paramItem = PARAM_BALANCE_KP; break;
+            case PARAM_BALANCE_KP: g_paramItem = PARAM_BALANCE_KD; break;
+            case PARAM_BALANCE_KD: g_paramItem = PARAM_BALANCE_VMAX; break;
+            case PARAM_BALANCE_VMAX: g_paramItem = PARAM_BALANCE_BIAS; break;
+            case PARAM_BALANCE_BIAS: g_paramItem = PARAM_BALANCE_MAX; break;
+            case PARAM_BALANCE_MAX:
+            default: g_paramItem = PARAM_TASK; break;
+        }
+    } else {
         g_paramItem = PARAM_TASK;
     }
 }
@@ -316,6 +409,13 @@ static void menu_adjust_param(int8_t direction, uint8_t fast)
 {
     uint8_t line_tuning_changed = 0U;
     uint8_t motor_tuning_changed = 0U;
+    uint8_t h_line_tuning_changed = 0U;
+    uint8_t balance_tuning_changed = 0U;
+    HTaskChassisTuning hTuning;
+    BalanceBallControlConfig balanceConfig;
+
+    HTaskController_GetChassisTuning(&hTuning);
+    BalanceBallControl_GetConfig(&balanceConfig);
 
     switch (g_paramItem) {
         case PARAM_TASK:
@@ -328,7 +428,7 @@ static void menu_adjust_param(int8_t direction, uint8_t fast)
         case PARAM_BASE_SPEED:
 #if FEATURE_LINE_CONTROL_V2
             g_appConfig.line_control_v2_base_command +=
-                (int16_t)(direction * 10);
+                (int16_t)(direction * ((fast != 0U) ? 50 : 10));
             line_tuning_changed = 1U;
 #else
             g_appConfig.base_speed += (int16_t)(direction * 10);
@@ -338,7 +438,8 @@ static void menu_adjust_param(int8_t direction, uint8_t fast)
         {
             int16_t feedforward_x100 = menu_common_feedforward_x100();
 
-            feedforward_x100 += (int16_t)(direction * 5);
+            feedforward_x100 += (int16_t)(direction *
+                ((fast != 0U) ? 10 : 5));
             feedforward_x100 = menu_clamp_i16(feedforward_x100,
                 MENU_WHEEL_FF_X100_MIN, MENU_WHEEL_FF_X100_MAX);
             g_appConfig.wheel_control_left_feedforward_gain =
@@ -354,7 +455,8 @@ static void menu_adjust_param(int8_t direction, uint8_t fast)
             int16_t kp_x100 = menu_float_to_scaled(
                 g_appConfig.line_control_v2_kp, 100.0f);
 
-            kp_x100 += (int16_t)(direction * 5);
+            kp_x100 += (int16_t)(direction *
+                ((fast != 0U) ? 20 : 5));
             kp_x100 = menu_clamp_i16(kp_x100,
                 MENU_LINE_KP_X100_MIN, MENU_LINE_KP_X100_MAX);
             g_appConfig.line_control_v2_kp = (float)kp_x100 / 100.0f;
@@ -371,7 +473,8 @@ static void menu_adjust_param(int8_t direction, uint8_t fast)
             int16_t kd_x1000 = menu_float_to_scaled(
                 g_appConfig.line_control_v2_kd, 1000.0f);
 
-            kd_x1000 += direction;
+            kd_x1000 += (int16_t)(direction *
+                ((fast != 0U) ? 5 : 1));
             kd_x1000 = menu_clamp_i16(kd_x1000,
                 MENU_LINE_KD_X1000_MIN, MENU_LINE_KD_X1000_MAX);
             g_appConfig.line_control_v2_kd =
@@ -386,11 +489,105 @@ static void menu_adjust_param(int8_t direction, uint8_t fast)
         case PARAM_MAX_CORRECTION:
 #if FEATURE_LINE_CONTROL_V2
             g_appConfig.line_control_v2_max_correction +=
-                (int16_t)(direction * 10);
+                (int16_t)(direction * ((fast != 0U) ? 50 : 10));
             line_tuning_changed = 1U;
 #else
             g_appConfig.max_correction += (int16_t)(direction * 10);
 #endif
+            break;
+        case PARAM_H_LINE_BASE:
+            hTuning.normal_command = menu_clamp_i16(
+                (int16_t)(hTuning.normal_command + direction *
+                    ((fast != 0U) ? 50 : 10)),
+                MENU_LINE_BASE_MIN, MENU_LINE_BASE_MAX);
+            h_line_tuning_changed = 1U;
+            break;
+        case PARAM_H_LINE_FEEDFORWARD:
+            hTuning.feedforward_x100 = menu_clamp_i16(
+                (int16_t)(hTuning.feedforward_x100 + direction *
+                    ((fast != 0U) ? 10 : 5)),
+                MENU_WHEEL_FF_X100_MIN, MENU_WHEEL_FF_X100_MAX);
+            h_line_tuning_changed = 1U;
+            break;
+        case PARAM_H_LINE_KP:
+            hTuning.line_kp_x100 = menu_clamp_i16(
+                (int16_t)(hTuning.line_kp_x100 + direction *
+                    ((fast != 0U) ? 20 : 5)),
+                MENU_LINE_KP_X100_MIN, MENU_LINE_KP_X100_MAX);
+            h_line_tuning_changed = 1U;
+            break;
+        case PARAM_H_LINE_KD:
+            hTuning.line_kd_x1000 = menu_clamp_i16(
+                (int16_t)(hTuning.line_kd_x1000 + direction *
+                    ((fast != 0U) ? 5 : 1)),
+                MENU_LINE_KD_X1000_MIN, MENU_LINE_KD_X1000_MAX);
+            h_line_tuning_changed = 1U;
+            break;
+        case PARAM_H_LINE_MAX_CORRECTION:
+            hTuning.max_correction = menu_clamp_i16(
+                (int16_t)(hTuning.max_correction + direction *
+                    ((fast != 0U) ? 50 : 10)), 0, 1000);
+            h_line_tuning_changed = 1U;
+            break;
+        case PARAM_BALANCE_KP:
+            balanceConfig.kp_x100 += direction *
+                ((fast != 0U) ? 25 : 5);
+            if (balanceConfig.kp_x100 < 0) {
+                balanceConfig.kp_x100 = 0;
+            } else if (balanceConfig.kp_x100 > 2000) {
+                balanceConfig.kp_x100 = 2000;
+            }
+            balance_tuning_changed = 1U;
+            break;
+        case PARAM_BALANCE_KD:
+            balanceConfig.kd_x100 += direction *
+                ((fast != 0U) ? 25 : 5);
+            if (balanceConfig.kd_x100 < 0) {
+                balanceConfig.kd_x100 = 0;
+            } else if (balanceConfig.kd_x100 > 500) {
+                balanceConfig.kd_x100 = 500;
+            }
+            balance_tuning_changed = 1U;
+            break;
+        case PARAM_BALANCE_VMAX:
+            balanceConfig.maximum_target_velocity_mm_s += direction *
+                ((fast != 0U) ? 20 : 5);
+            if (balanceConfig.maximum_target_velocity_mm_s < 10) {
+                balanceConfig.maximum_target_velocity_mm_s = 10;
+            } else if (balanceConfig.maximum_target_velocity_mm_s > 1000) {
+                balanceConfig.maximum_target_velocity_mm_s = 1000;
+            }
+            if (balanceConfig.approach_velocity_mm_s >
+                (uint16_t)balanceConfig.maximum_target_velocity_mm_s) {
+                balanceConfig.approach_velocity_mm_s =
+                    (uint16_t)balanceConfig.maximum_target_velocity_mm_s;
+            }
+            balance_tuning_changed = 1U;
+            break;
+        case PARAM_BALANCE_BIAS:
+            balanceConfig.neutral_bias_count += direction *
+                ((fast != 0U) ? 5 : 1);
+            if (balanceConfig.neutral_bias_count < -256) {
+                balanceConfig.neutral_bias_count = -256;
+            } else if (balanceConfig.neutral_bias_count > 256) {
+                balanceConfig.neutral_bias_count = 256;
+            }
+            balance_tuning_changed = 1U;
+            break;
+        case PARAM_BALANCE_MAX:
+            balanceConfig.maximum_offset_count += direction *
+                ((fast != 0U) ? 20 : 5);
+            if (balanceConfig.maximum_offset_count < 8) {
+                balanceConfig.maximum_offset_count = 8;
+            } else if (balanceConfig.maximum_offset_count > 1024) {
+                balanceConfig.maximum_offset_count = 1024;
+            }
+            if (balanceConfig.maximum_offset_count <
+                balanceConfig.tracking_reengage_count) {
+                balanceConfig.maximum_offset_count =
+                    balanceConfig.tracking_reengage_count;
+            }
+            balance_tuning_changed = 1U;
             break;
         case PARAM_SERVO_ANGLE:
             if (fast != 0U) {
@@ -431,7 +628,12 @@ static void menu_adjust_param(int8_t direction, uint8_t fast)
 #else
     (void)motor_tuning_changed;
 #endif
-    (void)fast;
+    if (h_line_tuning_changed != 0U) {
+        (void)HTaskController_SetChassisTuning(&hTuning);
+    }
+    if (balance_tuning_changed != 0U) {
+        (void)BalanceBallControl_SetConfig(&balanceConfig);
+    }
 }
 
 static void menu_handle_status_key(KeyEvent event)
@@ -939,19 +1141,9 @@ void Menu_HandleKeyEvent(KeyEvent event)
         return;
     }
 
-    /* The parameter page deliberately owns K2_LONG for fast increment.
-     * Previously the global ESTOP branch intercepted it first, so one normal
-     * parameter edit could silently invalidate the whole balance axis. */
-    if ((g_oledPage == OLED_PAGE_PARAM) &&
-        (g_paramLiveTuning != 0U) &&
-        (event == KEY2_LONG)) {
-        g_paramLiveTuning = 0U;
-        menu_stop_balance_axis_for_safety();
-        EmergencyStop_Trigger();
-        g_oledPage = OLED_PAGE_STATUS;
-        return;
-    }
-
+    /* The parameter page owns K2_LONG/K3_LONG for fast adjustment.  Handle
+     * it before the global K2 emergency-stop gesture so Task1 live tuning and
+     * pre-start H-task tuning cannot accidentally invalidate the axis. */
     if (g_oledPage == OLED_PAGE_PARAM) {
         menu_handle_param_key(event);
         return;
@@ -992,6 +1184,26 @@ const char *Menu_ParamItemToString(ParamItem item)
             return "KD";
         case PARAM_MAX_CORRECTION:
             return "MAX";
+        case PARAM_H_LINE_BASE:
+            return "HSPD";
+        case PARAM_H_LINE_FEEDFORWARD:
+            return "HFF";
+        case PARAM_H_LINE_KP:
+            return "HKP";
+        case PARAM_H_LINE_KD:
+            return "HKD";
+        case PARAM_H_LINE_MAX_CORRECTION:
+            return "HMAX";
+        case PARAM_BALANCE_KP:
+            return "BKP";
+        case PARAM_BALANCE_KD:
+            return "BKD";
+        case PARAM_BALANCE_VMAX:
+            return "BVM";
+        case PARAM_BALANCE_BIAS:
+            return "BBIAS";
+        case PARAM_BALANCE_MAX:
+            return "BMAX";
         case PARAM_SERVO_ANGLE:
             return "SV";
         case PARAM_GIMBAL_WORLD_LOCK:
@@ -1003,6 +1215,11 @@ const char *Menu_ParamItemToString(ParamItem item)
 
 int16_t Menu_GetParamValue(ParamItem item)
 {
+    HTaskChassisTuning hTuning;
+    BalanceBallControlConfig balanceConfig;
+
+    HTaskController_GetChassisTuning(&hTuning);
+    BalanceBallControl_GetConfig(&balanceConfig);
     switch (item) {
         case PARAM_TASK:
             return (int16_t)(MissionManager_GetSelectedMissionIndex() + 1U);
@@ -1034,6 +1251,26 @@ int16_t Menu_GetParamValue(ParamItem item)
 #else
             return g_appConfig.max_correction;
 #endif
+        case PARAM_H_LINE_BASE:
+            return hTuning.normal_command;
+        case PARAM_H_LINE_FEEDFORWARD:
+            return hTuning.feedforward_x100;
+        case PARAM_H_LINE_KP:
+            return hTuning.line_kp_x100;
+        case PARAM_H_LINE_KD:
+            return hTuning.line_kd_x1000;
+        case PARAM_H_LINE_MAX_CORRECTION:
+            return hTuning.max_correction;
+        case PARAM_BALANCE_KP:
+            return (int16_t)balanceConfig.kp_x100;
+        case PARAM_BALANCE_KD:
+            return (int16_t)balanceConfig.kd_x100;
+        case PARAM_BALANCE_VMAX:
+            return (int16_t)balanceConfig.maximum_target_velocity_mm_s;
+        case PARAM_BALANCE_BIAS:
+            return (int16_t)balanceConfig.neutral_bias_count;
+        case PARAM_BALANCE_MAX:
+            return (int16_t)balanceConfig.maximum_offset_count;
         case PARAM_SERVO_ANGLE:
             return g_appConfig.servo_angle_deg;
         case PARAM_GIMBAL_WORLD_LOCK:

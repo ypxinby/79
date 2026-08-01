@@ -60,6 +60,7 @@ typedef enum {
 } HMeasurementEvent;
 
 static HTaskRuntime g_runtime;
+static HTaskChassisTuning g_chassisTuning;
 static uint32_t g_lastObservationUpdateCount;
 static uint32_t g_lowConditionMs;
 static uint32_t g_normalConditionMs;
@@ -69,6 +70,24 @@ static uint8_t g_finalStableCount;
 static int16_t g_verifyPositions[H_TASK_START_CONFIRM_FRAMES];
 static HTaskState g_resumeState;
 static float g_startCenterDistanceCm;
+
+static void h_load_default_chassis_tuning(void)
+{
+    g_chassisTuning.normal_command = H_TASK_LINE_NORMAL_COMMAND;
+    g_chassisTuning.feedforward_x100 =
+        (int16_t)(H_TASK_LINE_FF_GAIN * 100.0f + 0.5f);
+    g_chassisTuning.line_kp_x100 =
+        (int16_t)(H_TASK_LINE_KP * 100.0f + 0.5f);
+    g_chassisTuning.line_kd_x1000 =
+        (int16_t)(H_TASK_LINE_KD * 1000.0f + 0.5f);
+    g_chassisTuning.max_correction = H_TASK_LINE_MAX_CORRECTION;
+}
+
+static int16_t h_low_line_command(void)
+{
+    return (g_chassisTuning.normal_command < H_TASK_LINE_LOW_COMMAND) ?
+        g_chassisTuning.normal_command : H_TASK_LINE_LOW_COMMAND;
+}
 
 static int32_t h_abs_i32(int32_t value)
 {
@@ -125,12 +144,17 @@ static void h_stop_car(void)
 
 static uint8_t h_apply_chassis_profile(void)
 {
-    if (LineController_SetProfileOverride(H_TASK_LINE_KP,
-            H_TASK_LINE_KD, H_TASK_LINE_MAX_CORRECTION) == 0U) {
+    float lineKp = (float)g_chassisTuning.line_kp_x100 / 100.0f;
+    float lineKd = (float)g_chassisTuning.line_kd_x1000 / 1000.0f;
+    float feedforward =
+        (float)g_chassisTuning.feedforward_x100 / 100.0f;
+
+    if (LineController_SetProfileOverride(lineKp, lineKd,
+            g_chassisTuning.max_correction) == 0U) {
         return 0U;
     }
-    if (MotorControl_SetFeedforwardOverride(H_TASK_LINE_FF_GAIN,
-            H_TASK_LINE_FF_GAIN) == 0U) {
+    if (MotorControl_SetFeedforwardOverride(feedforward,
+            feedforward) == 0U) {
         LineController_ClearProfileOverride();
         return 0U;
     }
@@ -223,7 +247,7 @@ static void h_start_car(void)
 
     g_startCenterDistanceCm = wheel->center_distance_cm;
     CarController_StartFollowLineAtCommand(CAR_TURN_POLICY_IGNORE,
-        H_TASK_LINE_NORMAL_COMMAND);
+        g_chassisTuning.normal_command);
     g_runtime.vehicle_level = H_TASK_VEHICLE_NORMAL;
     h_set_state(H_TASK_STATE_CAR_RUNNING);
 }
@@ -395,7 +419,7 @@ static void h_update_vehicle_supervision(uint32_t elapsed_ms,
         g_normalConditionMs = 0U;
         if ((g_runtime.vehicle_level == H_TASK_VEHICLE_NORMAL) &&
             CarController_SetFollowLineBaseCommand(
-                H_TASK_LINE_LOW_COMMAND)) {
+                h_low_line_command())) {
             g_runtime.vehicle_level = H_TASK_VEHICLE_LOW;
         }
         return;
@@ -415,14 +439,14 @@ static void h_update_vehicle_supervision(uint32_t elapsed_ms,
     if ((g_runtime.vehicle_level == H_TASK_VEHICLE_NORMAL) &&
         (g_lowConditionMs >= H_TASK_LOW_ENTER_MS)) {
         if (CarController_SetFollowLineBaseCommand(
-                H_TASK_LINE_LOW_COMMAND)) {
+                h_low_line_command())) {
             g_runtime.vehicle_level = H_TASK_VEHICLE_LOW;
         }
         g_lowConditionMs = 0U;
     } else if ((g_runtime.vehicle_level == H_TASK_VEHICLE_LOW) &&
         (g_normalConditionMs >= H_TASK_LOW_EXIT_MS)) {
         if (CarController_SetFollowLineBaseCommand(
-                H_TASK_LINE_NORMAL_COMMAND)) {
+                g_chassisTuning.normal_command)) {
             g_runtime.vehicle_level = H_TASK_VEHICLE_NORMAL;
         }
         g_normalConditionMs = 0U;
@@ -455,7 +479,7 @@ static void h_update_vision_hold(HMeasurementEvent event)
 
     if (h_is_car_task(g_runtime.task_id) != 0U) {
         CarController_StartFollowLineAtCommand(CAR_TURN_POLICY_IGNORE,
-            H_TASK_LINE_LOW_COMMAND);
+            h_low_line_command());
         g_runtime.vehicle_level = H_TASK_VEHICLE_LOW;
     }
     h_set_state(g_resumeState);
@@ -463,6 +487,7 @@ static void h_update_vision_hold(HMeasurementEvent event)
 
 void HTaskController_Init(void)
 {
+    h_load_default_chassis_tuning();
     HTaskController_Reset();
 }
 
@@ -696,6 +721,34 @@ void HTaskController_GetSnapshot(HTaskRuntime *snapshot)
     if (snapshot != (HTaskRuntime *)0) {
         *snapshot = g_runtime;
     }
+}
+
+void HTaskController_GetChassisTuning(HTaskChassisTuning *tuning)
+{
+    if (tuning != (HTaskChassisTuning *)0) {
+        *tuning = g_chassisTuning;
+    }
+}
+
+uint8_t HTaskController_SetChassisTuning(
+    const HTaskChassisTuning *tuning)
+{
+    if ((tuning == (const HTaskChassisTuning *)0) ||
+        (HTaskController_IsActive() != 0U) ||
+        (tuning->normal_command < 100) ||
+        (tuning->normal_command > 500) ||
+        (tuning->feedforward_x100 < 50) ||
+        (tuning->feedforward_x100 > 80) ||
+        (tuning->line_kp_x100 < 0) ||
+        (tuning->line_kp_x100 > 200) ||
+        (tuning->line_kd_x1000 < 0) ||
+        (tuning->line_kd_x1000 > 100) ||
+        (tuning->max_correction < 0) ||
+        (tuning->max_correction > 1000)) {
+        return 0U;
+    }
+    g_chassisTuning = *tuning;
+    return 1U;
 }
 
 const char *HTaskController_StateToString(HTaskState state)
