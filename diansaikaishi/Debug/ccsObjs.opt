@@ -23,6 +23,7 @@
 "./gimbal_vision_adapter.o"
 "./gimbal_vision_pitch_tracker.o"
 "./gimbal_vision_yaw_tracker.o"
+"./h_task_controller.o"
 "./heading_control.o"
 "./imu.o"
 "./key.o"
