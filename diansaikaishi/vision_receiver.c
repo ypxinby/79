@@ -96,18 +96,12 @@ static void accept_packet(const VisionBallAsciiPacket *packet,
     uint32_t localTimeMs, uint8_t newSession)
 {
     int16_t safePredictedPositionMm = packet->predicted_position_mm;
-    int16_t safeVelocityMmS = packet->velocity_mm_s;
 
-    /* The center controller intentionally uses only the measured position.
-     * Keep optional K230 prediction/velocity diagnostics from invalidating a
-     * recoverable position frame. */
+    /* Prediction is not used by the current controller, so an out-of-range
+     * optional pred may safely fall back to the real position. */
     if (magnitude_i32(safePredictedPositionMm) >
         BALANCE_BALL_PROTOCOL_POSITION_LIMIT_MM) {
         safePredictedPositionMm = packet->position_mm;
-    }
-    if (magnitude_i32(safeVelocityMmS) >
-        BALANCE_BALL_MAX_REPORTED_SPEED_MM_S) {
-        safeVelocityMmS = 0;
     }
 
     g_status.session_id = g_localSessionId;
@@ -115,6 +109,7 @@ static void accept_packet(const VisionBallAsciiPacket *packet,
     g_status.session_initialized = 1U;
     g_status.sequence_initialized = 1U;
     g_status.last_valid_packet_time_ms = localTimeMs;
+    g_status.last_accepted_packet_time_ms = localTimeMs;
     g_status.accepted_frame_count++;
     g_lastSourceTimestampMs = packet->source_timestamp_ms;
 
@@ -127,12 +122,13 @@ static void accept_packet(const VisionBallAsciiPacket *packet,
     g_ballPositionObservation.update_count++;
     g_ballPositionObservation.session_id = g_localSessionId;
     g_ballPositionObservation.sequence = packet->sequence;
-    g_ballPositionObservation.position_mm =
-        (packet->target_valid != 0U) ? packet->position_mm : 0;
+    /* Preserve the received value for diagnostics even when validity flags
+     * prevent it from entering control. */
+    g_ballPositionObservation.position_mm = packet->position_mm;
     g_ballPositionObservation.predicted_position_mm =
         safePredictedPositionMm;
     g_ballPositionObservation.reported_velocity_mm_s =
-        safeVelocityMmS;
+        packet->velocity_mm_s;
     g_ballPositionObservation.axis_span_mm =
         BALANCE_BALL_PHYSICAL_SPAN_MM;
     g_ballPositionObservation.confidence = packet->confidence;
@@ -158,9 +154,28 @@ static void handle_packet(const VisionBallAsciiPacket *packet,
 {
     int16_t sequenceDelta;
 
+    /* Keep state as an uninterpreted diagnostic string, as agreed with the
+     * K230 group. Only the numeric valid/measured pair is enforced. */
+    if (packet->target_valid != packet->measured) {
+        g_status.semantic_error_count++;
+        g_status.invalid_valid_measured_pair_count++;
+        g_status.last_event = VISION_RECEIVER_EVENT_SEMANTIC_ERROR;
+        return;
+    }
+
     if ((packet->target_valid != 0U) &&
         (magnitude_i32(packet->position_mm) >
             BALANCE_BALL_PROTOCOL_POSITION_LIMIT_MM)) {
+        count_parse_error(VISION_PROTOCOL_PARSE_FIELD_ERROR);
+        return;
+    }
+    /* K230 velocity is now a formal feedback signal. A measured frame with
+     * an impossible velocity must be rejected as a whole; silently changing
+     * it to zero would create a false speed error and a large actuator kick. */
+    if ((packet->target_valid != 0U) &&
+        (packet->measured != 0U) &&
+        (magnitude_i32(packet->velocity_mm_s) >
+            BALANCE_BALL_MAX_REPORTED_SPEED_MM_S)) {
         count_parse_error(VISION_PROTOCOL_PARSE_FIELD_ERROR);
         return;
     }
@@ -299,6 +314,26 @@ void VisionReceiver_PushByteFromIsr(uint8_t byte)
     g_ringHead = next;
 }
 
+void VisionReceiver_RecordUartOverrunFromIsr(void)
+{
+    g_status.uart_overrun_count++;
+}
+
+void VisionReceiver_RecordUartFramingErrorFromIsr(void)
+{
+    g_status.uart_framing_error_count++;
+}
+
+void VisionReceiver_RecordUartParityErrorFromIsr(void)
+{
+    g_status.uart_parity_error_count++;
+}
+
+void VisionReceiver_RecordUartBreakErrorFromIsr(void)
+{
+    g_status.uart_break_error_count++;
+}
+
 uint16_t VisionReceiver_Process(uint32_t localTimeMs,
     uint16_t maxBytesToProcess)
 {
@@ -336,5 +371,6 @@ uint32_t VisionReceiver_GetProtocolErrorCount(void)
         g_status.type_error_count +
         g_status.reserved_error_count +
         g_status.flags_error_count +
-        g_status.field_error_count;
+        g_status.field_error_count +
+        g_status.semantic_error_count;
 }

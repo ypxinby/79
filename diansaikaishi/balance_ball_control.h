@@ -19,10 +19,13 @@ typedef enum {
  * change the existing protection decisions. */
 typedef enum {
     BALANCE_BALL_OBSERVATION_ACCEPTED = 0,
+    BALANCE_BALL_OBSERVATION_START_DISCARDED,
     BALANCE_BALL_OBSERVATION_TARGET_INVALID,
     BALANCE_BALL_OBSERVATION_NOT_MEASURED,
     BALANCE_BALL_OBSERVATION_STALE,
-    BALANCE_BALL_OBSERVATION_POSITION_JUMP
+    BALANCE_BALL_OBSERVATION_POSITION_JUMP,
+    BALANCE_BALL_OBSERVATION_JUMP_CANDIDATE,
+    BALANCE_BALL_OBSERVATION_POSITION_REBASED
 } BalanceBallObservationResult;
 
 typedef enum {
@@ -37,8 +40,17 @@ typedef enum {
 } BalanceBallStartResult;
 
 typedef struct {
+    /* Command names remain KP/KD for compatibility. kp_x100 is KPOS in
+     * (mm/s)/mm; kd_x100 is KVEL in count/(mm/s). */
     int32_t kp_x100;
     int32_t kd_x100;
+    int32_t maximum_target_velocity_mm_s;
+    int32_t neutral_bias_count;
+    uint16_t positive_brake_accel_mm_s2;
+    uint16_t negative_brake_accel_mm_s2;
+    uint16_t brake_delay_ms;
+    uint16_t brake_margin_mm;
+    uint16_t approach_velocity_mm_s;
     int32_t maximum_offset_count;
     int32_t target_slew_count_per_20ms;
     uint16_t tracking_deadband_count;
@@ -51,6 +63,17 @@ typedef struct {
     int16_t position_mm;
     int16_t error_mm;
     int16_t velocity_mm_s;
+    int16_t raw_velocity_mm_s;
+    uint16_t velocity_sample_dt_ms;
+    uint16_t velocity_filter_alpha_x1000;
+    uint8_t velocity_reversal_fast;
+    uint32_t velocity_gap_reset_count;
+    int16_t target_velocity_mm_s;
+    int16_t velocity_error_mm_s;
+    uint16_t braking_distance_mm;
+    uint8_t braking_active;
+    uint8_t weak_control_active;
+    uint8_t startup_discard_remaining;
     int32_t pd_output_count;
     int32_t p_output_count;
     int32_t d_output_count;
@@ -59,6 +82,12 @@ typedef struct {
     uint32_t last_measurement_time_ms;
     uint32_t accepted_measurement_count;
     uint32_t rejected_jump_count;
+    uint32_t jump_candidate_count;
+    uint32_t rebase_count;
+    uint32_t target_invalid_count;
+    uint32_t not_measured_count;
+    uint32_t stale_count;
+    uint32_t speed_clamp_count;
     uint32_t held_invalid_count;
     uint32_t vision_lost_count;
     uint32_t last_observation_time_ms;

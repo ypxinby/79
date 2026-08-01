@@ -58,6 +58,9 @@ typedef struct {
 void LineController_Init(void);
 void LineController_Reset(void);
 void LineController_ResetControlState(void);
+bool LineController_SetProfileOverride(float kp, float kd,
+    int16_t max_correction);
+void LineController_ClearProfileOverride(void);
 void LineController_ObserveSensors(uint8_t sensor_pattern);
 void LineController_Update(uint32_t elapsed_ms, uint8_t sensor_pattern,
     int16_t base_command, int16_t *left_command, int16_t *right_command);

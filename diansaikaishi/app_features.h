@@ -70,31 +70,43 @@
 #define BALANCE_BALL_PHYSICAL_SPAN_MM                 (250U)
 #define BALANCE_BALL_PROTOCOL_POSITION_LIMIT_MM       (150U)
 #define BALANCE_BALL_MAX_REPORTED_SPEED_MM_S          (3000U)
-/* Static ball controller: K230 reports signed millimetres relative to O.
- * The outer PD generates a small encoder-count offset around horizontal and
- * the proven position loop remains the actuator inner loop. It never starts
- * automatically; the BALL page K2 command is still required. */
+/* K230 reports signed millimetres relative to O. The TI outer controller is
+ * an explicit position->velocity->axis-count cascade; the proven encoder
+ * position loop remains the actuator inner loop. */
 #define FEATURE_BALANCE_BALL_PD_CONTROL               (1)
 #define FEATURE_BALANCE_SERIAL_TUNING                  (1)
 #define BALANCE_BALL_PD_VALID_FRAME_COUNT             (3U)
+#define BALANCE_BALL_START_DISCARD_FRAMES              (1U)
+#define BALANCE_BALL_START_MAX_SPEED_MM_S              (120U)
+#define BALANCE_BALL_START_WEAK_MAX_OFFSET_COUNTS      (24U)
+#define BALANCE_BALL_START_WEAK_SLEW_COUNTS_PER_20MS   (2U)
 /* A bad/NO_TARGET frame never overwrites the last real position.  Continue
  * slewing toward the last valid PD target through short K230 dropouts; only
  * after this hard timeout is the stale command abandoned and ZERO requested. */
 #define BALANCE_BALL_PD_VISION_LOST_TIMEOUT_MS        (800U)
-#define BALANCE_BALL_PD_MAX_JUMP_MM                   (60U)
+#define BALANCE_BALL_PD_MAX_JUMP_MM                   (150U)
+#define BALANCE_BALL_JUMP_CONFIRM_FRAMES              (2U)
+#define BALANCE_BALL_JUMP_CONFIRM_TOLERANCE_MM         (20U)
+#define BALANCE_BALL_JUMP_CONFIRM_TIMEOUT_MS           (200U)
+/* K230 v is the formal speed feedback. The wider protocol bound rejects
+ * impossible frames; this lower control bound only limits actuator impact. */
+#define BALANCE_BALL_CONTROL_SPEED_LIMIT_MM_S          (1500)
 #define BALANCE_BALL_PD_MAX_TARGET_ABS_MM             \
     (BALANCE_BALL_PHYSICAL_SPAN_MM / 2U)
-/* Measured mechanism mapping:
- * LOW/HIGH are about +332/-355 count for roughly +/-10 degrees, so the
- * pipe moves about 33-36 count/degree. Static breakaway needs about 5
- * degrees, or approximately 166-178 count. A 30 mm error with Kp=6.00
- * therefore requests about 180 count and can actually overcome stiction.
- * MAX=200 allows about 5.6-6.0 degrees while retaining ample room inside
- * the calibrated software limits. */
-#define BALANCE_BALL_PD_KP_COUNTS_PER_MM_X100         (600)
-#define BALANCE_BALL_PD_KD_COUNTS_PER_MM_S_X100       (10)
+/* KP and KD command names are kept for tool compatibility. Their new units
+ * are KPOS=(mm/s)/mm and KVEL=count/(mm/s), both scaled by 100. */
+#define BALANCE_BALL_PD_KP_COUNTS_PER_MM_X100         (150)
+#define BALANCE_BALL_PD_KD_COUNTS_PER_MM_S_X100       (60)
+#define BALANCE_BALL_MAX_TARGET_VELOCITY_MM_S         (120)
+#define BALANCE_BALL_NEUTRAL_BIAS_COUNT               (0)
+#define BALANCE_BALL_BRAKE_ACCEL_POS_MM_S2            (500U)
+#define BALANCE_BALL_BRAKE_ACCEL_NEG_MM_S2            (500U)
+#define BALANCE_BALL_BRAKE_DELAY_MS                   (80U)
+#define BALANCE_BALL_BRAKE_MARGIN_MM                  (5U)
+#define BALANCE_BALL_APPROACH_VELOCITY_MM_S           (20U)
 #define BALANCE_BALL_PD_TILT_SIGN                     (-1)
-#define BALANCE_BALL_PD_MAX_OFFSET_COUNTS             (200U)
+#define BALANCE_BALL_PD_MAX_OFFSET_COUNTS             (80U)
+#define BALANCE_BALL_DEFAULT_TARGET_MM                 (0)
 /* 5 count/20 ms = 250 count/s. The current 200 STEP/s actuator limit is
  * about 256 encoder count/s at 4096 count / 3200 STEP, so increasing this
  * further would mainly build position error rather than move faster. */
@@ -280,10 +292,30 @@
 
 #if FEATURE_BALANCE_BALL_PD_CONTROL && \
     ((BALANCE_BALL_PD_VALID_FRAME_COUNT == 0U) || \
+     (BALANCE_BALL_START_DISCARD_FRAMES > 3U) || \
+     (BALANCE_BALL_START_MAX_SPEED_MM_S == 0U) || \
+     (BALANCE_BALL_START_WEAK_MAX_OFFSET_COUNTS == 0U) || \
+     (BALANCE_BALL_START_WEAK_MAX_OFFSET_COUNTS > \
+        BALANCE_BALL_PD_MAX_OFFSET_COUNTS) || \
+     (BALANCE_BALL_START_WEAK_SLEW_COUNTS_PER_20MS == 0U) || \
+     (BALANCE_BALL_PD_MAX_JUMP_MM == 0U) || \
+     (BALANCE_BALL_JUMP_CONFIRM_FRAMES < 2U) || \
+     (BALANCE_BALL_JUMP_CONFIRM_TOLERANCE_MM == 0U) || \
+     (BALANCE_BALL_JUMP_CONFIRM_TIMEOUT_MS <= \
+        BALANCE_VISION_STALE_TIMEOUT_MS) || \
+     (BALANCE_BALL_CONTROL_SPEED_LIMIT_MM_S <= 0) || \
+     (BALANCE_BALL_CONTROL_SPEED_LIMIT_MM_S > \
+        BALANCE_BALL_MAX_REPORTED_SPEED_MM_S) || \
      (BALANCE_BALL_PD_VISION_LOST_TIMEOUT_MS <= \
         BALANCE_VISION_STALE_TIMEOUT_MS) || \
      (BALANCE_BALL_PD_MAX_OFFSET_COUNTS < 8U) || \
-     (BALANCE_BALL_PD_MAX_OFFSET_COUNTS > 1024U))
+     (BALANCE_BALL_PD_MAX_OFFSET_COUNTS > 1024U) || \
+     (BALANCE_BALL_MAX_TARGET_VELOCITY_MM_S <= 0) || \
+     (BALANCE_BALL_BRAKE_ACCEL_POS_MM_S2 == 0U) || \
+     (BALANCE_BALL_BRAKE_ACCEL_NEG_MM_S2 == 0U) || \
+     (BALANCE_BALL_APPROACH_VELOCITY_MM_S == 0U) || \
+     (BALANCE_BALL_APPROACH_VELOCITY_MM_S > \
+        BALANCE_BALL_MAX_TARGET_VELOCITY_MM_S))
 #error Balance ball PD safety configuration is invalid
 #endif
 

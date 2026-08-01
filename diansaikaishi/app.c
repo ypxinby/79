@@ -17,6 +17,7 @@
 #include "gimbal.h"
 #include "gimbal_tracker.h"
 #include "heading_control.h"
+#include "h_task_controller.h"
 #include "imu.h"
 #include "key.h"
 #include "magnet.h"
@@ -1400,6 +1401,10 @@ void App_Init(void)
 #endif
     Encoder_Reset();
     AppConfig_InitDefault();
+    /* Reset feedback must be visible before the intentionally blocking gyro
+     * calibration, otherwise a healthy boot looks like a dead reset key. */
+    OledUi_Init();
+    OledUi_ShowBootStatus("IMU CAL");
     WheelSpeedEstimator_Init();
     MotorControl_Init();
 #if ENABLE_IMU
@@ -1411,7 +1416,6 @@ void App_Init(void)
     HeadingControl_Init();
     CarState_Init();
     Menu_Init();
-    MissionManager_Init();
     TrackSensor_Init();
     Ultrasonic_Init();
     ObstacleMonitor_Init();
@@ -1423,7 +1427,6 @@ void App_Init(void)
     Servo_Init();
     CarController_Init();
     Key_Init();
-    OledUi_Init();
     Motor_Stop();
 #if FEATURE_BLUETOOTH_UART
     g_remoteLineLength = 0U;

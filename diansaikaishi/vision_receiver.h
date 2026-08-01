@@ -19,6 +19,7 @@ typedef enum {
     VISION_RECEIVER_EVENT_RESERVED_ERROR,
     VISION_RECEIVER_EVENT_FLAGS_ERROR,
     VISION_RECEIVER_EVENT_FIELD_ERROR,
+    VISION_RECEIVER_EVENT_SEMANTIC_ERROR,
     VISION_RECEIVER_EVENT_DISCARDED
 } VisionReceiverEvent;
 
@@ -61,10 +62,17 @@ typedef struct {
     uint32_t reserved_error_count;
     uint32_t flags_error_count;
     uint32_t field_error_count;
+    uint32_t semantic_error_count;
+    uint32_t invalid_valid_measured_pair_count;
     uint32_t duplicate_count;
     uint32_t old_sequence_count;
     uint32_t session_change_count;
     uint32_t last_valid_packet_time_ms;
+    uint32_t last_accepted_packet_time_ms;
+    volatile uint32_t uart_overrun_count;
+    volatile uint32_t uart_framing_error_count;
+    volatile uint32_t uart_parity_error_count;
+    volatile uint32_t uart_break_error_count;
     uint32_t session_id;
     uint16_t last_sequence;
     uint8_t session_initialized;
@@ -74,6 +82,10 @@ typedef struct {
 
 void VisionReceiver_Init(void);
 void VisionReceiver_PushByteFromIsr(uint8_t byte);
+void VisionReceiver_RecordUartOverrunFromIsr(void);
+void VisionReceiver_RecordUartFramingErrorFromIsr(void);
+void VisionReceiver_RecordUartParityErrorFromIsr(void);
+void VisionReceiver_RecordUartBreakErrorFromIsr(void);
 uint16_t VisionReceiver_Process(uint32_t localTimeMs,
     uint16_t maxBytesToProcess);
 const VisionReceiverStatus *VisionReceiver_GetStatus(void);

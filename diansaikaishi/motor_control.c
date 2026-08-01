@@ -24,6 +24,9 @@
 
 static MotorControlRuntime g_runtime;
 static bool g_targetRefreshed;
+static bool g_feedforwardOverrideEnabled;
+static float g_feedforwardOverrideLeft;
+static float g_feedforwardOverrideRight;
 
 static float abs_float(float value)
 {
@@ -345,7 +348,31 @@ static int16_t update_wheel(MotorControlWheelRuntime *wheel,
 
 void MotorControl_Init(void)
 {
+    MotorControl_ClearFeedforwardOverride();
     MotorControl_Reset();
+}
+
+bool MotorControl_SetFeedforwardOverride(float left_gain,
+    float right_gain)
+{
+    if (!config_value_in_range(left_gain, 0.0f,
+            MOTOR_CONTROL_CONFIG_FF_MAX) ||
+        !config_value_in_range(right_gain, 0.0f,
+            MOTOR_CONTROL_CONFIG_FF_MAX)) {
+        return false;
+    }
+
+    g_feedforwardOverrideLeft = left_gain;
+    g_feedforwardOverrideRight = right_gain;
+    g_feedforwardOverrideEnabled = true;
+    return true;
+}
+
+void MotorControl_ClearFeedforwardOverride(void)
+{
+    g_feedforwardOverrideEnabled = false;
+    g_feedforwardOverrideLeft = 0.0f;
+    g_feedforwardOverrideRight = 0.0f;
 }
 
 void MotorControl_SetNormalizedTarget(int16_t left_command,
@@ -529,12 +556,16 @@ void MotorControl_Update(uint32_t elapsed_ms)
         g_appConfig.wheel_control_left_kp,
         g_appConfig.wheel_control_left_kp_overspeed,
         g_appConfig.wheel_control_left_ki,
-        g_appConfig.wheel_control_left_feedforward_gain, elapsed_seconds);
+        g_feedforwardOverrideEnabled ? g_feedforwardOverrideLeft :
+            g_appConfig.wheel_control_left_feedforward_gain,
+        elapsed_seconds);
     right_output = update_wheel(&g_runtime.right,
         g_appConfig.wheel_control_right_kp,
         g_appConfig.wheel_control_right_kp_overspeed,
         g_appConfig.wheel_control_right_ki,
-        g_appConfig.wheel_control_right_feedforward_gain, elapsed_seconds);
+        g_feedforwardOverrideEnabled ? g_feedforwardOverrideRight :
+            g_appConfig.wheel_control_right_feedforward_gain,
+        elapsed_seconds);
 
     if ((g_runtime.left.normalized_target == 0) &&
         (g_runtime.right.normalized_target == 0)) {

@@ -18,7 +18,9 @@ typedef enum {
     MOTION_ACTION_STOP,
     MOTION_ACTION_DRIVE_DISTANCE,
     MOTION_ACTION_DRIVE_DISTANCE_HEADING,
-    MOTION_ACTION_DRIVE_HEADING_UNTIL_LINE
+    MOTION_ACTION_DRIVE_HEADING_UNTIL_LINE,
+    MOTION_ACTION_FOLLOW_LINE_TO_FINISH,
+    MOTION_ACTION_H_TASK
 } MotionActionType;
 
 typedef enum {
@@ -68,7 +70,8 @@ typedef enum {
     MOTION_ERROR_INVALID_MISSION,
     MOTION_ERROR_ENCODER_NOT_READY,
     MOTION_ERROR_DISTANCE_TIMEOUT,
-    MOTION_ERROR_HEADING_START_MISMATCH
+    MOTION_ERROR_HEADING_START_MISMATCH,
+    MOTION_ERROR_H_TASK
 } MotionErrorCode;
 
 typedef struct {
@@ -90,6 +93,15 @@ typedef struct {
             uint8_t target_laps;
             int16_t speed_override;
         } follow_line;
+
+        struct {
+            float expected_distance_cm;
+            uint8_t decel_percent;
+            uint16_t high_speed_percent;
+            uint16_t low_speed_percent;
+            uint8_t finish_black_min;
+            uint8_t finish_confirm_frames;
+        } follow_line_to_finish;
 
         struct {
             int16_t speed_override;
@@ -127,6 +139,10 @@ typedef struct {
         struct {
             uint32_t wait_ms;
         } wait;
+
+        struct {
+            uint8_t task_id;
+        } h_task;
     } params;
 } MotionAction;
 

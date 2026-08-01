@@ -6,9 +6,13 @@
 #include "car_state.h"
 #include "emergency_stop.h"
 #include "fault.h"
+#include "h_task_controller.h"
 #include "imu.h"
 #include "scheduler_monitor.h"
 #include "watchdog_monitor.h"
+#include "wheel_speed_estimator.h"
+
+#define FOLLOW_FINISH_ENCODER_GRACE_MS    (200U)
 
 static MotionActionRuntime g_motionActionRuntime;
 
@@ -22,6 +26,50 @@ static void motion_action_set_result(MotionActionResult result,
 static void motion_action_stop_car(void)
 {
     CarController_Stop();
+}
+
+static float motion_action_abs_float(float value)
+{
+    return (value < 0.0f) ? -value : value;
+}
+
+static int16_t motion_action_scale_command(int16_t base_command,
+    uint16_t percent)
+{
+    int32_t scaled = ((int32_t)base_command * (int32_t)percent + 50) / 100;
+
+    if (scaled < 1) {
+        return 1;
+    }
+    if (scaled > MOTION_NORMALIZED_COMMAND_MAX) {
+        return MOTION_NORMALIZED_COMMAND_MAX;
+    }
+    return (int16_t)scaled;
+}
+
+bool MotionAction_RefreshFollowLineTuning(void)
+{
+    const MotionAction *action = g_motionActionRuntime.action;
+    int16_t referenceCommand;
+    int16_t activeCommand;
+
+    if ((action == (const MotionAction *)0) ||
+        (action->type != MOTION_ACTION_FOLLOW_LINE_TO_FINISH) ||
+        (g_motionActionRuntime.result != MOTION_RESULT_RUNNING)) {
+        return false;
+    }
+
+    referenceCommand = g_appConfig.line_control_v2_base_command;
+    g_motionActionRuntime.follow_finish_high_command =
+        motion_action_scale_command(referenceCommand,
+            action->params.follow_line_to_finish.high_speed_percent);
+    g_motionActionRuntime.follow_finish_low_command =
+        motion_action_scale_command(referenceCommand,
+            action->params.follow_line_to_finish.low_speed_percent);
+    activeCommand = g_motionActionRuntime.follow_finish_low_speed ?
+        g_motionActionRuntime.follow_finish_low_command :
+        g_motionActionRuntime.follow_finish_high_command;
+    return CarController_SetFollowLineBaseCommand(activeCommand);
 }
 
 static uint16_t motion_action_add_elapsed_u16(uint16_t value,
@@ -162,6 +210,7 @@ static bool motion_action_check_timeout(void)
             break;
 #endif
         case MOTION_ACTION_FOLLOW_LINE:
+        case MOTION_ACTION_FOLLOW_LINE_TO_FINISH:
             motion_action_set_result(MOTION_RESULT_TIMEOUT,
                 MOTION_ERROR_FOLLOW_TIMEOUT);
             break;
@@ -206,7 +255,15 @@ void MotionAction_Init(void)
     g_motionActionRuntime.result = MOTION_RESULT_IDLE;
     g_motionActionRuntime.elapsed_ms = 0U;
     g_motionActionRuntime.imu_wait_elapsed_ms = 0U;
+    g_motionActionRuntime.encoder_invalid_elapsed_ms = 0U;
     g_motionActionRuntime.error_code = (uint16_t)MOTION_ERROR_NONE;
+    g_motionActionRuntime.follow_finish_start_distance_cm = 0.0f;
+    g_motionActionRuntime.follow_finish_travelled_cm = 0.0f;
+    g_motionActionRuntime.follow_finish_decel_distance_cm = 0.0f;
+    g_motionActionRuntime.follow_finish_high_command = 0;
+    g_motionActionRuntime.follow_finish_low_command = 0;
+    g_motionActionRuntime.follow_finish_confirm_count = 0U;
+    g_motionActionRuntime.follow_finish_low_speed = false;
     g_motionActionRuntime.started = false;
     g_motionActionRuntime.controller_started = false;
     g_motionActionRuntime.waiting_for_imu = false;
@@ -285,6 +342,24 @@ static bool motion_action_start_internal(const MotionAction *action,
         motion_action_stop_car();
         return false;
     }
+    if ((action->type == MOTION_ACTION_FOLLOW_LINE_TO_FINISH) &&
+        ((action->params.follow_line_to_finish.expected_distance_cm !=
+            action->params.follow_line_to_finish.expected_distance_cm) ||
+         (action->params.follow_line_to_finish.expected_distance_cm <= 0.0f) ||
+         (action->params.follow_line_to_finish.decel_percent == 0U) ||
+         (action->params.follow_line_to_finish.decel_percent > 100U) ||
+         (action->params.follow_line_to_finish.high_speed_percent == 0U) ||
+         (action->params.follow_line_to_finish.low_speed_percent == 0U) ||
+         (action->params.follow_line_to_finish.low_speed_percent >
+            action->params.follow_line_to_finish.high_speed_percent) ||
+         (action->params.follow_line_to_finish.finish_black_min == 0U) ||
+         (action->params.follow_line_to_finish.finish_black_min > 7U) ||
+         (action->params.follow_line_to_finish.finish_confirm_frames == 0U))) {
+        motion_action_set_result(MOTION_RESULT_FAILED,
+            MOTION_ERROR_INVALID_ACTION);
+        motion_action_stop_car();
+        return false;
+    }
 
     switch (action->type) {
 #if FEATURE_LEGACY_MOTION_CONTROL
@@ -308,6 +383,41 @@ static bool motion_action_start_internal(const MotionAction *action,
             motion_action_set_result(MOTION_RESULT_RUNNING,
                 MOTION_ERROR_NONE);
             return true;
+
+        case MOTION_ACTION_FOLLOW_LINE_TO_FINISH:
+        {
+            const volatile WheelSpeedEstimatorRuntime *wheel =
+                WheelSpeedEstimator_GetRuntime();
+            int16_t referenceCommand =
+                g_appConfig.line_control_v2_base_command;
+
+            if ((wheel == (const volatile WheelSpeedEstimatorRuntime *)0) ||
+                !wheel->valid || wheel->stale || wheel->overflow) {
+                motion_action_set_result(MOTION_RESULT_FAILED,
+                    MOTION_ERROR_ENCODER_NOT_READY);
+                motion_action_stop_car();
+                return false;
+            }
+
+            g_motionActionRuntime.follow_finish_start_distance_cm =
+                wheel->center_distance_cm;
+            g_motionActionRuntime.follow_finish_decel_distance_cm =
+                action->params.follow_line_to_finish.expected_distance_cm *
+                (float)action->params.follow_line_to_finish.decel_percent /
+                100.0f;
+            g_motionActionRuntime.follow_finish_high_command =
+                motion_action_scale_command(referenceCommand,
+                    action->params.follow_line_to_finish.high_speed_percent);
+            g_motionActionRuntime.follow_finish_low_command =
+                motion_action_scale_command(referenceCommand,
+                    action->params.follow_line_to_finish.low_speed_percent);
+            CarController_StartFollowLineAtCommand(
+                CAR_TURN_POLICY_IGNORE,
+                g_motionActionRuntime.follow_finish_high_command);
+            motion_action_set_result(MOTION_RESULT_RUNNING,
+                MOTION_ERROR_NONE);
+            return true;
+        }
 
 #if FEATURE_LEGACY_MOTION_CONTROL
         case MOTION_ACTION_TURN_LEFT_90:
@@ -376,6 +486,18 @@ static bool motion_action_start_internal(const MotionAction *action,
 
         case MOTION_ACTION_WAIT:
             motion_action_stop_car();
+            motion_action_set_result(MOTION_RESULT_RUNNING,
+                MOTION_ERROR_NONE);
+            return true;
+
+        case MOTION_ACTION_H_TASK:
+            if (HTaskController_Start((HTaskId)
+                    action->params.h_task.task_id) == 0U) {
+                motion_action_set_result(MOTION_RESULT_FAILED,
+                    MOTION_ERROR_H_TASK);
+                motion_action_stop_car();
+                return false;
+            }
             motion_action_set_result(MOTION_RESULT_RUNNING,
                 MOTION_ERROR_NONE);
             return true;
@@ -494,6 +616,75 @@ MotionActionResult MotionAction_Update_20ms(uint32_t elapsed_ms)
             break;
         }
 
+        case MOTION_ACTION_FOLLOW_LINE_TO_FINISH:
+        {
+            const CarControllerFeedback *feedback =
+                CarController_GetFeedback();
+            const volatile WheelSpeedEstimatorRuntime *wheel =
+                WheelSpeedEstimator_GetRuntime();
+
+            if (motion_action_car_is_error()) {
+                motion_action_set_result(MOTION_RESULT_FAILED,
+                    MOTION_ERROR_LINE_LOST);
+                break;
+            }
+
+            if ((wheel == (const volatile WheelSpeedEstimatorRuntime *)0) ||
+                !wheel->valid || wheel->stale || wheel->overflow) {
+                g_motionActionRuntime.encoder_invalid_elapsed_ms =
+                    motion_action_add_elapsed_u16(
+                        g_motionActionRuntime.encoder_invalid_elapsed_ms,
+                        elapsed_ms);
+                if (g_motionActionRuntime.encoder_invalid_elapsed_ms >=
+                    FOLLOW_FINISH_ENCODER_GRACE_MS) {
+                    motion_action_stop_car();
+                    motion_action_set_result(MOTION_RESULT_FAILED,
+                        MOTION_ERROR_ENCODER_NOT_READY);
+                }
+                break;
+            }
+
+            g_motionActionRuntime.encoder_invalid_elapsed_ms = 0U;
+            g_motionActionRuntime.follow_finish_travelled_cm =
+                motion_action_abs_float(wheel->center_distance_cm -
+                    g_motionActionRuntime.follow_finish_start_distance_cm);
+
+            if (!g_motionActionRuntime.follow_finish_low_speed &&
+                (g_motionActionRuntime.follow_finish_travelled_cm >=
+                    g_motionActionRuntime.follow_finish_decel_distance_cm)) {
+                g_motionActionRuntime.follow_finish_low_speed = true;
+                g_motionActionRuntime.follow_finish_confirm_count = 0U;
+                if (!CarController_SetFollowLineBaseCommand(
+                        g_motionActionRuntime.follow_finish_low_command)) {
+                    motion_action_stop_car();
+                    motion_action_set_result(MOTION_RESULT_FAILED,
+                        MOTION_ERROR_INVALID_ACTION);
+                    break;
+                }
+            }
+
+            if (g_motionActionRuntime.follow_finish_low_speed) {
+                if (feedback->black_count >=
+                    action->params.follow_line_to_finish.finish_black_min) {
+                    if (g_motionActionRuntime.follow_finish_confirm_count <
+                        UINT8_MAX) {
+                        g_motionActionRuntime.follow_finish_confirm_count++;
+                    }
+                } else {
+                    g_motionActionRuntime.follow_finish_confirm_count = 0U;
+                }
+
+                if (g_motionActionRuntime.follow_finish_confirm_count >=
+                    action->params.follow_line_to_finish.
+                        finish_confirm_frames) {
+                    motion_action_stop_car();
+                    motion_action_set_result(MOTION_RESULT_SUCCESS,
+                        MOTION_ERROR_NONE);
+                }
+            }
+            break;
+        }
+
 #if FEATURE_LEGACY_MOTION_CONTROL
         case MOTION_ACTION_TURN_LEFT_90:
         {
@@ -528,6 +719,7 @@ MotionActionResult MotionAction_Update_20ms(uint32_t elapsed_ms)
             }
             break;
         }
+
 #endif
 
         case MOTION_ACTION_TURN_TO_YAW:
@@ -657,6 +849,20 @@ MotionActionResult MotionAction_Update_20ms(uint32_t elapsed_ms)
             }
             break;
 
+        case MOTION_ACTION_H_TASK:
+            HTaskController_Update20ms(elapsed_ms);
+            if (HTaskController_HasFault() != 0U) {
+                motion_action_set_result(MOTION_RESULT_FAILED,
+                    MOTION_ERROR_H_TASK);
+            } else if (HTaskController_IsActive() == 0U) {
+                motion_action_set_result(MOTION_RESULT_CANCELLED,
+                    MOTION_ERROR_NONE);
+            }
+            /* H3 keeps its final ball target after reaching -50 mm.  H4-H6
+             * remain in CAR_RUNNING and follow the line until the operator
+             * requests a normal stop. */
+            break;
+
         default:
             motion_action_stop_car();
             motion_action_set_result(MOTION_RESULT_FAILED,
@@ -669,6 +875,11 @@ MotionActionResult MotionAction_Update_20ms(uint32_t elapsed_ms)
 
 void MotionAction_Cancel(void)
 {
+    if (g_motionActionRuntime.started &&
+        (g_motionActionRuntime.action != (const MotionAction *)0) &&
+        (g_motionActionRuntime.action->type == MOTION_ACTION_H_TASK)) {
+        HTaskController_RequestNormalStop();
+    }
     motion_action_stop_car();
     motion_action_set_result(MOTION_RESULT_CANCELLED, MOTION_ERROR_NONE);
     g_motionActionRuntime.started = false;
@@ -687,12 +898,21 @@ bool MotionAction_ReapplyControllerTarget(void)
         return false;
     }
 
-    if (action->type != MOTION_ACTION_FOLLOW_LINE) {
+    if ((action->type != MOTION_ACTION_FOLLOW_LINE) &&
+        (action->type != MOTION_ACTION_FOLLOW_LINE_TO_FINISH)) {
         return false;
     }
 
-    CarController_ResumeFollowLine(
-        motion_action_map_turn_policy(action->params.follow_line.turn_policy));
+    if (action->type == MOTION_ACTION_FOLLOW_LINE_TO_FINISH) {
+        CarController_ResumeFollowLineAtCommand(CAR_TURN_POLICY_IGNORE,
+            g_motionActionRuntime.follow_finish_low_speed ?
+                g_motionActionRuntime.follow_finish_low_command :
+                g_motionActionRuntime.follow_finish_high_command);
+    } else {
+        CarController_ResumeFollowLine(
+            motion_action_map_turn_policy(
+                action->params.follow_line.turn_policy));
+    }
     return true;
 }
 

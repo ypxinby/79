@@ -18,8 +18,8 @@
 #define WHEEL_CONTROL_RIGHT_KI_DEFAULT            (1.0f)
 #define WHEEL_CONTROL_LEFT_KP_OVERSPEED_DEFAULT   (5.0f)
 #define WHEEL_CONTROL_RIGHT_KP_OVERSPEED_DEFAULT  (5.0f)
-#define WHEEL_CONTROL_LEFT_FF_GAIN_DEFAULT        (0.6f)
-#define WHEEL_CONTROL_RIGHT_FF_GAIN_DEFAULT       (0.6f)
+#define WHEEL_CONTROL_LEFT_FF_GAIN_DEFAULT        (0.70f)
+#define WHEEL_CONTROL_RIGHT_FF_GAIN_DEFAULT       (0.70f)
 #define WHEEL_CONTROL_LEFT_FF_GAIN_LEGACY         (1.0f)
 #define WHEEL_CONTROL_RIGHT_FF_GAIN_LEGACY        (1.0f)
 #define WHEEL_CONTROL_INTEGRAL_LIMIT_DEFAULT      (300.0f)
@@ -70,18 +70,18 @@
 #define MOTION_HIGH_SPEED_CMPS_DEFAULT            (45.0f)
 
 /*
- * P5.1 conservative FOLLOW values. Commands remain normalized -1000..1000;
- * these are initial vehicle-test values and are intentionally independent of
- * the validated legacy track_kp/track_kd settings.
+ * Competition high-speed FOLLOW starting profile.  Task 1 still uses the
+ * OLED base command as a reference (HIGH=250%, LOW=50%), while FF/KP/KD/MAX
+ * remain one shared live-tunable set across both gears.
  */
 #define LINE_CONTROL_V2_BASE_COMMAND_DEFAULT             (300)
 #define LINE_CONTROL_V2_LOST_TURN_COMMAND_DEFAULT        (280)
 #define LINE_LOST_SEARCH_MAX_MS_DEFAULT                  (2000U)
 #define LINE_CONTROL_V2_ERROR_FILTER_ALPHA_DEFAULT       (0.35f)
 #define LINE_CONTROL_V2_DERIV_FILTER_ALPHA_DEFAULT       (0.20f)
-#define LINE_CONTROL_V2_KP_DEFAULT                       (0.60f)
-#define LINE_CONTROL_V2_KD_DEFAULT                       (0.010f)
-#define LINE_CONTROL_V2_MAX_CORRECTION_DEFAULT           (260)
+#define LINE_CONTROL_V2_KP_DEFAULT                       (1.50f)
+#define LINE_CONTROL_V2_KD_DEFAULT                       (0.020f)
+#define LINE_CONTROL_V2_MAX_CORRECTION_DEFAULT           (650)
 #define LINE_CONTROL_V2_MIN_RUNNING_COMMAND_DEFAULT      (50)
 #define LINE_CONTROL_V2_MIN_DT_MS_DEFAULT                 (5U)
 #define LINE_CONTROL_V2_MAX_DT_MS_DEFAULT                 (100U)

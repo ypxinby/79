@@ -14,6 +14,7 @@
 #include "gimbal_stepper.h"
 #include "gimbal_tracker.h"
 #include "heading_control.h"
+#include "h_task_controller.h"
 #include "imu.h"
 #include "line_controller.h"
 #include "menu.h"
@@ -139,6 +140,8 @@ static const char *motion_action_type_to_string(MotionActionType type)
             return "SEEK";
         case MOTION_ACTION_FOLLOW_LINE:
             return "LINE";
+        case MOTION_ACTION_FOLLOW_LINE_TO_FINISH:
+            return "LAP";
         case MOTION_ACTION_TURN_LEFT_90:
             return "L90";
         case MOTION_ACTION_TURN_RIGHT_90:
@@ -157,6 +160,8 @@ static const char *motion_action_type_to_string(MotionActionType type)
             return "WAIT";
         case MOTION_ACTION_STOP:
             return "STOP";
+        case MOTION_ACTION_H_TASK:
+            return "H";
         default:
             return "NONE";
     }
@@ -226,6 +231,98 @@ static void print_elapsed_mm_ss_t(uint32_t elapsed_ms)
     OLED_PrintChar((char)('0' + tenths));
 }
 
+static const char *h_task_ball_to_string(BalanceBallControlState state)
+{
+    switch (state) {
+        case BALANCE_BALL_STATE_WAIT_AXIS: return "AXIS";
+        case BALANCE_BALL_STATE_WAIT_VISION: return "WAIT";
+        case BALANCE_BALL_STATE_ACTIVE: return "ACT";
+        case BALANCE_BALL_STATE_RETURN_ZERO: return "ZERO";
+        case BALANCE_BALL_STATE_VISION_LOST: return "LOST";
+        case BALANCE_BALL_STATE_HOLD_LAST: return "HOLD";
+        case BALANCE_BALL_STATE_FAULT: return "FLT";
+        case BALANCE_BALL_STATE_DISABLED:
+        default: return "OFF";
+    }
+}
+
+static const char *h_task_fault_to_string(HTaskFault fault)
+{
+    switch (fault) {
+        case H_TASK_FAULT_INVALID_TASK: return "TASK";
+        case H_TASK_FAULT_ESTOP: return "ESTOP";
+        case H_TASK_FAULT_AXIS_NOT_READY: return "AXIS";
+        case H_TASK_FAULT_VISION_NOT_READY: return "VISION";
+        case H_TASK_FAULT_START_TIMEOUT: return "START";
+        case H_TASK_FAULT_TARGET_INVALID: return "TARGET";
+        case H_TASK_FAULT_POSITION_CONTROL: return "POS";
+        case H_TASK_FAULT_BALL_CONTROL: return "BALL";
+        case H_TASK_FAULT_CAR_CONTROL: return "CAR";
+        case H_TASK_FAULT_TASK_TIMEOUT: return "TIME";
+        case H_TASK_FAULT_NONE:
+        default: return "NONE";
+    }
+}
+
+static void print_h_task_status_page(void)
+{
+    HTaskRuntime task;
+    BalanceBallControlRuntime ball;
+    uint16_t missionIndex = MissionManager_GetSelectedMissionIndex();
+    uint32_t displayElapsedMs;
+
+    HTaskController_GetSnapshot(&task);
+    BalanceBallControl_GetSnapshot(&ball);
+    /* Competition display always shows total time since task start.  H4-H6
+     * keep running after the scoring landmark instead of freezing the clock. */
+    displayElapsedMs = task.task_elapsed_ms;
+
+    OLED_SetCursor(0, 0);
+    OLED_PrintChar('T');
+    OLED_PrintInt16((int16_t)(missionIndex + 1U));
+    OLED_PrintChar(' ');
+    OLED_PrintString(HTaskController_StateToString(task.state));
+    OLED_PrintChar(' ');
+    print_elapsed_mm_ss_t(displayElapsedMs);
+
+    OLED_SetCursor(2, 0);
+    OLED_PrintString("P:");
+    OLED_PrintInt16(task.position_mm);
+    OLED_PrintString(" T:");
+    OLED_PrintInt16(task.target_mm);
+    OLED_PrintString(" E:");
+    OLED_PrintInt16(task.error_mm);
+
+    OLED_SetCursor(4, 0);
+    OLED_PrintString("C:");
+    OLED_PrintString(HTaskController_VehicleToString(
+        task.vehicle_level));
+    OLED_PrintString(" B:");
+    OLED_PrintString(h_task_ball_to_string(ball.state));
+    OLED_PrintString(" V:");
+    OLED_PrintInt16((int16_t)task.valid_confirm_count);
+
+    OLED_SetCursor(6, 0);
+    if (task.fault != H_TASK_FAULT_NONE) {
+        OLED_PrintString("F:");
+        OLED_PrintString(h_task_fault_to_string(task.fault));
+    } else if (task.task_id == H_TASK_ID_H4) {
+        OLED_PrintString("B:");
+        OLED_PrintInt16((int16_t)task.b_passed_estimate);
+        OLED_PrintString(" OT:");
+        OLED_PrintInt16((int16_t)task.overtime);
+    } else if ((task.task_id == H_TASK_ID_H5) ||
+        (task.task_id == H_TASK_ID_H6)) {
+        OLED_PrintString("FOLLOW CONT O:");
+        OLED_PrintInt16((int16_t)task.overtime);
+    } else {
+        OLED_PrintString("DONE:");
+        OLED_PrintInt16((int16_t)task.finish_latched);
+        OLED_PrintString(" OT:");
+        OLED_PrintInt16((int16_t)task.overtime);
+    }
+}
+
 static const char *motion_result_to_string(MotionActionResult result);
 
 #if FEATURE_OBSTACLE_SCANNER
@@ -272,12 +369,8 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
     const FaultRecord *fault = Fault_GetRecord();
     uint16_t missionIndex = MissionManager_GetSelectedMissionIndex();
     uint16_t missionCount = MissionManager_GetMissionCount();
-#if FEATURE_BALANCE_BALL_PD_CONTROL
-    BalanceBallControlRuntime balance;
-
-    BalanceBallControl_GetSnapshot(&balance);
-#endif
-
+    uint8_t selectedMissionId = MissionManager_GetSelectedMissionId();
+    HTaskRuntime hTask;
     (void)raw;
     (void)error;
     (void)keyEvent;
@@ -288,18 +381,36 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
     if (mission->definition != (const MissionDefinition *)0) {
         missionName = mission->definition->name;
     }
+    HTaskController_GetSnapshot(&hTask);
+
+    if (action->started &&
+        (action->action != (const MotionAction *)0) &&
+        (action->action->type == MOTION_ACTION_H_TASK)) {
+        print_h_task_status_page();
+        return;
+    }
+    if ((hTask.state == H_TASK_STATE_ABORTED) &&
+        (((selectedMissionId == MISSION_ID_H3_BALL_50) &&
+          (hTask.task_id == H_TASK_ID_H3)) ||
+         ((selectedMissionId == MISSION_ID_H4_AB_CENTER) &&
+          (hTask.task_id == H_TASK_ID_H4)) ||
+         ((selectedMissionId == MISSION_ID_H5_LAP_CENTER) &&
+          (hTask.task_id == H_TASK_ID_H5)) ||
+         ((selectedMissionId == MISSION_ID_H6_LAP_LOCK) &&
+          (hTask.task_id == H_TASK_ID_H6)))) {
+        print_h_task_status_page();
+        return;
+    }
 
     OLED_SetCursor(0, 0);
-#if APP_PROFILE == APP_PROFILE_DEVELOPMENT
-    OLED_PrintString("TEST T:");
-#else
-    OLED_PrintString("COMP T:");
-#endif
+    OLED_PrintString("T:");
     OLED_PrintInt16((int16_t)(missionIndex + 1U));
     OLED_PrintChar('/');
     OLED_PrintInt16((int16_t)missionCount);
     OLED_PrintChar(' ');
     OLED_PrintString(mission_status_to_string(mission->status));
+    OLED_PrintChar(' ');
+    print_elapsed_mm_ss_t(mission->mission_elapsed_ms);
 
     OLED_SetCursor(2, 0);
     OLED_PrintString(missionName);
@@ -330,14 +441,6 @@ static void print_status_page(uint8_t raw, int16_t error, uint8_t keyEvent)
         OLED_PrintInt16((int16_t)mission->last_error_code);
         OLED_PrintString(" AE:");
         OLED_PrintInt16((int16_t)action->error_code);
-#if FEATURE_BALANCE_BALL_PD_CONTROL
-    } else if ((MissionManager_GetSelectedMissionId() ==
-            MISSION_ID_TEST_BALL_CENTER) &&
-        (balance.start_result != BALANCE_BALL_START_OK)) {
-        OLED_PrintString("BALL:");
-        OLED_PrintString(balance_start_result_to_string(
-            balance.start_result));
-#endif
     } else {
         OLED_PrintString("F:NONE R:");
         OLED_PrintString(motion_result_to_string(action->result));
@@ -695,6 +798,7 @@ static void print_motor_control_detail_page(void)
 
 static void print_param_page(uint8_t keyEvent)
 {
+    const MissionRuntime *mission = MissionManager_GetRuntime();
     ParamItem item = Menu_GetParamItem();
     uint16_t missionIndex;
     uint16_t missionCount;
@@ -702,6 +806,11 @@ static void print_param_page(uint8_t keyEvent)
 
     OLED_SetCursor(0, 0);
     OLED_PrintString("PARAM");
+    if ((mission->status == MISSION_STATUS_RUNNING) ||
+        (mission->status == MISSION_STATUS_PAUSED)) {
+        OLED_PrintString(" T:");
+        print_elapsed_mm_ss_t(mission->mission_elapsed_ms);
+    }
 
     OLED_SetCursor(2, 0);
     OLED_PrintChar('>');
@@ -2220,6 +2329,21 @@ static void print_vision_pitch_tuning_page(void)
 void OledUi_Init(void)
 {
     OLED_Init();
+}
+
+void OledUi_ShowBootStatus(const char *status)
+{
+    OLED_ClearBuffer();
+    OLED_SetCursor(0U, 0U);
+    OLED_PrintString("BOOT");
+    OLED_SetCursor(2U, 0U);
+    OLED_PrintString(status != (const char *)0 ? status : "INIT");
+    OLED_SetCursor(4U, 0U);
+    OLED_PrintString("KEEP CAR STILL");
+
+    for (uint8_t page = 0U; page < 8U; page++) {
+        OLED_FlushPage(page);
+    }
 }
 
 void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,

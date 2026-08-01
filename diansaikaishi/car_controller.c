@@ -33,6 +33,8 @@ static CarControllerFeedback g_carControllerFeedback;
 static CarTurnHandlingPolicy g_followTurnPolicy = CAR_TURN_POLICY_AUTO;
 static bool g_safetyHold;
 
+#define FOLLOW_LINE_USE_CONFIG_COMMAND    (-1)
+
 static uint32_t add_elapsed_u32(uint32_t value, uint32_t elapsed_ms)
 {
     if (value > UINT32_MAX - elapsed_ms) {
@@ -243,6 +245,7 @@ static void handle_follow_line(uint32_t elapsed_ms)
     TrackTurnType turn;
     int16_t error;
 #if FEATURE_LINE_CONTROL_V2
+    int16_t baseCommand;
     const LineControllerRuntime *line;
     int16_t leftCommand = 0;
     int16_t rightCommand = 0;
@@ -255,8 +258,11 @@ static void handle_follow_line(uint32_t elapsed_ms)
         g_appRuntime.line_follow_elapsed_ms, elapsed_ms);
 
 #if FEATURE_LINE_CONTROL_V2
+    baseCommand = (g_appRuntime.line_follow_base_command >= 0) ?
+        g_appRuntime.line_follow_base_command :
+        g_appConfig.line_control_v2_base_command;
     LineController_Update(elapsed_ms, g_appRuntime.sensor_raw,
-        g_appConfig.line_control_v2_base_command,
+        baseCommand,
         &leftCommand, &rightCommand);
     line = LineController_GetRuntime();
     error = g_appRuntime.line_error;
@@ -794,6 +800,8 @@ void CarController_ResetRuntime(void)
     g_appRuntime.drive_heading_command = 0;
     g_appRuntime.heading_imu_invalid_elapsed_ms = 0;
     g_appRuntime.lap_cooldown_ms = 0;
+    g_appRuntime.line_follow_base_command =
+        FOLLOW_LINE_USE_CONFIG_COMMAND;
     g_appRuntime.yaw_turn_target_deg = 0.0f;
     g_appRuntime.yaw_turn_error_deg = 0.0f;
     g_appRuntime.yaw_turn_direction_hint = 0;
@@ -822,6 +830,8 @@ void CarController_ResetTransientState(void)
     g_appRuntime.drive_heading_duration_ms = 0;
     g_appRuntime.drive_heading_command = 0;
     g_appRuntime.heading_imu_invalid_elapsed_ms = 0;
+    g_appRuntime.line_follow_base_command =
+        FOLLOW_LINE_USE_CONFIG_COMMAND;
     g_appRuntime.yaw_turn_error_deg = 0.0f;
     g_appRuntime.yaw_turn_direction_hint = 0;
     g_appRuntime.yaw_turn_timeout_ms = 0U;
@@ -858,7 +868,7 @@ void CarController_StartSeekLine(void)
 #endif
 
 static void start_follow_line(CarTurnHandlingPolicy turn_policy,
-    bool reset_elapsed)
+    bool reset_elapsed, int16_t normalized_command)
 {
     if (EmergencyStop_IsActive() || WatchdogMonitor_HasTripped()) {
         stop_output();
@@ -869,6 +879,7 @@ static void start_follow_line(CarTurnHandlingPolicy turn_policy,
         g_appRuntime.line_follow_elapsed_ms = 0U;
     }
     g_followTurnPolicy = turn_policy;
+    g_appRuntime.line_follow_base_command = normalized_command;
     g_appRuntime.has_seen_line = 1;
     g_appRuntime.last_error = g_appRuntime.line_error;
     g_appRuntime.last_valid_error = g_appRuntime.line_error;
@@ -954,12 +965,40 @@ void CarController_StartDriveHeading(float target_yaw_deg,
 
 void CarController_StartFollowLine(CarTurnHandlingPolicy turn_policy)
 {
-    start_follow_line(turn_policy, true);
+    start_follow_line(turn_policy, true,
+        FOLLOW_LINE_USE_CONFIG_COMMAND);
 }
 
 void CarController_ResumeFollowLine(CarTurnHandlingPolicy turn_policy)
 {
-    start_follow_line(turn_policy, false);
+    start_follow_line(turn_policy, false,
+        FOLLOW_LINE_USE_CONFIG_COMMAND);
+}
+
+void CarController_StartFollowLineAtCommand(
+    CarTurnHandlingPolicy turn_policy, int16_t normalized_command)
+{
+    start_follow_line(turn_policy, true,
+        clamp_i16(normalized_command, 0, MOTOR_MAX_DUTY));
+}
+
+void CarController_ResumeFollowLineAtCommand(
+    CarTurnHandlingPolicy turn_policy, int16_t normalized_command)
+{
+    start_follow_line(turn_policy, false,
+        clamp_i16(normalized_command, 0, MOTOR_MAX_DUTY));
+}
+
+bool CarController_SetFollowLineBaseCommand(int16_t normalized_command)
+{
+    if ((g_appRuntime.run_mode != TRACK_MODE_FOLLOW_LINE) ||
+        (normalized_command < 0) ||
+        (normalized_command > MOTOR_MAX_DUTY)) {
+        return false;
+    }
+
+    g_appRuntime.line_follow_base_command = normalized_command;
+    return true;
 }
 
 void CarController_StartDriveDistance(float distance_cm,

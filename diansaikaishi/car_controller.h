@@ -74,6 +74,7 @@ typedef struct {
     uint16_t heading_imu_invalid_elapsed_ms;
     uint16_t drive_distance_settle_elapsed_ms;
     uint16_t lap_cooldown_ms;
+    int16_t line_follow_base_command;
 
     float yaw_turn_target_deg;
     float yaw_turn_error_deg;
@@ -123,6 +124,11 @@ void CarController_StartSeekLine(void);
 #endif
 void CarController_StartFollowLine(CarTurnHandlingPolicy turn_policy);
 void CarController_ResumeFollowLine(CarTurnHandlingPolicy turn_policy);
+void CarController_StartFollowLineAtCommand(
+    CarTurnHandlingPolicy turn_policy, int16_t normalized_command);
+void CarController_ResumeFollowLineAtCommand(
+    CarTurnHandlingPolicy turn_policy, int16_t normalized_command);
+bool CarController_SetFollowLineBaseCommand(int16_t normalized_command);
 #if FEATURE_LEGACY_MOTION_CONTROL
 void CarController_StartTurnLeft90(void);
 void CarController_StartTurnRight90(void);

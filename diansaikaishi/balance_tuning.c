@@ -9,6 +9,7 @@
 #include "balance_position_control.h"
 #include "balance_soft_limits.h"
 #include "gimbal_stepper.h"
+#include "mission_manager.h"
 #include "ti_msp_dl_config.h"
 #include "vision_receiver.h"
 
@@ -22,6 +23,7 @@
 #define TUNING_RX_PROCESS_BUDGET    (96U)
 #define TUNING_TX_PROCESS_BUDGET    (96U)
 #define JUSTFLOAT_FLOAT_COUNT       (16U)
+#define JUSTFLOAT_PAYLOAD_SIZE      (64U)
 #define JUSTFLOAT_FRAME_SIZE        (68U)
 
 #if ((TUNING_RX_SIZE & TUNING_RX_MASK) != 0U) || \
@@ -40,6 +42,16 @@ static uint8_t g_lineLength;
 static uint8_t g_discardLine;
 static uint8_t g_forceDebugSnapshot;
 static uint8_t g_serialCalibrationMode;
+
+static uint8_t serial_tuning_task_owned(void)
+{
+    const MissionRuntime *mission = MissionManager_GetRuntime();
+    uint8_t missionId = MissionManager_GetSelectedMissionId();
+
+    return ((mission->status == MISSION_STATUS_RUNNING) &&
+        (missionId >= MISSION_ID_H3_BALL_50) &&
+        (missionId <= MISSION_ID_H6_LAP_LOCK)) ? 1U : 0U;
+}
 static int16_t g_tuningTargetMm;
 static volatile BalanceTuningStatus g_status;
 
@@ -52,9 +64,13 @@ typedef struct {
     uint32_t last_rx_progress_ms;
     uint32_t ring_overflow_count;
     uint32_t protocol_error_count;
+    uint32_t uart_error_count;
+    uint32_t semantic_error_count;
     uint32_t duplicate_count;
     uint32_t old_sequence_count;
     uint32_t rejected_jump_count;
+    uint32_t jump_candidate_count;
+    uint32_t rebase_count;
     uint32_t clamp_count;
     BalanceSoftLimitError soft_limit_error;
 } BalanceTuningDebugState;
@@ -282,10 +298,13 @@ static const char *observation_result_text(
 {
     switch (result) {
         case BALANCE_BALL_OBSERVATION_ACCEPTED: return "ACCEPT";
+        case BALANCE_BALL_OBSERVATION_START_DISCARDED: return "START_DROP";
         case BALANCE_BALL_OBSERVATION_TARGET_INVALID: return "VALID_0";
         case BALANCE_BALL_OBSERVATION_NOT_MEASURED: return "MEASURED_0";
         case BALANCE_BALL_OBSERVATION_STALE: return "STALE_FRAME";
         case BALANCE_BALL_OBSERVATION_POSITION_JUMP: return "POS_JUMP";
+        case BALANCE_BALL_OBSERVATION_JUMP_CANDIDATE: return "JUMP_CAND";
+        case BALANCE_BALL_OBSERVATION_POSITION_REBASED: return "REBASE";
         default: return "UNKNOWN";
     }
 }
@@ -306,6 +325,7 @@ static const char *vision_event_text(VisionReceiverEvent event)
         case VISION_RECEIVER_EVENT_RESERVED_ERROR: return "RESERVED";
         case VISION_RECEIVER_EVENT_FLAGS_ERROR: return "FLAGS";
         case VISION_RECEIVER_EVENT_FIELD_ERROR: return "FIELD";
+        case VISION_RECEIVER_EVENT_SEMANTIC_ERROR: return "SEMANTIC";
         case VISION_RECEIVER_EVENT_DISCARDED: return "DISCARD";
         default: return "UNKNOWN";
     }
@@ -359,7 +379,7 @@ static const char *lost_cause_text(uint32_t now_ms,
         return "PARSE_REJECT";
     }
     if (age_from(now_ms,
-        vision_status->last_valid_packet_time_ms) >
+        vision_status->last_accepted_packet_time_ms) >
         BALANCE_BALL_PD_VISION_LOST_TIMEOUT_MS) {
         return "NO_ACCEPTED_FRAME";
     }
@@ -417,7 +437,7 @@ static void send_debug_filter(uint32_t now_ms,
     const BalanceBallControlRuntime *ball,
     const VisionBallPositionObservation *vision)
 {
-    char response[192];
+    char response[240];
     uint8_t length = 0U;
 
     append_text(response, &length, sizeof(response), "DBG,FILTER,t=");
@@ -433,12 +453,35 @@ static void send_debug_filter(uint32_t now_ms,
     append_u32(response, &length, sizeof(response), vision->measured);
     append_text(response, &length, sizeof(response), ",pos=");
     append_i32(response, &length, sizeof(response), vision->position_mm);
+    append_text(response, &length, sizeof(response), ",vraw=");
+    append_i32(response, &length, sizeof(response),
+        ball->raw_velocity_mm_s);
+    append_text(response, &length, sizeof(response), ",vf=");
+    append_i32(response, &length, sizeof(response), ball->velocity_mm_s);
+    append_text(response, &length, sizeof(response), ",dt=");
+    append_u32(response, &length, sizeof(response),
+        ball->velocity_sample_dt_ms);
+    append_text(response, &length, sizeof(response), ",a=");
+    append_u32(response, &length, sizeof(response),
+        ball->velocity_filter_alpha_x1000);
+    append_text(response, &length, sizeof(response), ",rev=");
+    append_u32(response, &length, sizeof(response),
+        ball->velocity_reversal_fast);
     append_text(response, &length, sizeof(response), ",accepted=");
     append_u32(response, &length, sizeof(response),
         ball->accepted_measurement_count);
     append_text(response, &length, sizeof(response), ",jump=");
     append_u32(response, &length, sizeof(response),
         ball->rejected_jump_count);
+    append_text(response, &length, sizeof(response), ",cand=");
+    append_u32(response, &length, sizeof(response),
+        ball->jump_candidate_count);
+    append_text(response, &length, sizeof(response), ",rebase=");
+    append_u32(response, &length, sizeof(response),
+        ball->rebase_count);
+    append_text(response, &length, sizeof(response), ",vclamp=");
+    append_u32(response, &length, sizeof(response),
+        ball->speed_clamp_count);
     append_text(response, &length, sizeof(response), ",hold=");
     append_u32(response, &length, sizeof(response),
         ball->held_invalid_count);
@@ -449,7 +492,7 @@ static void send_debug_filter(uint32_t now_ms,
 static void send_debug_receiver(uint32_t now_ms,
     const VisionReceiverStatus *status)
 {
-    char response[224];
+    char response[240];
     uint8_t length = 0U;
 
     append_text(response, &length, sizeof(response), "DBG,RX,t=");
@@ -483,6 +526,21 @@ static void send_debug_receiver(uint32_t now_ms,
     append_text(response, &length, sizeof(response), ",ovf=");
     append_u32(response, &length, sizeof(response),
         status->ring_overflow_count);
+    append_text(response, &length, sizeof(response), ",hw=");
+    append_u32(response, &length, sizeof(response),
+        status->uart_overrun_count);
+    append_text(response, &length, sizeof(response), "/");
+    append_u32(response, &length, sizeof(response),
+        status->uart_framing_error_count);
+    append_text(response, &length, sizeof(response), "/");
+    append_u32(response, &length, sizeof(response),
+        status->uart_parity_error_count);
+    append_text(response, &length, sizeof(response), "/");
+    append_u32(response, &length, sizeof(response),
+        status->uart_break_error_count);
+    append_text(response, &length, sizeof(response), ",sem=");
+    append_u32(response, &length, sizeof(response),
+        status->semantic_error_count);
     append_text(response, &length, sizeof(response), "\r\n");
     (void)tx_enqueue_atomic((const uint8_t *)response, length);
 }
@@ -583,6 +641,10 @@ static void enqueue_debug_events(uint32_t now_ms)
     const VisionBallPositionObservation *vision =
         VisionReceiver_GetBallPositionObservation();
     uint32_t protocol_errors = VisionReceiver_GetProtocolErrorCount();
+    uint32_t uartErrors = vision_status->uart_overrun_count +
+        vision_status->uart_framing_error_count +
+        vision_status->uart_parity_error_count +
+        vision_status->uart_break_error_count;
 
     BalanceBallControl_GetSnapshot(&ball);
     BalancePositionControl_GetSnapshot(&position);
@@ -636,10 +698,16 @@ static void enqueue_debug_events(uint32_t now_ms)
         if ((vision_status->ring_overflow_count !=
                 g_debug.ring_overflow_count) ||
             (protocol_errors != g_debug.protocol_error_count) ||
+            (uartErrors != g_debug.uart_error_count) ||
+            (vision_status->semantic_error_count !=
+                g_debug.semantic_error_count) ||
             (vision_status->duplicate_count !=
                 g_debug.duplicate_count) ||
             (vision_status->old_sequence_count !=
-                g_debug.old_sequence_count)) {
+                g_debug.old_sequence_count) ||
+            (ball.jump_candidate_count !=
+                g_debug.jump_candidate_count) ||
+            (ball.rebase_count != g_debug.rebase_count)) {
             send_debug_receiver(now_ms, vision_status);
         }
     }
@@ -659,9 +727,14 @@ static void enqueue_debug_events(uint32_t now_ms)
     g_debug.ring_overflow_count =
         vision_status->ring_overflow_count;
     g_debug.protocol_error_count = protocol_errors;
+    g_debug.uart_error_count = uartErrors;
+    g_debug.semantic_error_count =
+        vision_status->semantic_error_count;
     g_debug.duplicate_count = vision_status->duplicate_count;
     g_debug.old_sequence_count = vision_status->old_sequence_count;
     g_debug.rejected_jump_count = ball.rejected_jump_count;
+    g_debug.jump_candidate_count = ball.jump_candidate_count;
+    g_debug.rebase_count = ball.rebase_count;
     g_debug.clamp_count = limits.clamp_count;
 }
 
@@ -817,7 +890,7 @@ void BalanceTuning_AbortCalibrationSession(void)
 static void send_config(void)
 {
     BalanceBallControlConfig config;
-    char response[128];
+    char response[240];
     uint8_t length = 0U;
 
     BalanceBallControl_GetConfig(&config);
@@ -825,6 +898,27 @@ static void send_config(void)
     append_i32(response, &length, sizeof(response), config.kp_x100);
     append_text(response, &length, sizeof(response), ",KD=");
     append_i32(response, &length, sizeof(response), config.kd_x100);
+    append_text(response, &length, sizeof(response), ",VMAX=");
+    append_i32(response, &length, sizeof(response),
+        config.maximum_target_velocity_mm_s);
+    append_text(response, &length, sizeof(response), ",BIAS=");
+    append_i32(response, &length, sizeof(response),
+        config.neutral_bias_count);
+    append_text(response, &length, sizeof(response), ",AP=");
+    append_u32(response, &length, sizeof(response),
+        config.positive_brake_accel_mm_s2);
+    append_text(response, &length, sizeof(response), ",AN=");
+    append_u32(response, &length, sizeof(response),
+        config.negative_brake_accel_mm_s2);
+    append_text(response, &length, sizeof(response), ",TD=");
+    append_u32(response, &length, sizeof(response),
+        config.brake_delay_ms);
+    append_text(response, &length, sizeof(response), ",BM=");
+    append_u32(response, &length, sizeof(response),
+        config.brake_margin_mm);
+    append_text(response, &length, sizeof(response), ",VAPP=");
+    append_u32(response, &length, sizeof(response),
+        config.approach_velocity_mm_s);
     append_text(response, &length, sizeof(response), ",DIR=");
     append_i32(response, &length, sizeof(response), config.tilt_sign);
     append_text(response, &length, sizeof(response), ",MAX=");
@@ -849,6 +943,7 @@ static uint8_t apply_parameter(const char *name, const char *value)
 {
     BalanceBallControlConfig config;
     uint16_t parsed_u16;
+    int16_t parsed_i16;
     int32_t parsed_x100;
 
     BalanceBallControl_GetConfig(&config);
@@ -862,6 +957,41 @@ static uint8_t apply_parameter(const char *name, const char *value)
             return 0U;
         }
         config.kd_x100 = parsed_x100;
+    } else if (strcmp(name, "VMAX") == 0) {
+        if (parse_u16(value, &parsed_u16) == 0U) {
+            return 0U;
+        }
+        config.maximum_target_velocity_mm_s = parsed_u16;
+    } else if (strcmp(name, "BIAS") == 0) {
+        if (parse_i16(value, &parsed_i16) == 0U) {
+            return 0U;
+        }
+        config.neutral_bias_count = parsed_i16;
+    } else if (strcmp(name, "AP") == 0) {
+        if (parse_u16(value, &parsed_u16) == 0U) {
+            return 0U;
+        }
+        config.positive_brake_accel_mm_s2 = parsed_u16;
+    } else if (strcmp(name, "AN") == 0) {
+        if (parse_u16(value, &parsed_u16) == 0U) {
+            return 0U;
+        }
+        config.negative_brake_accel_mm_s2 = parsed_u16;
+    } else if (strcmp(name, "TD") == 0) {
+        if (parse_u16(value, &parsed_u16) == 0U) {
+            return 0U;
+        }
+        config.brake_delay_ms = parsed_u16;
+    } else if (strcmp(name, "BM") == 0) {
+        if (parse_u16(value, &parsed_u16) == 0U) {
+            return 0U;
+        }
+        config.brake_margin_mm = parsed_u16;
+    } else if (strcmp(name, "VAPP") == 0) {
+        if (parse_u16(value, &parsed_u16) == 0U) {
+            return 0U;
+        }
+        config.approach_velocity_mm_s = parsed_u16;
     } else if (strcmp(name, "DIR") == 0) {
         if (strcmp(value, "1") == 0) {
             config.tilt_sign = 1;
@@ -901,6 +1031,17 @@ static void process_line(void)
     char *equals;
 
     g_status.rx_line_count++;
+    if (serial_tuning_task_owned() &&
+        (strcmp(g_line, "GET") != 0) &&
+        (strcmp(g_line, "?") != 0) &&
+        (strcmp(g_line, "CAL?") != 0) &&
+        (strcmp(g_line, "C?") != 0) &&
+        (strcmp(g_line, "LOG") != 0) &&
+        (strcmp(g_line, "DBG") != 0)) {
+        send_text("ERR,TASK_OWNS_AXIS\r\n");
+        g_status.command_error_count++;
+        return;
+    }
     if (strcmp(g_line, "RUN") == 0) {
         if ((g_serialCalibrationMode == 0U) &&
             (BalanceBallControl_Enable(g_tuningTargetMm) != 0U)) {
@@ -1107,14 +1248,13 @@ static void enqueue_justfloat(uint32_t now_ms)
     payload.values[13] = (float)config.kd_x100 / 100.0f;
     payload.values[14] = (float)config.tracking_deadband_count;
     payload.values[15] = (float)ball.state;
-
     for (index = 0U; index < sizeof(payload.bytes); index++) {
         frame[index] = payload.bytes[index];
     }
-    frame[64] = 0x00U;
-    frame[65] = 0x00U;
-    frame[66] = 0x80U;
-    frame[67] = 0x7FU;
+    frame[JUSTFLOAT_PAYLOAD_SIZE + 0U] = 0x00U;
+    frame[JUSTFLOAT_PAYLOAD_SIZE + 1U] = 0x00U;
+    frame[JUSTFLOAT_PAYLOAD_SIZE + 2U] = 0x80U;
+    frame[JUSTFLOAT_PAYLOAD_SIZE + 3U] = 0x7FU;
     if (tx_enqueue_atomic(frame, sizeof(frame)) != 0U) {
         g_status.telemetry_frame_count++;
     } else {
@@ -1132,7 +1272,7 @@ void BalanceTuning_Init(void)
     g_discardLine = 0U;
     g_forceDebugSnapshot = 0U;
     g_serialCalibrationMode = 0U;
-    g_tuningTargetMm = 0;
+    g_tuningTargetMm = BALANCE_BALL_DEFAULT_TARGET_MM;
     g_status = (BalanceTuningStatus){0};
     g_debug = (BalanceTuningDebugState){0};
     NVIC_ClearPendingIRQ(UART_BALANCE_TUNING_INST_INT_IRQN);

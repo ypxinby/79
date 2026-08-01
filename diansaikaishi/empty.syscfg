@@ -44,12 +44,15 @@ UART1.profile = "CONFIG_PROFILE_1";
 UART1.peripheral.$assign = "UART3";
 UART1.targetBaudRate = 115200;
 UART1.enableInternalLoopback = false;
-UART1.enabledInterrupts = ["RX"];
-UART1.enableFIFO = false;
+UART1.enabledInterrupts = ["BREAK_ERROR","FRAMING_ERROR","OVERRUN_ERROR","PARITY_ERROR","RX"];
+UART1.enableFIFO = true;
+UART1.rxFifoThreshold = "DL_UART_RX_FIFO_LEVEL_ONE_ENTRY";
+UART1.txFifoThreshold = "DL_UART_TX_FIFO_LEVEL_EMPTY";
 UART1.peripheral.txPin.$assign = "PB2";
 UART1.peripheral.rxPin.$assign = "PB3";
 
-/* Dedicated full-duplex tuning link. Keep K230 isolated on PB2/PB3. */
+/* Dedicated full-duplex tuning link. Keep it electrically isolated from
+ * the K230 visual UART on PB2/PB3. */
 UART2.$name = "UART_BALANCE_TUNING";
 UART2.profile = "CONFIG_PROFILE_1";
 UART2.peripheral.$assign = "UART2";
@@ -218,7 +221,8 @@ GPIO11.associatedPins[0].assignedPin     = "1";
 GPIO11.associatedPins[0].initialValue    = "CLEARED";
 GPIO11.associatedPins[1].$name           = "PITCH_EN";
 GPIO11.associatedPins[1].assignedPin     = "2";
-GPIO11.associatedPins[1].initialValue    = "SET";
+/* Active-high EN must remain released throughout reset/startup. */
+GPIO11.associatedPins[1].initialValue    = "CLEARED";
 
 GPIO12.$name                             = "GPIO_GIMBAL_B";
 GPIO12.port                              = "PORTB";

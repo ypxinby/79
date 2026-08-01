@@ -12,6 +12,10 @@
 #define LINE_SENSOR_S7_MASK             ((uint8_t)(1U << 6))
 
 static LineControllerRuntime g_lineRuntime;
+static bool g_profileOverrideEnabled;
+static float g_profileOverrideKp;
+static float g_profileOverrideKd;
+static int16_t g_profileOverrideMaxCorrection;
 
 static int16_t clamp_i16(int32_t value, int16_t min_value,
     int16_t max_value)
@@ -170,7 +174,33 @@ static int16_t apply_running_command_floor(int32_t command,
 
 void LineController_Init(void)
 {
+    LineController_ClearProfileOverride();
     LineController_Reset();
+}
+
+bool LineController_SetProfileOverride(float kp, float kd,
+    int16_t max_correction)
+{
+    if ((kp < 0.0f) || (kp > 10.0f) ||
+        (kd < 0.0f) || (kd > 1.0f) ||
+        (max_correction < 0) ||
+        (max_correction > LINE_NORMALIZED_COMMAND_MAX)) {
+        return false;
+    }
+
+    g_profileOverrideKp = kp;
+    g_profileOverrideKd = kd;
+    g_profileOverrideMaxCorrection = max_correction;
+    g_profileOverrideEnabled = true;
+    return true;
+}
+
+void LineController_ClearProfileOverride(void)
+{
+    g_profileOverrideEnabled = false;
+    g_profileOverrideKp = 0.0f;
+    g_profileOverrideKd = 0.0f;
+    g_profileOverrideMaxCorrection = 0;
 }
 
 void LineController_Reset(void)
@@ -319,10 +349,15 @@ void LineController_Update(uint32_t elapsed_ms, uint8_t sensor_pattern,
     }
 
     g_lineRuntime.correction_raw =
-        g_appConfig.line_control_v2_kp * g_lineRuntime.filtered_error +
-        g_appConfig.line_control_v2_kd *
+        (g_profileOverrideEnabled ? g_profileOverrideKp :
+            g_appConfig.line_control_v2_kp) *
+            g_lineRuntime.filtered_error +
+        (g_profileOverrideEnabled ? g_profileOverrideKd :
+            g_appConfig.line_control_v2_kd) *
             g_lineRuntime.filtered_derivative;
-    correction_limit = g_appConfig.line_control_v2_max_correction;
+    correction_limit = g_profileOverrideEnabled ?
+        g_profileOverrideMaxCorrection :
+        g_appConfig.line_control_v2_max_correction;
     correction = round_clamped_float(g_lineRuntime.correction_raw,
         (int16_t)-correction_limit, correction_limit);
 

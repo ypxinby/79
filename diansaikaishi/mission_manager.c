@@ -227,6 +227,17 @@ void MissionManager_Pause(void)
         return;
     }
 
+    /* An H task is a coupled chassis/ball state machine.  Restarting only
+     * its current action would lose its target and recovery state, so a
+     * pause request is treated as the documented operator normal stop. */
+    if ((MotionAction_GetRuntime()->action !=
+            (const MotionAction *)0) &&
+        (MotionAction_GetRuntime()->action->type ==
+            MOTION_ACTION_H_TASK)) {
+        MissionManager_Cancel();
+        return;
+    }
+
     mission_stop_outputs();
     MotionAction_Init();
     g_resumeCurrentAction = false;
@@ -269,6 +280,9 @@ void MissionManager_Cancel(void)
 void MissionManager_Reset(void)
 {
     mission_stop_outputs();
+    if (MotionAction_GetRuntime()->started) {
+        MotionAction_Cancel();
+    }
     MotionAction_Init();
     g_transientActionActive = false;
     g_resumeCurrentAction = false;

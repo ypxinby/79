@@ -177,6 +177,7 @@ void RuntimeSnapshot_Update(uint32_t timestamp_ms)
     g_snapshot.app_drop_count = scheduler.app_20ms_drop_count;
     g_snapshot.app_overrun_count = scheduler.app_20ms_overrun_count;
     g_snapshot.uart_overflow_count = vision->ring_overflow_count +
+        vision->uart_overrun_count +
         console->rx_overflow_count + console->tx_overflow_count;
     g_snapshot.heartbeat_seen = watchdog->heartbeat_seen;
     g_snapshot.watchdog_tripped = watchdog->tripped;

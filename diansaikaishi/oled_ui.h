@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 void OledUi_Init(void);
+void OledUi_ShowBootStatus(const char *status);
 void OledUi_Update_20ms(uint8_t raw, uint8_t blackCount, int16_t error,
     uint8_t keyEvent);
 

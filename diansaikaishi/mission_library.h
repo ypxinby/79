@@ -22,10 +22,16 @@
 #define MISSION_ID_TEST_STOP_ONLY       (9U)
 /* P6.3 development-only IDs live above the competition-map range. */
 #define MISSION_ID_TEST_DISTANCE_20     (100U)
-#define MISSION_ID_TEST_BALL_CENTER     (101U)
 
 /* 10~99: competition missions. */
-#define MISSION_ID_COMPETITION_MAIN     (10U)
+#define MISSION_ID_TASK1_LAP            (10U)
+#define MISSION_ID_H3_BALL_50           (11U)
+#define MISSION_ID_H4_AB_CENTER         (12U)
+#define MISSION_ID_H5_LAP_CENTER        (13U)
+#define MISSION_ID_H6_LAP_LOCK          (14U)
+
+/* Kept as a source-compatible alias for older callers. */
+#define MISSION_ID_COMPETITION_MAIN     MISSION_ID_TASK1_LAP
 
 #define ACTION_STOP() \
     { \
@@ -41,6 +47,32 @@
         .max_retries = 0U, \
         .params.wait = { \
             .wait_ms = (uint32_t)(wait_time_ms) \
+        } \
+    }
+
+#define ACTION_FOLLOW_TO_FINISH(distance_cm, decel_pct, high_pct, low_pct, \
+    black_min, confirm_frames, timeout) \
+    { \
+        .type = MOTION_ACTION_FOLLOW_LINE_TO_FINISH, \
+        .timeout_ms = (uint32_t)(timeout), \
+        .max_retries = 0U, \
+        .params.follow_line_to_finish = { \
+            .expected_distance_cm = (float)(distance_cm), \
+            .decel_percent = (uint8_t)(decel_pct), \
+            .high_speed_percent = (uint16_t)(high_pct), \
+            .low_speed_percent = (uint16_t)(low_pct), \
+            .finish_black_min = (uint8_t)(black_min), \
+            .finish_confirm_frames = (uint8_t)(confirm_frames) \
+        } \
+    }
+
+#define ACTION_H_TASK(id) \
+    { \
+        .type = MOTION_ACTION_H_TASK, \
+        .timeout_ms = 0U, \
+        .max_retries = 0U, \
+        .params.h_task = { \
+            .task_id = (uint8_t)(id) \
         } \
     }
 
@@ -270,6 +302,7 @@
             .min_turn_ms = 0U \
         } \
     }
+
 #endif
 
 #define ACTION_TURN_RELATIVE_YAW(angle, timeout) \

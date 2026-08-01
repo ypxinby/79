@@ -16,8 +16,12 @@ static BalanceBallControlConfig g_config;
 static uint32_t g_lastObservationUpdateCount;
 static uint32_t g_lastSessionId;
 static int16_t g_lastPositionMm;
-static uint32_t g_lastPositionTimeMs;
-static uint8_t g_velocityInitialized;
+static uint8_t g_positionInitialized;
+static uint8_t g_hadMeasurementGap;
+static uint8_t g_jumpCandidateActive;
+static uint8_t g_jumpCandidateCount;
+static int16_t g_jumpCandidatePositionMm;
+static uint32_t g_jumpCandidateTimeMs;
 
 static void load_default_config(void)
 {
@@ -25,6 +29,18 @@ static void load_default_config(void)
         BALANCE_BALL_PD_KP_COUNTS_PER_MM_X100;
     g_config.kd_x100 =
         BALANCE_BALL_PD_KD_COUNTS_PER_MM_S_X100;
+    g_config.maximum_target_velocity_mm_s =
+        BALANCE_BALL_MAX_TARGET_VELOCITY_MM_S;
+    g_config.neutral_bias_count =
+        BALANCE_BALL_NEUTRAL_BIAS_COUNT;
+    g_config.positive_brake_accel_mm_s2 =
+        BALANCE_BALL_BRAKE_ACCEL_POS_MM_S2;
+    g_config.negative_brake_accel_mm_s2 =
+        BALANCE_BALL_BRAKE_ACCEL_NEG_MM_S2;
+    g_config.brake_delay_ms = BALANCE_BALL_BRAKE_DELAY_MS;
+    g_config.brake_margin_mm = BALANCE_BALL_BRAKE_MARGIN_MM;
+    g_config.approach_velocity_mm_s =
+        BALANCE_BALL_APPROACH_VELOCITY_MM_S;
     g_config.maximum_offset_count =
         BALANCE_BALL_PD_MAX_OFFSET_COUNTS;
     g_config.target_slew_count_per_20ms =
@@ -40,8 +56,21 @@ static uint8_t config_is_valid(
     const BalanceBallControlConfig *config)
 {
     return ((config != (const BalanceBallControlConfig *)0) &&
-        (config->kp_x100 >= 0) && (config->kp_x100 <= 1000) &&
-        (config->kd_x100 >= 0) && (config->kd_x100 <= 100) &&
+        (config->kp_x100 >= 0) && (config->kp_x100 <= 2000) &&
+        (config->kd_x100 >= 0) && (config->kd_x100 <= 500) &&
+        (config->maximum_target_velocity_mm_s >= 10) &&
+        (config->maximum_target_velocity_mm_s <= 1000) &&
+        (config->neutral_bias_count >= -256) &&
+        (config->neutral_bias_count <= 256) &&
+        (config->positive_brake_accel_mm_s2 >= 50U) &&
+        (config->positive_brake_accel_mm_s2 <= 5000U) &&
+        (config->negative_brake_accel_mm_s2 >= 50U) &&
+        (config->negative_brake_accel_mm_s2 <= 5000U) &&
+        (config->brake_delay_ms <= 500U) &&
+        (config->brake_margin_mm <= 50U) &&
+        (config->approach_velocity_mm_s > 0U) &&
+        (config->approach_velocity_mm_s <=
+            (uint16_t)config->maximum_target_velocity_mm_s) &&
         (config->maximum_offset_count >= 8) &&
         (config->maximum_offset_count <= 1024) &&
         (config->maximum_offset_count >=
@@ -84,6 +113,17 @@ static uint32_t magnitude_i32(int32_t value)
         return (uint32_t)value;
     }
     return (uint32_t)(-(value + 1)) + 1U;
+}
+
+static int32_t clamp_symmetric(int32_t value, int32_t limit)
+{
+    if (value > limit) {
+        return limit;
+    }
+    if (value < -limit) {
+        return -limit;
+    }
+    return value;
 }
 
 static int32_t slew_toward(int32_t current, int32_t target,
@@ -134,15 +174,30 @@ static int32_t maximum_offset_count(
     return (int32_t)offset;
 }
 
+static void clear_jump_candidate(void)
+{
+    g_jumpCandidateActive = 0U;
+    g_jumpCandidateCount = 0U;
+    g_jumpCandidatePositionMm = 0;
+    g_jumpCandidateTimeMs = 0U;
+}
+
 static void reset_measurement_history(void)
 {
     g_runtime.raw_vision_valid = 0U;
     g_runtime.measurement_valid = 0U;
     g_runtime.valid_streak = 0U;
     g_runtime.velocity_mm_s = 0;
+    g_runtime.raw_velocity_mm_s = 0;
+    g_runtime.velocity_sample_dt_ms = 0U;
+    g_runtime.velocity_filter_alpha_x1000 = 0U;
+    g_runtime.velocity_reversal_fast = 0U;
     g_runtime.last_measurement_time_ms = 0U;
-    g_velocityInitialized = 0U;
-    g_lastPositionTimeMs = 0U;
+    g_runtime.startup_discard_remaining =
+        BALANCE_BALL_START_DISCARD_FRAMES;
+    g_positionInitialized = 0U;
+    g_hadMeasurementGap = 1U;
+    clear_jump_candidate();
 }
 
 static void process_invalid_observation(
@@ -150,6 +205,15 @@ static void process_invalid_observation(
 {
     g_runtime.raw_vision_valid = 0U;
     g_runtime.last_observation_result = result;
+    g_hadMeasurementGap = 1U;
+    clear_jump_candidate();
+    if (result == BALANCE_BALL_OBSERVATION_TARGET_INVALID) {
+        g_runtime.target_invalid_count++;
+    } else if (result == BALANCE_BALL_OBSERVATION_NOT_MEASURED) {
+        g_runtime.not_measured_count++;
+    } else if (result == BALANCE_BALL_OBSERVATION_STALE) {
+        g_runtime.stale_count++;
+    }
 
     /* Once control is active, a single K230 invalid frame must not make the
      * axis return toward ZERO.  The update loop keeps the last valid sample
@@ -163,17 +227,63 @@ static void process_invalid_observation(
      * consecutive before the actuator is allowed to re-enter ACTIVE. */
     g_runtime.valid_streak = 0U;
     g_runtime.velocity_mm_s = 0;
-    g_velocityInitialized = 0U;
-    g_lastPositionTimeMs = 0U;
+    g_runtime.raw_velocity_mm_s = 0;
+    g_runtime.velocity_sample_dt_ms = 0U;
+    g_runtime.velocity_filter_alpha_x1000 = 0U;
+    g_runtime.velocity_reversal_fast = 0U;
+}
+
+static void admit_measurement(
+    const VisionBallPositionObservation *ball,
+    uint8_t force_zero_velocity,
+    BalanceBallObservationResult result)
+{
+    int32_t reportedVelocity = ball->reported_velocity_mm_s;
+    int32_t controlVelocity = reportedVelocity;
+
+    if (force_zero_velocity != 0U) {
+        controlVelocity = 0;
+        g_runtime.velocity_gap_reset_count++;
+    } else {
+        controlVelocity = clamp_symmetric(controlVelocity,
+            BALANCE_BALL_CONTROL_SPEED_LIMIT_MM_S);
+        if (controlVelocity != reportedVelocity) {
+            g_runtime.speed_clamp_count++;
+        }
+    }
+
+    g_lastPositionMm = ball->position_mm;
+    g_positionInitialized = 1U;
+    g_hadMeasurementGap = 0U;
+    g_runtime.position_mm = ball->position_mm;
+    g_runtime.raw_velocity_mm_s = ball->reported_velocity_mm_s;
+    g_runtime.velocity_mm_s = clamp_i32_to_i16(controlVelocity);
+    g_runtime.velocity_sample_dt_ms = 0U;
+    g_runtime.velocity_filter_alpha_x1000 = 1000U;
+    g_runtime.velocity_reversal_fast = 0U;
+    g_runtime.axis_span_mm = ball->axis_span_mm;
+    g_runtime.confidence = ball->confidence;
+    g_runtime.last_measurement_time_ms =
+        ball->local_receive_timestamp_ms;
+    g_runtime.accepted_measurement_count++;
+    g_runtime.last_observation_result = result;
+    g_runtime.raw_vision_valid = 1U;
+    if (g_runtime.valid_streak <
+        BALANCE_BALL_PD_VALID_FRAME_COUNT) {
+        g_runtime.valid_streak++;
+    }
+    g_runtime.measurement_valid =
+        (g_runtime.valid_streak >=
+            BALANCE_BALL_PD_VALID_FRAME_COUNT) ? 1U : 0U;
 }
 
 static void process_observation(uint32_t now_ms)
 {
     const VisionBallPositionObservation *ball =
         VisionReceiver_GetBallPositionObservation();
-    uint32_t delta_ms;
     int32_t delta_mm;
-    int32_t raw_velocity;
+    uint8_t rebase = 0U;
+    uint8_t hadPositionBaseline = g_positionInitialized;
 
     if (ball->available == 0U) {
         return;
@@ -211,56 +321,68 @@ static void process_observation(uint32_t now_ms)
         return;
     }
 
-    /* A LOST/WAIT recovery must establish a new position history. Never
-     * compare the newly found ball against a stale pre-loss coordinate. */
-    if ((g_runtime.measurement_valid == 0U) &&
-        ((g_runtime.state == BALANCE_BALL_STATE_VISION_LOST) ||
-         (g_runtime.state == BALANCE_BALL_STATE_WAIT_VISION))) {
-        g_velocityInitialized = 0U;
-        g_lastPositionTimeMs = 0U;
-        g_runtime.velocity_mm_s = 0;
+    if (g_runtime.startup_discard_remaining != 0U) {
+        g_runtime.startup_discard_remaining--;
+        g_runtime.last_observation_result =
+            BALANCE_BALL_OBSERVATION_START_DISCARDED;
+        g_runtime.raw_vision_valid = 0U;
+        g_runtime.measurement_valid = 0U;
+        g_runtime.valid_streak = 0U;
+        g_positionInitialized = 0U;
+        g_hadMeasurementGap = 1U;
+        clear_jump_candidate();
+        return;
     }
 
-    if (g_velocityInitialized != 0U) {
+    if (g_positionInitialized != 0U) {
         delta_mm = (int32_t)ball->position_mm - g_lastPositionMm;
         if (magnitude_i32(delta_mm) >
             BALANCE_BALL_PD_MAX_JUMP_MM) {
             g_runtime.rejected_jump_count++;
-            process_invalid_observation(
-                BALANCE_BALL_OBSERVATION_POSITION_JUMP);
-            return;
+            g_runtime.jump_candidate_count++;
+            g_hadMeasurementGap = 1U;
+            if ((g_jumpCandidateActive != 0U) &&
+                ((ball->local_receive_timestamp_ms -
+                    g_jumpCandidateTimeMs) <=
+                    BALANCE_BALL_JUMP_CONFIRM_TIMEOUT_MS) &&
+                (magnitude_i32((int32_t)ball->position_mm -
+                    g_jumpCandidatePositionMm) <=
+                    BALANCE_BALL_JUMP_CONFIRM_TOLERANCE_MM)) {
+                if (g_jumpCandidateCount < UINT8_MAX) {
+                    g_jumpCandidateCount++;
+                }
+                g_jumpCandidatePositionMm = ball->position_mm;
+                g_jumpCandidateTimeMs =
+                    ball->local_receive_timestamp_ms;
+            } else {
+                g_jumpCandidateActive = 1U;
+                g_jumpCandidateCount = 1U;
+                g_jumpCandidatePositionMm = ball->position_mm;
+                g_jumpCandidateTimeMs =
+                    ball->local_receive_timestamp_ms;
+            }
+            g_runtime.raw_vision_valid = 0U;
+            g_runtime.last_observation_result =
+                BALANCE_BALL_OBSERVATION_JUMP_CANDIDATE;
+            if (g_jumpCandidateCount <
+                BALANCE_BALL_JUMP_CONFIRM_FRAMES) {
+                return;
+            }
+            rebase = 1U;
         }
-        delta_ms = ball->local_receive_timestamp_ms -
-            g_lastPositionTimeMs;
-        if (delta_ms != 0U) {
-            raw_velocity = (delta_mm * 1000) / (int32_t)delta_ms;
-            g_runtime.velocity_mm_s = clamp_i32_to_i16(
-                ((int32_t)g_runtime.velocity_mm_s * 3 +
-                    raw_velocity) / 4);
-        }
-    } else {
-        g_velocityInitialized = 1U;
-        g_runtime.velocity_mm_s = 0;
     }
-
-    g_lastPositionMm = ball->position_mm;
-    g_lastPositionTimeMs = ball->local_receive_timestamp_ms;
-    g_runtime.position_mm = ball->position_mm;
-    g_runtime.axis_span_mm = ball->axis_span_mm;
-    g_runtime.confidence = ball->confidence;
-    g_runtime.last_measurement_time_ms =
-        ball->local_receive_timestamp_ms;
-    g_runtime.accepted_measurement_count++;
-    g_runtime.last_observation_result =
-        BALANCE_BALL_OBSERVATION_ACCEPTED;
-    g_runtime.raw_vision_valid = 1U;
-    if (g_runtime.valid_streak <
-        BALANCE_BALL_PD_VALID_FRAME_COUNT) {
-        g_runtime.valid_streak++;
+    if ((g_positionInitialized == 0U) ||
+        (g_hadMeasurementGap != 0U)) {
+        rebase = 1U;
     }
-    g_runtime.measurement_valid =
-        (g_runtime.valid_streak >=
-            BALANCE_BALL_PD_VALID_FRAME_COUNT) ? 1U : 0U;
+    if ((rebase != 0U) && (hadPositionBaseline != 0U)) {
+        g_runtime.rebase_count++;
+    }
+    clear_jump_candidate();
+    admit_measurement(ball, rebase,
+        (rebase != 0U) ?
+            BALANCE_BALL_OBSERVATION_POSITION_REBASED :
+            BALANCE_BALL_OBSERVATION_ACCEPTED);
 }
 
 static uint8_t ensure_tracking_started(
@@ -289,12 +411,30 @@ static uint8_t ensure_tracking_started(
     return 1U;
 }
 
+static uint8_t command_offset_limited(
+    const BalanceSoftLimitsRuntime *limits,
+    int32_t requested_offset, int32_t requested_maximum,
+    int32_t requested_slew);
+
 static uint8_t command_offset(const BalanceSoftLimitsRuntime *limits,
     int32_t requested_offset)
+{
+    return command_offset_limited(limits, requested_offset,
+        maximum_offset_count(limits),
+        g_config.target_slew_count_per_20ms);
+}
+
+static uint8_t command_offset_limited(
+    const BalanceSoftLimitsRuntime *limits,
+    int32_t requested_offset, int32_t requested_maximum,
+    int32_t requested_slew)
 {
     int32_t maximum_offset = maximum_offset_count(limits);
     int32_t target_count;
 
+    if (requested_maximum < maximum_offset) {
+        maximum_offset = requested_maximum;
+    }
     if (requested_offset > maximum_offset) {
         requested_offset = maximum_offset;
     } else if (requested_offset < -maximum_offset) {
@@ -302,10 +442,88 @@ static uint8_t command_offset(const BalanceSoftLimitsRuntime *limits,
     }
     g_runtime.commanded_offset_count = slew_toward(
         g_runtime.commanded_offset_count, requested_offset,
-        g_config.target_slew_count_per_20ms);
+        requested_slew);
     target_count = g_runtime.commanded_offset_count;
     g_runtime.actuator_target_count = target_count;
     return BalancePositionControl_SetTrackingTarget(target_count);
+}
+
+static int32_t calculate_cascade_request(uint8_t weak_control)
+{
+    int32_t error;
+    int32_t velocity;
+    int32_t targetVelocity;
+    int32_t velocityError;
+    int32_t approachVelocity;
+    uint32_t stoppingDistance = 0U;
+    uint32_t acceleration;
+    uint8_t movingToward;
+    int32_t targetComponent;
+    int32_t velocityComponent;
+    int32_t requestedOffset;
+
+    error = (int32_t)g_runtime.target_mm - g_runtime.position_mm;
+    velocity = g_runtime.velocity_mm_s;
+    targetVelocity = clamp_i64_to_i32(
+        ((int64_t)g_config.kp_x100 * error) / 100);
+    targetVelocity = clamp_symmetric(targetVelocity,
+        g_config.maximum_target_velocity_mm_s);
+
+    movingToward = (((error > 0) && (velocity > 0)) ||
+        ((error < 0) && (velocity < 0))) ? 1U : 0U;
+    if (movingToward != 0U) {
+        acceleration = (velocity > 0) ?
+            g_config.positive_brake_accel_mm_s2 :
+            g_config.negative_brake_accel_mm_s2;
+        stoppingDistance =
+            (magnitude_i32(velocity) * g_config.brake_delay_ms) /
+                1000U;
+        stoppingDistance += (uint32_t)(((int64_t)velocity * velocity) /
+            (2 * (int64_t)acceleration));
+        stoppingDistance += g_config.brake_margin_mm;
+        if (stoppingDistance > UINT16_MAX) {
+            stoppingDistance = UINT16_MAX;
+        }
+        if (magnitude_i32(error) <= stoppingDistance) {
+            approachVelocity = (int32_t)
+                g_config.approach_velocity_mm_s;
+            if (error < 0) {
+                approachVelocity = -approachVelocity;
+            }
+            if ((error == 0) ||
+                (magnitude_i32(targetVelocity) >
+                    g_config.approach_velocity_mm_s)) {
+                targetVelocity = (error == 0) ? 0 : approachVelocity;
+            }
+            g_runtime.braking_active = 1U;
+        } else {
+            g_runtime.braking_active = 0U;
+        }
+    } else {
+        g_runtime.braking_active = 0U;
+    }
+
+    velocityError = targetVelocity - velocity;
+    targetComponent = clamp_i64_to_i32(
+        ((int64_t)g_config.kd_x100 * targetVelocity) / 100);
+    velocityComponent = clamp_i64_to_i32(
+        -((int64_t)g_config.kd_x100 * velocity) / 100);
+    requestedOffset = clamp_i64_to_i32(
+        (int64_t)g_config.neutral_bias_count +
+        targetComponent + velocityComponent);
+    requestedOffset *= g_config.tilt_sign;
+
+    g_runtime.error_mm = clamp_i32_to_i16(error);
+    g_runtime.target_velocity_mm_s =
+        clamp_i32_to_i16(targetVelocity);
+    g_runtime.velocity_error_mm_s =
+        clamp_i32_to_i16(velocityError);
+    g_runtime.braking_distance_mm = (uint16_t)stoppingDistance;
+    g_runtime.p_output_count = targetComponent * g_config.tilt_sign;
+    g_runtime.d_output_count = velocityComponent * g_config.tilt_sign;
+    g_runtime.pd_output_count = requestedOffset;
+    g_runtime.weak_control_active = weak_control;
+    return requestedOffset;
 }
 
 static void return_toward_zero(
@@ -342,8 +560,9 @@ void BalanceBallControl_Init(void)
     g_lastObservationUpdateCount = 0U;
     g_lastSessionId = 0U;
     g_lastPositionMm = 0;
-    g_lastPositionTimeMs = 0U;
-    g_velocityInitialized = 0U;
+    g_positionInitialized = 0U;
+    g_hadMeasurementGap = 1U;
+    clear_jump_candidate();
 }
 
 uint8_t BalanceBallControl_Enable(int16_t target_mm)
@@ -400,9 +619,21 @@ uint8_t BalanceBallControl_Enable(int16_t target_mm)
     g_runtime.raw_vision_valid = 0U;
     g_runtime.valid_streak = 0U;
     g_runtime.velocity_mm_s = 0;
+    g_runtime.raw_velocity_mm_s = 0;
+    g_runtime.velocity_sample_dt_ms = 0U;
+    g_runtime.velocity_filter_alpha_x1000 = 0U;
+    g_runtime.velocity_reversal_fast = 0U;
     g_runtime.last_measurement_time_ms = 0U;
-    g_velocityInitialized = 0U;
-    g_lastPositionTimeMs = 0U;
+    g_runtime.target_velocity_mm_s = 0;
+    g_runtime.velocity_error_mm_s = 0;
+    g_runtime.braking_distance_mm = 0U;
+    g_runtime.braking_active = 0U;
+    g_runtime.weak_control_active = 0U;
+    g_runtime.startup_discard_remaining =
+        BALANCE_BALL_START_DISCARD_FRAMES;
+    g_positionInitialized = 0U;
+    g_hadMeasurementGap = 1U;
+    clear_jump_candidate();
     g_runtime.start_result = BALANCE_BALL_START_OK;
     g_runtime.enable_requested = 1U;
     g_runtime.state = BALANCE_BALL_STATE_WAIT_AXIS;
@@ -424,6 +655,7 @@ void BalanceBallControl_ForceStop(void)
     g_runtime.tracking_owned = 0U;
     g_runtime.commanded_offset_count = 0;
     g_runtime.actuator_target_count = 0;
+    g_runtime.weak_control_active = 0U;
     g_runtime.state = BALANCE_BALL_STATE_DISABLED;
 }
 
@@ -446,7 +678,6 @@ void BalanceBallControl_Update20ms(uint32_t now_ms,
     BalanceSoftLimitsRuntime limits;
     BalancePositionRuntime position;
     uint32_t measurement_age_ms;
-    int64_t pd_scaled;
     int32_t requested_offset;
 
     (void)elapsed_ms;
@@ -514,7 +745,21 @@ void BalanceBallControl_Update20ms(uint32_t now_ms,
             BALANCE_BALL_PD_VISION_LOST_TIMEOUT_MS) ?
             BALANCE_BALL_STATE_VISION_LOST :
             BALANCE_BALL_STATE_WAIT_VISION;
-        if (g_runtime.tracking_owned != 0U) {
+        if ((g_runtime.valid_streak != 0U) &&
+            (measurement_age_ms <= BALANCE_VISION_STALE_TIMEOUT_MS) &&
+            (g_runtime.axis_span_mm != 0U)) {
+            if (ensure_tracking_started(&limits, &position) == 0U) {
+                g_runtime.state = BALANCE_BALL_STATE_WAIT_AXIS;
+                return;
+            }
+            requested_offset = calculate_cascade_request(1U);
+            if (command_offset_limited(&limits, requested_offset,
+                    BALANCE_BALL_START_WEAK_MAX_OFFSET_COUNTS,
+                    BALANCE_BALL_START_WEAK_SLEW_COUNTS_PER_20MS) == 0U) {
+                g_runtime.state = BALANCE_BALL_STATE_FAULT;
+            }
+        } else if (g_runtime.tracking_owned != 0U) {
+            g_runtime.weak_control_active = 0U;
             return_toward_zero(&limits, 0U);
         }
         return;
@@ -526,8 +771,13 @@ void BalanceBallControl_Update20ms(uint32_t now_ms,
         g_runtime.measurement_valid = 0U;
         g_runtime.valid_streak = 0U;
         g_runtime.velocity_mm_s = 0;
-        g_velocityInitialized = 0U;
-        g_lastPositionTimeMs = 0U;
+        g_runtime.raw_velocity_mm_s = 0;
+        g_runtime.velocity_sample_dt_ms = 0U;
+        g_runtime.velocity_filter_alpha_x1000 = 0U;
+        g_runtime.velocity_reversal_fast = 0U;
+        g_hadMeasurementGap = 1U;
+        clear_jump_candidate();
+        g_runtime.weak_control_active = 0U;
         if (g_runtime.state != BALANCE_BALL_STATE_VISION_LOST) {
             g_runtime.vision_lost_count++;
         }
@@ -540,7 +790,7 @@ void BalanceBallControl_Update20ms(uint32_t now_ms,
 
     if (measurement_age_ms > BALANCE_VISION_STALE_TIMEOUT_MS) {
         /* Bounded sample-and-hold: a rejected or missing K230 frame must not
-         * erase the last real ball position.  Freeze the last computed PD
+         * erase the last real ball position. Freeze the last cascade request
          * request and keep advancing the slew-limited axis target.  This
          * lets the stepper finish the intended tilt through short corrupt
          * bursts, while the hard timeout above prevents indefinite motion
@@ -578,20 +828,7 @@ void BalanceBallControl_Update20ms(uint32_t now_ms,
         return;
     }
 
-    g_runtime.error_mm = clamp_i32_to_i16(
-        (int32_t)g_runtime.target_mm - g_runtime.position_mm);
-    g_runtime.p_output_count = clamp_i64_to_i32(
-        (((int64_t)g_config.kp_x100 * g_runtime.error_mm) / 100) *
-            g_config.tilt_sign);
-    g_runtime.d_output_count = clamp_i64_to_i32(
-        -((int64_t)g_config.kd_x100 *
-            g_runtime.velocity_mm_s) / 100 * g_config.tilt_sign);
-    pd_scaled =
-        (int64_t)g_config.kp_x100 * g_runtime.error_mm -
-        (int64_t)g_config.kd_x100 * g_runtime.velocity_mm_s;
-    requested_offset = clamp_i64_to_i32(pd_scaled / 100);
-    requested_offset *= g_config.tilt_sign;
-    g_runtime.pd_output_count = requested_offset;
+    requested_offset = calculate_cascade_request(0U);
     if (command_offset(&limits, requested_offset) == 0U) {
         BalancePositionControl_Cancel();
         g_runtime.start_result = BALANCE_BALL_START_POSITION_FAULT;
@@ -641,6 +878,17 @@ uint8_t BalanceBallControl_SetConfig(
         }
         g_config.kp_x100 = config->kp_x100;
         g_config.kd_x100 = config->kd_x100;
+        g_config.maximum_target_velocity_mm_s =
+            config->maximum_target_velocity_mm_s;
+        g_config.neutral_bias_count = config->neutral_bias_count;
+        g_config.positive_brake_accel_mm_s2 =
+            config->positive_brake_accel_mm_s2;
+        g_config.negative_brake_accel_mm_s2 =
+            config->negative_brake_accel_mm_s2;
+        g_config.brake_delay_ms = config->brake_delay_ms;
+        g_config.brake_margin_mm = config->brake_margin_mm;
+        g_config.approach_velocity_mm_s =
+            config->approach_velocity_mm_s;
         return 1U;
     }
     if (BalancePositionControl_SetTrackingThresholds(

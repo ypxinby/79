@@ -19,6 +19,7 @@
 #include "gimbal_vision_yaw_tracker.h"
 #include "line_controller.h"
 #include "mission_manager.h"
+#include "motion_action.h"
 #include "motor_control.h"
 #include "obstacle_avoidance.h"
 #include "watchdog_monitor.h"
@@ -26,6 +27,7 @@
 static OledPage g_oledPage;
 static OledPage g_paramReturnPage;
 static ParamItem g_paramItem;
+static uint8_t g_paramLiveTuning;
 
 #define MENU_LINE_BASE_MIN              (100)
 #define MENU_LINE_BASE_MAX              (500)
@@ -68,6 +70,29 @@ static int16_t menu_common_feedforward_x100(void)
     return menu_float_to_scaled(average, 100.0f);
 }
 
+static uint8_t menu_selected_is_h_task(void)
+{
+    uint8_t missionId = MissionManager_GetSelectedMissionId();
+
+    return (missionId >= MISSION_ID_H3_BALL_50) &&
+        (missionId <= MISSION_ID_H6_LAP_LOCK);
+}
+
+static uint8_t menu_selected_is_task1(void)
+{
+    return MissionManager_GetSelectedMissionId() ==
+        MISSION_ID_TASK1_LAP;
+}
+
+static uint8_t menu_is_line_tuning_param(ParamItem item)
+{
+    return (item == PARAM_BASE_SPEED) ||
+        (item == PARAM_WHEEL_FEEDFORWARD) ||
+        (item == PARAM_KP) ||
+        (item == PARAM_KD) ||
+        (item == PARAM_MAX_CORRECTION);
+}
+
 static void menu_limit_line_tuning(void)
 {
     int16_t kp_x100;
@@ -77,8 +102,7 @@ static void menu_limit_line_tuning(void)
         g_appConfig.line_control_v2_base_command,
         MENU_LINE_BASE_MIN, MENU_LINE_BASE_MAX);
     g_appConfig.line_control_v2_max_correction = menu_clamp_i16(
-        g_appConfig.line_control_v2_max_correction, 0,
-        g_appConfig.line_control_v2_base_command);
+        g_appConfig.line_control_v2_max_correction, 0, 1000);
 
     kp_x100 = menu_clamp_i16(menu_float_to_scaled(
         g_appConfig.line_control_v2_kp, 100.0f),
@@ -92,15 +116,30 @@ static void menu_limit_line_tuning(void)
 
 static void menu_enter_param_page(ParamItem item, uint8_t select_item)
 {
-    if (CarState_Get() != CAR_STATE_READY) {
+    CarState state = CarState_Get();
+    uint8_t liveTask1 = ((state == CAR_STATE_RUNNING) &&
+        (menu_selected_is_task1() != 0U) &&
+        (MotionAction_GetRuntime()->action !=
+            (const MotionAction *)0) &&
+        (MotionAction_GetRuntime()->action->type ==
+            MOTION_ACTION_FOLLOW_LINE_TO_FINISH)) ? 1U : 0U;
+
+    if ((state != CAR_STATE_READY) && (liveTask1 == 0U)) {
         return;
     }
     g_paramReturnPage = g_oledPage;
     if (select_item != 0U) {
         g_paramItem = item;
     }
+    g_paramLiveTuning = liveTask1;
+    if ((g_paramLiveTuning != 0U) &&
+        (menu_is_line_tuning_param(g_paramItem) == 0U)) {
+        g_paramItem = PARAM_BASE_SPEED;
+    }
     g_oledPage = OLED_PAGE_PARAM;
-    CarState_Set(CAR_STATE_MENU);
+    if (g_paramLiveTuning == 0U) {
+        CarState_Set(CAR_STATE_MENU);
+    }
 }
 
 static void menu_next_main_page(void)
@@ -210,6 +249,28 @@ static void menu_next_debug_page(void)
 
 static void menu_next_param(void)
 {
+    if (g_paramLiveTuning != 0U) {
+        switch (g_paramItem) {
+            case PARAM_BASE_SPEED:
+                g_paramItem = PARAM_WHEEL_FEEDFORWARD;
+                break;
+            case PARAM_WHEEL_FEEDFORWARD:
+                g_paramItem = PARAM_KP;
+                break;
+            case PARAM_KP:
+                g_paramItem = PARAM_KD;
+                break;
+            case PARAM_KD:
+                g_paramItem = PARAM_MAX_CORRECTION;
+                break;
+            case PARAM_MAX_CORRECTION:
+            default:
+                g_paramItem = PARAM_BASE_SPEED;
+                break;
+        }
+        return;
+    }
+
     g_paramItem = (ParamItem)(g_paramItem + 1);
     if (g_paramItem >= PARAM_COUNT) {
         g_paramItem = PARAM_TASK;
@@ -356,6 +417,9 @@ static void menu_adjust_param(int8_t direction, uint8_t fast)
     if (line_tuning_changed != 0U) {
         menu_limit_line_tuning();
         LineController_ResetControlState();
+        if (g_paramLiveTuning != 0U) {
+            (void)MotionAction_RefreshFollowLineTuning();
+        }
     }
 #else
     (void)line_tuning_changed;
@@ -388,7 +452,8 @@ static void menu_handle_status_key(KeyEvent event)
                 break;
 #if FEATURE_BALANCE_BALL_PD_CONTROL
             case KEY2_SHORT:
-                (void)BalanceBallControl_Enable(0);
+                (void)BalanceBallControl_Enable(
+                    BALANCE_BALL_DEFAULT_TARGET_MM);
                 break;
             case KEY3_SHORT:
             case KEY3_LONG:
@@ -410,6 +475,13 @@ static void menu_handle_status_key(KeyEvent event)
 
 #if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
     if (g_oledPage == OLED_PAGE_BALANCE_STEPPER_TEST) {
+        /* A running mission owns both the chassis and balance axis.  Never
+         * let the diagnostic page jog, calibrate, or cancel that axis. */
+        if ((CarState_Get() == CAR_STATE_RUNNING) ||
+            (CarState_Get() == CAR_STATE_PAUSED)) {
+            g_oledPage = OLED_PAGE_STATUS;
+            return;
+        }
 #if FEATURE_BALANCE_SOFT_LIMITS
         BalanceSoftLimitsRuntime limits;
         BalancePositionRuntime position;
@@ -771,7 +843,10 @@ static void menu_handle_status_key(KeyEvent event)
 
     switch (event) {
         case KEY1_SHORT:
-            menu_next_main_page();
+            if ((state != CAR_STATE_RUNNING) &&
+                (state != CAR_STATE_PAUSED)) {
+                menu_next_main_page();
+            }
             break;
         case KEY1_LONG:
             menu_enter_param_page(g_paramItem, 0U);
@@ -779,20 +854,14 @@ static void menu_handle_status_key(KeyEvent event)
         case KEY2_SHORT:
             switch (state) {
                 case CAR_STATE_READY:
-#if FEATURE_BALANCE_BALL_PD_CONTROL
-                    if (MissionManager_GetSelectedMissionId() ==
-                        MISSION_ID_TEST_BALL_CENTER) {
-                        CarController_Stop();
-                        if (BalanceBallControl_Enable(0) != 0U) {
-                            g_oledPage = OLED_PAGE_BALANCE_VISION;
-                        }
-                        break;
-                    }
-#endif
                     (void)MissionManager_Start();
                     break;
                 case CAR_STATE_RUNNING:
-                    MissionManager_Pause();
+                    if (menu_selected_is_h_task() != 0U) {
+                        MissionManager_Cancel();
+                    } else {
+                        MissionManager_Pause();
+                    }
                     break;
                 case CAR_STATE_PAUSED:
                     MissionManager_Resume();
@@ -825,7 +894,10 @@ static void menu_handle_param_key(KeyEvent event)
             if (g_oledPage == OLED_PAGE_PARAM) {
                 g_oledPage = OLED_PAGE_STATUS;
             }
-            CarState_Set(CAR_STATE_READY);
+            if (g_paramLiveTuning == 0U) {
+                CarState_Set(CAR_STATE_READY);
+            }
+            g_paramLiveTuning = 0U;
             break;
         case KEY2_SHORT:
             menu_adjust_param(1, 0U);
@@ -849,6 +921,7 @@ void Menu_Init(void)
     g_oledPage = OLED_PAGE_STATUS;
     g_paramReturnPage = OLED_PAGE_STATUS;
     g_paramItem = PARAM_TASK;
+    g_paramLiveTuning = 0U;
 }
 
 void Menu_HandleKeyEvent(KeyEvent event)
@@ -869,6 +942,16 @@ void Menu_HandleKeyEvent(KeyEvent event)
     /* The parameter page deliberately owns K2_LONG for fast increment.
      * Previously the global ESTOP branch intercepted it first, so one normal
      * parameter edit could silently invalidate the whole balance axis. */
+    if ((g_oledPage == OLED_PAGE_PARAM) &&
+        (g_paramLiveTuning != 0U) &&
+        (event == KEY2_LONG)) {
+        g_paramLiveTuning = 0U;
+        menu_stop_balance_axis_for_safety();
+        EmergencyStop_Trigger();
+        g_oledPage = OLED_PAGE_STATUS;
+        return;
+    }
+
     if (g_oledPage == OLED_PAGE_PARAM) {
         menu_handle_param_key(event);
         return;

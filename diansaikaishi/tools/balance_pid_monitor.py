@@ -57,8 +57,8 @@ CHANNEL_NAMES = (
     "signed_step_rate_hz",
     "vision_valid",
     "vision_age_ms",
-    "kp_count_per_mm",
-    "kd_count_per_mm_s",
+    "kpos_mm_s_per_mm",
+    "kvel_count_per_mm_s",
     "tracking_deadband_count",
     "controller_state",
 )
@@ -66,6 +66,13 @@ CHANNEL_NAMES = (
 PARAMETER_STEPS = {
     "KP": 0.05,
     "KD": 0.01,
+    "VMAX": 10.0,
+    "BIAS": 2.0,
+    "AP": 50.0,
+    "AN": 50.0,
+    "TD": 10.0,
+    "BM": 1.0,
+    "VAPP": 5.0,
     "MAX": 8.0,
     "SLEW": 1.0,
     "DB": 1.0,
@@ -357,8 +364,8 @@ class Monitor:
 
     def _make_controls(self) -> None:
         fields = (
-            ("KP", "6.00"), ("KD", "0.10"), ("DIR", "-1"),
-            ("MAX", "200"), ("SLEW", "5"), ("DB", "2"), ("RG", "3"),
+            ("KP", "1.50"), ("KD", "0.60"), ("DIR", "-1"),
+            ("MAX", "80"), ("SLEW", "5"), ("DB", "2"), ("RG", "3"),
             ("T", "0"),
         )
         self.boxes: dict[str, TextBox] = {}
@@ -449,10 +456,10 @@ class Monitor:
 
         value = current + direction * PARAMETER_STEPS[name] * multiplier
         if name == "KP":
-            value = min(10.0, max(0.0, value))
+            value = min(20.0, max(0.0, value))
             text = f"{value:.2f}"
         elif name == "KD":
-            value = min(1.0, max(0.0, value))
+            value = min(5.0, max(0.0, value))
             text = f"{value:.2f}"
         elif name == "MAX":
             minimum = max(8, self._parameter_int("RG", 3))
@@ -652,7 +659,9 @@ class Monitor:
             return (
                 f"{timestamp} FILTER {fields.get('result', '?')} "
                 f"seq={fields.get('seq', '?')} pos={fields.get('pos', '?')} "
-                f"v/m={fields.get('valid', '?')}/{fields.get('meas', '?')}"
+                f"v/m={fields.get('valid', '?')}/{fields.get('meas', '?')} "
+                f"jump/cand/rebase={fields.get('jump', '?')}/"
+                f"{fields.get('cand', '?')}/{fields.get('rebase', '?')}"
             )
         if layer == "RX":
             return (
@@ -660,7 +669,8 @@ class Monitor:
                 f"len/crc/fld={fields.get('len', '?')}/"
                 f"{fields.get('crc', '?')}/{fields.get('field', '?')} "
                 f"dup/old/ovf={fields.get('dup', '?')}/"
-                f"{fields.get('old', '?')}/{fields.get('ovf', '?')}"
+                f"{fields.get('old', '?')}/{fields.get('ovf', '?')} "
+                f"hw={fields.get('hw', '?')} sem={fields.get('sem', '?')}"
             )
         if layer == "AXIS":
             return (
@@ -819,17 +829,18 @@ class TerminalMonitor:
   cal?             查询标定状态
   abort            取消标定
   t 0              设置小球目标mm；例如t 50、t -50
-  kp 6.00          设置KP（KD/MAX/SLEW/DB/RG/DIR同理）
+  kp 1.50          设置位置环KPOS；KD为速度环KVEL
+  vmax/bias/...    可设置VMAX、BIAS、AP、AN、TD、BM、VAPP
   run / stop       启动或停止平衡
   get / def        读取参数或恢复编译默认值
   status           获取参数、标定和保护链快照
-  cfg 8 .06 -1 180 5 2 3 -8
-                   一键设置 KP KD DIR MAX SLEW DB RG T，并自动重启
+  cfg 1.5 .6 -1 80 5 2 3 0 120 0 500 500 80 5 20
+                   一键设置基础参数和串级/制动参数，并自动重启
   watch 2          每秒显示2次遥测；watch off关闭
   errors on        显示RX错误摘要；errors off关闭
   help             显示帮助
   quit             退出终端
-也可以直接输入原始命令，例如 KP=6.00、T=50、J+、SET。"""
+也可以直接输入原始命令，例如 KP=1.50、VMAX=120、T=0。"""
 
     def _translate(self, line: str) -> str | None:
         stripped = line.strip()
@@ -850,7 +861,10 @@ class TerminalMonitor:
         }
         if key in aliases and len(parts) == 1:
             return aliases[key]
-        parameter_names = {"kp", "kd", "dir", "max", "slew", "db", "rg", "t"}
+        parameter_names = {
+            "kp", "kd", "vmax", "bias", "ap", "an", "td", "bm",
+            "vapp", "dir", "max", "slew", "db", "rg", "t",
+        }
         if key in parameter_names and len(parts) == 2:
             return f"{key.upper()}={parts[1]}"
         return stripped.upper()
@@ -869,10 +883,13 @@ class TerminalMonitor:
         )
 
     def _apply_full_config(self, parts: list[str]) -> None:
-        if len(parts) != 9:
+        if len(parts) not in (9, 16):
             print(
                 "用法：cfg KP KD DIR MAX SLEW DB RG T\n"
-                "示例：cfg 8.00 0.06 -1 180 5 2 3 -8",
+                "完整：cfg KP KD DIR MAX SLEW DB RG T "
+                "VMAX BIAS AP AN TD BM VAPP\n"
+                "示例：cfg 1.50 0.60 -1 80 5 2 3 0 "
+                "120 0 500 500 80 5 20",
                 flush=True,
             )
             return
@@ -885,12 +902,20 @@ class TerminalMonitor:
             deadband = int(parts[6])
             reengage = int(parts[7])
             target = int(parts[8])
+            if len(parts) == 16:
+                vmax = int(parts[9])
+                bias = int(parts[10])
+                accel_pos = int(parts[11])
+                accel_neg = int(parts[12])
+                delay_ms = int(parts[13])
+                brake_margin = int(parts[14])
+                approach_velocity = int(parts[15])
         except ValueError:
             print("cfg参数格式错误", flush=True)
             return
         if not (
-            0.0 <= kp <= 10.0
-            and 0.0 <= kd <= 1.0
+            0.0 <= kp <= 20.0
+            and 0.0 <= kd <= 5.0
             and direction in (-1, 1)
             and 8 <= maximum <= 1024
             and 1 <= slew <= 128
@@ -898,6 +923,18 @@ class TerminalMonitor:
             and deadband < reengage <= 64
             and reengage <= maximum
             and -125 <= target <= 125
+            and (
+                len(parts) == 9
+                or (
+                    10 <= vmax <= 1000
+                    and -256 <= bias <= 256
+                    and 50 <= accel_pos <= 5000
+                    and 50 <= accel_neg <= 5000
+                    and 0 <= delay_ms <= 500
+                    and 0 <= brake_margin <= 50
+                    and 1 <= approach_velocity <= vmax
+                )
+            )
         ):
             print("cfg参数超出允许范围", flush=True)
             return
@@ -928,6 +965,16 @@ class TerminalMonitor:
             f"KD={kd:.2f}",
             f"T={target}",
         )
+        if len(parts) == 16:
+            commands += (
+                f"VMAX={vmax}",
+                f"BIAS={bias}",
+                f"AP={accel_pos}",
+                f"AN={accel_neg}",
+                f"TD={delay_ms}",
+                f"BM={brake_margin}",
+                f"VAPP={approach_velocity}",
+            )
         for command in commands:
             ok, message = self.link.send(command)
             print(message, flush=True)

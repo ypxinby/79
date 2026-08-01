@@ -56,6 +56,9 @@ void MotorControl_SetNormalizedTarget(int16_t left_command,
     int16_t right_command);
 void MotorControl_SetSpeedTargetCmps(float left_target_cmps,
     float right_target_cmps);
+bool MotorControl_SetFeedforwardOverride(float left_gain,
+    float right_gain);
+void MotorControl_ClearFeedforwardOverride(void);
 void MotorControl_Update(uint32_t elapsed_ms);
 void MotorControl_Stop(void);
 void MotorControl_Reset(void);

@@ -21,6 +21,8 @@
 #include "gimbal_vision_adapter.h"
 #include "gimbal_vision_pitch_tracker.h"
 #include "gimbal_vision_yaw_tracker.h"
+#include "h_task_controller.h"
+#include "mission_manager.h"
 #include "motor.h"
 #include "servo.h"
 #include "scheduler_monitor.h"
@@ -72,12 +74,14 @@ int main(void)
 {
     SYSCFG_DL_init();
 
-    App_Init();
 #if FEATURE_BALANCE_STEPPER_OPEN_LOOP_TEST
+    /* Establish fail-safe STEP/DIR/EN levels before IMU calibration blocks
+     * startup for several seconds. */
     GimbalStepper_Init();
     GimbalStepper_SetStepHalfPeriodTicks(
         BALANCE_STEPPER_TEST_HALF_PERIOD_TICKS);
 #endif
+    App_Init();
 #if FEATURE_BALANCE_ENCODER_CAPTURE
     BalanceEncoder_Init();
 #endif
@@ -91,6 +95,11 @@ int main(void)
 #if FEATURE_BALANCE_BALL_PD_CONTROL
     BalanceBallControl_Init();
 #endif
+    /* Start the coupled H-task state machine only after its complete
+     * dependency chain is ready: chassis/line/motor from App_Init, followed
+     * by encoder limits, vision receiver, and the ball controller above. */
+    HTaskController_Init();
+    MissionManager_Init();
 #if FEATURE_BALANCE_SERIAL_TUNING
     BalanceTuning_Init();
 #endif
