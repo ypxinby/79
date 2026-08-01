@@ -57,10 +57,28 @@
 #define H_TASK_ACCEL_FF_GAIN                    (1.00f)
 #define H_TASK_ACCEL_FF_DIRECTION               (1)
 #define H_TASK_ACCEL_FF_MAX_COUNT               (80)
-#define H_TASK_H3_TRANSFER_MIN_COUNT           (160U)
-#define H_TASK_H3_TRANSFER_MAX_COUNT           (180U)
-#define H_TASK_H3_TRANSFER_EXIT_ERROR_MM       (20U)
+#define H_TASK_H3_TRANSFER_MIN_COUNT           (135U)
+#define H_TASK_H3_TRANSFER_MAX_COUNT           (155U)
+#define H_TASK_H3_TRANSFER_EXIT_ERROR_MM       (30U)
 #define H_TASK_H3_TRANSFER_MAX_BALL_SPEED_MM_S (35U)
+#define H_TASK_H3_TRANSFER_WRONG_DIR_SPEED_MM_S (15U)
+#define H_TASK_H3_TRANSFER_TIMEOUT_MS          (700U)
+/* Task3/4/5 use this private ball-loop profile. Task2 deliberately keeps the
+ * operator/default profile that was active before the mission. */
+#define H_TASK_CAR_BALL_KP_X100                (130)
+#define H_TASK_CAR_BALL_KD_X100                (105)
+#define H_TASK_CAR_BALL_MAX_OFFSET_COUNT       (70)
+#define H_TASK_CAR_BALL_SLEW_COUNT_PER_20MS    (4)
+#define H_TASK_CAR_BALL_DEADBAND_COUNT         (2U)
+#define H_TASK_CAR_BALL_REENGAGE_COUNT         (3U)
+#define H_TASK_CAR_BALL_TILT_SIGN              (-1)
+#define H_TASK_CAR_BALL_VMAX_MM_S              (70)
+#define H_TASK_CAR_BALL_BIAS_COUNT             (0)
+#define H_TASK_CAR_BALL_ACCEL_POS_MM_S2        (400U)
+#define H_TASK_CAR_BALL_ACCEL_NEG_MM_S2        (400U)
+#define H_TASK_CAR_BALL_BRAKE_DELAY_MS         (120U)
+#define H_TASK_CAR_BALL_BRAKE_MARGIN_MM        (8U)
+#define H_TASK_CAR_BALL_APPROACH_MM_S          (15U)
 #define H_TASK_START_LINK_MAX_AGE_MS        (500U)
 #define H_TASK_START_VERIFY_TIMEOUT_MS      (2000U)
 #define H_TASK_BALL_ACTIVE_TIMEOUT_MS       (2000U)
@@ -112,6 +130,11 @@ static uint8_t g_vehicleLaunchStage;
 static uint32_t g_vehicleLaunchStableMs;
 static uint32_t g_vehicleLaunchRampRemainder;
 static int16_t g_vehicleLaunchCommand;
+static BalanceBallControlConfig g_savedBallConfig;
+static uint8_t g_ballConfigOverrideActive;
+static uint8_t g_h3TransferArmed;
+static int8_t g_h3TransferDirection;
+static uint32_t g_h3TransferElapsedMs;
 
 static void h_load_default_chassis_tuning(void)
 {
@@ -206,6 +229,108 @@ static uint8_t h_is_car_task(HTaskId task_id)
         (task_id == H_TASK_ID_H6);
 }
 
+static uint8_t h_restore_ball_config(void)
+{
+    if (g_ballConfigOverrideActive == 0U) {
+        return 1U;
+    }
+    if (BalanceBallControl_SetConfig(&g_savedBallConfig) == 0U) {
+        return 0U;
+    }
+    g_ballConfigOverrideActive = 0U;
+    return 1U;
+}
+
+static uint8_t h_apply_car_ball_config(void)
+{
+    BalanceBallControlConfig config;
+
+    BalanceBallControl_GetConfig(&g_savedBallConfig);
+    config = g_savedBallConfig;
+    config.kp_x100 = H_TASK_CAR_BALL_KP_X100;
+    config.kd_x100 = H_TASK_CAR_BALL_KD_X100;
+    config.maximum_offset_count = H_TASK_CAR_BALL_MAX_OFFSET_COUNT;
+    config.target_slew_count_per_20ms =
+        H_TASK_CAR_BALL_SLEW_COUNT_PER_20MS;
+    config.tracking_deadband_count = H_TASK_CAR_BALL_DEADBAND_COUNT;
+    config.tracking_reengage_count = H_TASK_CAR_BALL_REENGAGE_COUNT;
+    config.tilt_sign = H_TASK_CAR_BALL_TILT_SIGN;
+    config.maximum_target_velocity_mm_s = H_TASK_CAR_BALL_VMAX_MM_S;
+    config.neutral_bias_count = H_TASK_CAR_BALL_BIAS_COUNT;
+    config.positive_brake_accel_mm_s2 =
+        H_TASK_CAR_BALL_ACCEL_POS_MM_S2;
+    config.negative_brake_accel_mm_s2 =
+        H_TASK_CAR_BALL_ACCEL_NEG_MM_S2;
+    config.brake_delay_ms = H_TASK_CAR_BALL_BRAKE_DELAY_MS;
+    config.brake_margin_mm = H_TASK_CAR_BALL_BRAKE_MARGIN_MM;
+    config.approach_velocity_mm_s = H_TASK_CAR_BALL_APPROACH_MM_S;
+    if (BalanceBallControl_SetConfig(&config) == 0U) {
+        return 0U;
+    }
+    g_ballConfigOverrideActive = 1U;
+    return 1U;
+}
+
+static void h_cancel_h3_transfer(void)
+{
+    /* Assist is one-shot per H3 leg. Once cancelled, the rest of that leg
+     * is handled only by the ordinary ball cascade. */
+    (void)BalanceBallControl_SetTransferAssist(0U, 0U, 0U, 0U, 0U);
+    g_h3TransferArmed = 0U;
+    g_h3TransferDirection = 0;
+    g_h3TransferElapsedMs = 0U;
+}
+
+static uint8_t h_arm_h3_transfer(int8_t direction)
+{
+    h_cancel_h3_transfer();
+    if ((direction != -1) && (direction != 1)) {
+        return 0U;
+    }
+    if (BalanceBallControl_SetTransferAssist(1U,
+            H_TASK_H3_TRANSFER_MIN_COUNT,
+            H_TASK_H3_TRANSFER_MAX_COUNT,
+            H_TASK_H3_TRANSFER_EXIT_ERROR_MM,
+            H_TASK_H3_TRANSFER_MAX_BALL_SPEED_MM_S) == 0U) {
+        return 0U;
+    }
+    g_h3TransferArmed = 1U;
+    g_h3TransferDirection = direction;
+    g_h3TransferElapsedMs = 0U;
+    return 1U;
+}
+
+static void h_update_h3_transfer(uint32_t elapsed_ms,
+    HMeasurementEvent event, int16_t position_mm, int16_t velocity_mm_s)
+{
+    int32_t error;
+
+    if (g_h3TransferArmed == 0U) {
+        return;
+    }
+    g_h3TransferElapsedMs = h_add_u32(
+        g_h3TransferElapsedMs, elapsed_ms);
+    if (g_h3TransferElapsedMs >= H_TASK_H3_TRANSFER_TIMEOUT_MS) {
+        h_cancel_h3_transfer();
+        return;
+    }
+    if (event != H_MEASUREMENT_VALID) {
+        return;
+    }
+
+    error = (int32_t)g_runtime.target_mm - position_mm;
+    if ((h_abs_i32(error) <= H_TASK_H3_TRANSFER_EXIT_ERROR_MM) ||
+        ((error * g_h3TransferDirection) <= 0) ||
+        (h_abs_i32(velocity_mm_s) >=
+            H_TASK_H3_TRANSFER_MAX_BALL_SPEED_MM_S) ||
+        ((h_abs_i32(velocity_mm_s) >=
+            H_TASK_H3_TRANSFER_WRONG_DIR_SPEED_MM_S) &&
+         (((velocity_mm_s > 0) ? 1 : -1) !=
+            g_h3TransferDirection))) {
+        h_cancel_h3_transfer();
+    }
+}
+
 static void h_set_state(HTaskState state)
 {
     g_runtime.state = state;
@@ -252,7 +377,7 @@ static uint8_t h_apply_chassis_profile(void)
 
 static void h_release_chassis_profile(void)
 {
-    (void)BalanceBallControl_SetTransferAssist(0U, 0U, 0U, 0U, 0U);
+    h_cancel_h3_transfer();
     BalanceBallControl_SetAngleFeedforwardCount(0);
     g_vehicleLaunchStage = 0U;
     g_vehicleLaunchStableMs = 0U;
@@ -276,6 +401,8 @@ static void h_fault(HTaskFault fault)
     h_stop_car();
     h_release_chassis_profile();
     BalanceBallControl_ForceStop();
+    (void)h_restore_ball_config();
+    h_cancel_h3_transfer();
     g_runtime.fault = fault;
     h_set_state(H_TASK_STATE_FAULT);
 }
@@ -360,7 +487,7 @@ static void h_start_car(void)
 
 static void h_mark_done(void)
 {
-    (void)BalanceBallControl_SetTransferAssist(0U, 0U, 0U, 0U, 0U);
+    h_cancel_h3_transfer();
     g_runtime.finish_latched = 1U;
     g_runtime.completion_time_ms = g_runtime.task_elapsed_ms;
     h_set_state(H_TASK_STATE_DONE);
@@ -442,11 +569,7 @@ static void h_update_start_verify(HMeasurementEvent event,
             h_fault(H_TASK_FAULT_TARGET_INVALID);
             return;
         }
-        if (BalanceBallControl_SetTransferAssist(1U,
-                H_TASK_H3_TRANSFER_MIN_COUNT,
-                H_TASK_H3_TRANSFER_MAX_COUNT,
-                H_TASK_H3_TRANSFER_EXIT_ERROR_MM,
-                H_TASK_H3_TRANSFER_MAX_BALL_SPEED_MM_S) == 0U) {
+        if (h_arm_h3_transfer(-1) == 0U) {
             h_fault(H_TASK_FAULT_BALL_CONTROL);
             return;
         }
@@ -467,9 +590,12 @@ static void h_update_start_verify(HMeasurementEvent event,
     }
 }
 
-static void h_update_h3(HMeasurementEvent event, int16_t position_mm,
+static void h_update_h3(uint32_t elapsed_ms, HMeasurementEvent event,
+    int16_t position_mm,
     const BalanceBallControlRuntime *ball)
 {
+    h_update_h3_transfer(elapsed_ms, event, position_mm,
+        ball->velocity_mm_s);
     if (g_runtime.state == H_TASK_STATE_BALL_POSITIVE) {
         if ((event == H_MEASUREMENT_VALID) &&
             (position_mm <= H_TASK_H3_FIRST_REACH_MM) &&
@@ -486,6 +612,10 @@ static void h_update_h3(HMeasurementEvent event, int16_t position_mm,
             g_runtime.target_mm = H_TASK_H3_FINAL_DRIVE_TARGET_MM;
             if (BalanceBallControl_SetTargetMm(g_runtime.target_mm) == 0U) {
                 h_fault(H_TASK_FAULT_TARGET_INVALID);
+                return;
+            }
+            if (h_arm_h3_transfer(1) == 0U) {
+                h_fault(H_TASK_FAULT_BALL_CONTROL);
                 return;
             }
             g_positiveStableCount = 0U;
@@ -744,6 +874,11 @@ uint8_t HTaskController_Start(HTaskId task_id)
     BalanceBallControl_ForceStop();
     h_stop_car();
     h_release_chassis_profile();
+    if (h_restore_ball_config() == 0U) {
+        h_fault(H_TASK_FAULT_BALL_CONTROL);
+        return 0U;
+    }
+    h_cancel_h3_transfer();
     g_runtime.task_id = task_id;
     g_runtime.fault = H_TASK_FAULT_NONE;
     g_runtime.start_observation_update_count = observation->update_count;
@@ -751,6 +886,11 @@ uint8_t HTaskController_Start(HTaskId task_id)
     g_lastObservationUpdateCount = observation->update_count;
     g_runtime.target_mm = (task_id == H_TASK_ID_H6) ?
         observation->position_mm : H_TASK_CENTER_TARGET_MM;
+    if ((h_is_car_task(task_id) != 0U) &&
+        (h_apply_car_ball_config() == 0U)) {
+        h_fault(H_TASK_FAULT_BALL_CONTROL);
+        return 0U;
+    }
     if (BalanceBallControl_Enable(g_runtime.target_mm) == 0U) {
         h_fault(H_TASK_FAULT_TARGET_INVALID);
         return 0U;
@@ -852,7 +992,7 @@ void HTaskController_Update20ms(uint32_t elapsed_ms)
             h_fault(H_TASK_FAULT_TASK_TIMEOUT);
             return;
         }
-        h_update_h3(event, positionMm, &ball);
+        h_update_h3(elapsed_ms, event, positionMm, &ball);
         return;
     }
 
@@ -910,7 +1050,10 @@ void HTaskController_RequestNormalStop(void)
 
 void HTaskController_Reset(void)
 {
+    BalanceBallControl_ForceStop();
     h_release_chassis_profile();
+    (void)h_restore_ball_config();
+    h_cancel_h3_transfer();
     g_runtime = (HTaskRuntime){0};
     g_runtime.state = H_TASK_STATE_IDLE;
     g_runtime.vehicle_level = H_TASK_VEHICLE_STOP;
@@ -926,6 +1069,9 @@ void HTaskController_Reset(void)
     g_vehicleLaunchStableMs = 0U;
     g_vehicleLaunchRampRemainder = 0U;
     g_vehicleLaunchCommand = 0;
+    g_h3TransferArmed = 0U;
+    g_h3TransferDirection = 0;
+    g_h3TransferElapsedMs = 0U;
     for (uint8_t i = 0U; i < H_TASK_START_CONFIRM_FRAMES; i++) {
         g_verifyPositions[i] = 0;
     }
