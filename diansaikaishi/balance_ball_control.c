@@ -30,6 +30,8 @@ static uint16_t g_transferAssistErrorThresholdMm;
 static uint16_t g_transferAssistMaximumBallSpeedMmS;
 static int16_t g_angleFeedforwardCount;
 
+#define BALANCE_TRANSFER_ASSIST_SLEW_MULTIPLIER (2)
+
 static void load_default_config(void)
 {
     g_config.kp_x100 =
@@ -430,11 +432,19 @@ static uint8_t command_offset_limited(
 static uint8_t command_offset(const BalanceSoftLimitsRuntime *limits,
     int32_t requested_offset)
 {
+    int32_t requestedSlew = g_config.target_slew_count_per_20ms;
+
+    if (g_transferAssistRangeActive != 0U) {
+        requestedSlew *= BALANCE_TRANSFER_ASSIST_SLEW_MULTIPLIER;
+        if (requestedSlew > 128) {
+            requestedSlew = 128;
+        }
+    }
     return command_offset_limited(limits, requested_offset,
         (g_transferAssistRangeActive != 0U) ?
             (int32_t)g_transferAssistMaximumCount :
             maximum_offset_count(limits),
-        g_config.target_slew_count_per_20ms);
+        requestedSlew);
 }
 
 static uint8_t command_offset_limited(

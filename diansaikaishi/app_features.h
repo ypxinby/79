@@ -95,8 +95,8 @@
     (BALANCE_BALL_PHYSICAL_SPAN_MM / 2U)
 /* KP and KD command names are kept for tool compatibility. Their new units
  * are KPOS=(mm/s)/mm and KVEL=count/(mm/s), both scaled by 100. */
-#define BALANCE_BALL_PD_KP_COUNTS_PER_MM_X100         (150)
-#define BALANCE_BALL_PD_KD_COUNTS_PER_MM_S_X100       (90)
+#define BALANCE_BALL_PD_KP_COUNTS_PER_MM_X100         (225)
+#define BALANCE_BALL_PD_KD_COUNTS_PER_MM_S_X100       (135)
 #define BALANCE_BALL_MAX_TARGET_VELOCITY_MM_S         (90)
 #define BALANCE_BALL_NEUTRAL_BIAS_COUNT               (0)
 #define BALANCE_BALL_BRAKE_ACCEL_POS_MM_S2            (500U)
