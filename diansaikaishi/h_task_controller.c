@@ -30,7 +30,10 @@
 #define H_TASK_H3_FIRST_REACH_MM             (-50)
 #define H_TASK_H3_FINAL_DRIVE_TARGET_MM      (60)
 #define H_TASK_H3_FINAL_REACH_MM             (50)
-#define H_TASK_H3_FINAL_HOLD_TARGET_MM       (50)
+/* The final leg previously settled at physical -4 cm when holding protocol
+ * +50 mm. Keep the measured +10 mm Task2-only compensation after arrival so
+ * static friction does not pull the final stop back toward the center. */
+#define H_TASK_H3_FINAL_HOLD_TARGET_MM       (60)
 #define H_TASK_LINE_NORMAL_COMMAND          (500)
 #define H_TASK_LINE_LOW_COMMAND             (330)
 #define H_TASK_LINE_START_COMMAND           (150)
@@ -57,8 +60,8 @@
 #define H_TASK_ACCEL_FF_GAIN                    (1.00f)
 #define H_TASK_ACCEL_FF_DIRECTION               (1)
 #define H_TASK_ACCEL_FF_MAX_COUNT               (80)
-#define H_TASK_H3_TRANSFER_MIN_COUNT           (170U)
-#define H_TASK_H3_TRANSFER_MAX_COUNT           (190U)
+#define H_TASK_H3_TRANSFER_MIN_COUNT           (300U)
+#define H_TASK_H3_TRANSFER_MAX_COUNT           (320U)
 #define H_TASK_H3_TRANSFER_EXIT_ERROR_MM       (30U)
 #define H_TASK_H3_TRANSFER_MAX_BALL_SPEED_MM_S (35U)
 #define H_TASK_H3_TRANSFER_WRONG_DIR_SPEED_MM_S (15U)
@@ -635,8 +638,8 @@ static void h_update_h3(uint32_t elapsed_ms, HMeasurementEvent event,
         }
 
         if (g_finalStableCount >= H_TASK_H3_FINAL_CONFIRM_FRAMES) {
-            /* Finish against the exact scoring position instead of keeping
-             * the 10 mm transfer overdrive after the timer is latched. */
+            /* Keep the Task2-only measured stop compensation after the timer
+             * is latched; Task3/4/5 targets are not shifted. */
             g_runtime.target_mm = H_TASK_H3_FINAL_HOLD_TARGET_MM;
             if (BalanceBallControl_SetTargetMm(g_runtime.target_mm) == 0U) {
                 h_fault(H_TASK_FAULT_TARGET_INVALID);
