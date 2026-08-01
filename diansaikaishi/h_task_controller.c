@@ -56,14 +56,9 @@
 #define H_TASK_PIPE_ENDPOINT_ANGLE_RAD          (0.174532925f)
 #define H_TASK_ACCEL_FF_GAIN                    (1.00f)
 #define H_TASK_ACCEL_FF_DIRECTION               (1)
-#define H_TASK_ACCEL_FF_MIN_ACCEL_CMPS2          (1.0f)
-#define H_TASK_ACCEL_FF_MAX_ACCEL_CMPS2          (25.0f)
-#define H_TASK_ACCEL_FF_MAX_ANGLE_RAD            (0.026179939f)
-#define H_TASK_ACCEL_FF_MIN_CAL_ROOM_COUNT       (200.0f)
-#define H_TASK_ACCEL_FF_MAX_CAL_ROOM_COUNT       (600.0f)
-#define H_TASK_ACCEL_FF_MAX_COUNT                (45)
-#define H_TASK_H3_TRANSFER_MIN_COUNT            (90U)
-#define H_TASK_H3_TRANSFER_MAX_COUNT            (90U)
+#define H_TASK_ACCEL_FF_MAX_COUNT               (80)
+#define H_TASK_H3_TRANSFER_MIN_COUNT           (160U)
+#define H_TASK_H3_TRANSFER_MAX_COUNT           (180U)
 #define H_TASK_H3_TRANSFER_EXIT_ERROR_MM       (20U)
 #define H_TASK_H3_TRANSFER_MAX_BALL_SPEED_MM_S (35U)
 #define H_TASK_START_LINK_MAX_AGE_MS        (500U)
@@ -156,25 +151,17 @@ static int16_t h_acceleration_feedforward_count(
 
     BalanceSoftLimits_GetSnapshot(&limits);
     if ((limits.zero_valid == 0U) || (limits.limits_valid == 0U) ||
-        (H_TASK_PIPE_ENDPOINT_ANGLE_RAD <= 0.0f) ||
-        (acceleration_cmps2 < H_TASK_ACCEL_FF_MIN_ACCEL_CMPS2) ||
-        (acceleration_cmps2 > H_TASK_ACCEL_FF_MAX_ACCEL_CMPS2)) {
+        (H_TASK_PIPE_ENDPOINT_ANGLE_RAD <= 0.0f)) {
         return 0;
     }
 
     thetaRad = -atanf(acceleration_cmps2 / H_TASK_GRAVITY_CMPS2);
     thetaRad *= H_TASK_ACCEL_FF_GAIN *
         (float)H_TASK_ACCEL_FF_DIRECTION;
-    if (thetaRad > H_TASK_ACCEL_FF_MAX_ANGLE_RAD) {
-        thetaRad = H_TASK_ACCEL_FF_MAX_ANGLE_RAD;
-    } else if (thetaRad < -H_TASK_ACCEL_FF_MAX_ANGLE_RAD) {
-        thetaRad = -H_TASK_ACCEL_FF_MAX_ANGLE_RAD;
-    }
     availableCount = (thetaRad >= 0.0f) ?
         (float)limits.maximum_logical_count :
         (float)(-limits.minimum_logical_count);
-    if ((availableCount < H_TASK_ACCEL_FF_MIN_CAL_ROOM_COUNT) ||
-        (availableCount > H_TASK_ACCEL_FF_MAX_CAL_ROOM_COUNT)) {
+    if (availableCount <= 0.0f) {
         return 0;
     }
     requestedCount = thetaRad * availableCount /
@@ -539,7 +526,6 @@ static void h_update_vehicle_supervision(uint32_t elapsed_ms,
         uint32_t rampBudget = g_vehicleLaunchRampRemainder +
             H_TASK_LAUNCH_COMMAND_RATE_PER_S * elapsed_ms;
         int16_t commandDelta = (int16_t)(rampBudget / 1000U);
-        uint8_t accelerationCommanded = 0U;
 
         g_vehicleLaunchRampRemainder = rampBudget % 1000U;
         if ((vision_degraded != 0U) || (ball_ready == 0U) ||
@@ -600,15 +586,10 @@ static void h_update_vehicle_supervision(uint32_t elapsed_ms,
                     return;
                 }
                 g_vehicleLaunchCommand = nextCommand;
-                accelerationCommanded = 1U;
             }
-            if (accelerationCommanded != 0U) {
-                BalanceBallControl_SetAngleFeedforwardCount(
-                    h_acceleration_feedforward_count(
-                        H_TASK_WHEEL_LAUNCH_ACCEL_CMPS2));
-            } else {
-                BalanceBallControl_SetAngleFeedforwardCount(0);
-            }
+            BalanceBallControl_SetAngleFeedforwardCount(
+                h_acceleration_feedforward_count(
+                    H_TASK_WHEEL_LAUNCH_ACCEL_CMPS2));
         } else {
             BalanceBallControl_SetAngleFeedforwardCount(0);
         }
