@@ -823,6 +823,8 @@ class TerminalMonitor:
   run / stop       启动或停止平衡
   get / def        读取参数或恢复编译默认值
   status           获取参数、标定和保护链快照
+  cfg 8 .06 -1 180 5 2 3 -8
+                   一键设置 KP KD DIR MAX SLEW DB RG T，并自动重启
   watch 2          每秒显示2次遥测；watch off关闭
   errors on        显示RX错误摘要；errors off关闭
   help             显示帮助
@@ -865,6 +867,80 @@ class TerminalMonitor:
             f"valid={int(values[10])} age={values[11]:.0f}ms",
             flush=True,
         )
+
+    def _apply_full_config(self, parts: list[str]) -> None:
+        if len(parts) != 9:
+            print(
+                "用法：cfg KP KD DIR MAX SLEW DB RG T\n"
+                "示例：cfg 8.00 0.06 -1 180 5 2 3 -8",
+                flush=True,
+            )
+            return
+        try:
+            kp = float(parts[1])
+            kd = float(parts[2])
+            direction = int(parts[3])
+            maximum = int(parts[4])
+            slew = int(parts[5])
+            deadband = int(parts[6])
+            reengage = int(parts[7])
+            target = int(parts[8])
+        except ValueError:
+            print("cfg参数格式错误", flush=True)
+            return
+        if not (
+            0.0 <= kp <= 10.0
+            and 0.0 <= kd <= 1.0
+            and direction in (-1, 1)
+            and 8 <= maximum <= 1024
+            and 1 <= slew <= 128
+            and 0 <= deadband <= 32
+            and deadband < reengage <= 64
+            and reengage <= maximum
+            and -125 <= target <= 125
+        ):
+            print("cfg参数超出允许范围", flush=True)
+            return
+
+        ok, message = self.link.send("STOP")
+        print(message, flush=True)
+        if not ok:
+            return
+        print("等待平衡轴回零并进入OFF...", flush=True)
+        time.sleep(0.2)
+        deadline = time.monotonic() + 6.0
+        while time.monotonic() < deadline:
+            values = self.last_values
+            if values is not None and int(round(values[15])) == 0:
+                break
+            time.sleep(0.05)
+        else:
+            print("等待OFF超时，未修改轴参数", flush=True)
+            return
+
+        commands = (
+            f"DIR={direction}",
+            f"MAX={maximum}",
+            f"SLEW={slew}",
+            f"DB={deadband}",
+            f"RG={reengage}",
+            f"KP={kp:.2f}",
+            f"KD={kd:.2f}",
+            f"T={target}",
+        )
+        for command in commands:
+            ok, message = self.link.send(command)
+            print(message, flush=True)
+            if not ok:
+                print("配置中止", flush=True)
+                return
+            time.sleep(0.10)
+        self.link.send("GET")
+        time.sleep(0.15)
+        ok, message = self.link.send("RUN")
+        print(message, flush=True)
+        if ok:
+            print("一键配置已发送，等待ACK,RUN", flush=True)
 
     def _printer(self) -> None:
         while not self.stop_event.is_set():
@@ -928,6 +1004,9 @@ class TerminalMonitor:
             return False
         if key in ("help", "h", "?"):
             print(self._help(), flush=True)
+            return True
+        if key in ("cfg", "tune"):
+            self._apply_full_config(parts)
             return True
         if key == "watch":
             if len(parts) != 2:
