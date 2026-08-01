@@ -1,5 +1,7 @@
 #include "h_task_controller.h"
 
+#include <math.h>
+
 #include "app_config.h"
 #include "app_features.h"
 #include "balance_ball_control.h"
@@ -31,6 +33,7 @@
 #define H_TASK_H3_FINAL_HOLD_TARGET_MM       (50)
 #define H_TASK_LINE_NORMAL_COMMAND          (500)
 #define H_TASK_LINE_LOW_COMMAND             (330)
+#define H_TASK_LINE_START_COMMAND           (150)
 #define H_TASK_LINE_FF_GAIN                  (0.60f)
 #define H_TASK_LINE_KP                       (0.60f)
 #define H_TASK_LINE_KD                       (0.010f)
@@ -39,6 +42,25 @@
  * task-local wheel-speed ramp; Task1 keeps its faster competition ramp. */
 #define H_TASK_WHEEL_MAX_ACCEL_CMPS2          (25.0f)
 #define H_TASK_WHEEL_MAX_DECEL_CMPS2          (25.0f)
+#define H_TASK_WHEEL_LAUNCH_ACCEL_CMPS2       (12.5f)
+#define H_TASK_LAUNCH_STABLE_ERROR_MM         (15)
+#define H_TASK_LAUNCH_RESET_ERROR_MM          (30)
+#define H_TASK_LAUNCH_SETTLE_MS               (300U)
+#define H_TASK_LAUNCH_COMMAND_RATE_PER_S       (200U)
+/* Longitudinal acceleration feedforward:
+ * theta_ff = -atan(a_parallel / g).  The calibrated endpoint counts are
+ * treated as approximately +/-10 degrees, matching the measured mechanism.
+ * DIRECTION is the only installation-sign switch; GAIN is reserved for the
+ * later real-vehicle fine adjustment. */
+#define H_TASK_GRAVITY_CMPS2                    (980.665f)
+#define H_TASK_PIPE_ENDPOINT_ANGLE_RAD          (0.174532925f)
+#define H_TASK_ACCEL_FF_GAIN                    (1.00f)
+#define H_TASK_ACCEL_FF_DIRECTION               (1)
+#define H_TASK_ACCEL_FF_MAX_COUNT               (80)
+#define H_TASK_H3_TRANSFER_MIN_COUNT           (160U)
+#define H_TASK_H3_TRANSFER_MAX_COUNT           (180U)
+#define H_TASK_H3_TRANSFER_EXIT_ERROR_MM       (20U)
+#define H_TASK_H3_TRANSFER_MAX_BALL_SPEED_MM_S (35U)
 #define H_TASK_START_LINK_MAX_AGE_MS        (500U)
 #define H_TASK_START_VERIFY_TIMEOUT_MS      (2000U)
 #define H_TASK_BALL_ACTIVE_TIMEOUT_MS       (2000U)
@@ -86,6 +108,10 @@ static float g_startCenterDistanceCm;
 static float g_savedWheelMaxAccelCmps2;
 static float g_savedWheelMaxDecelCmps2;
 static uint8_t g_wheelRampOverrideActive;
+static uint8_t g_vehicleLaunchStage;
+static uint32_t g_vehicleLaunchStableMs;
+static uint32_t g_vehicleLaunchRampRemainder;
+static int16_t g_vehicleLaunchCommand;
 
 static void h_load_default_chassis_tuning(void)
 {
@@ -113,6 +139,40 @@ static int32_t h_abs_i32(int32_t value)
 static float h_abs_float(float value)
 {
     return (value < 0.0f) ? -value : value;
+}
+
+static int16_t h_acceleration_feedforward_count(
+    float acceleration_cmps2)
+{
+    BalanceSoftLimitsRuntime limits;
+    float thetaRad;
+    float availableCount;
+    float requestedCount;
+
+    BalanceSoftLimits_GetSnapshot(&limits);
+    if ((limits.zero_valid == 0U) || (limits.limits_valid == 0U) ||
+        (H_TASK_PIPE_ENDPOINT_ANGLE_RAD <= 0.0f)) {
+        return 0;
+    }
+
+    thetaRad = -atanf(acceleration_cmps2 / H_TASK_GRAVITY_CMPS2);
+    thetaRad *= H_TASK_ACCEL_FF_GAIN *
+        (float)H_TASK_ACCEL_FF_DIRECTION;
+    availableCount = (thetaRad >= 0.0f) ?
+        (float)limits.maximum_logical_count :
+        (float)(-limits.minimum_logical_count);
+    if (availableCount <= 0.0f) {
+        return 0;
+    }
+    requestedCount = thetaRad * availableCount /
+        H_TASK_PIPE_ENDPOINT_ANGLE_RAD;
+    if (requestedCount > H_TASK_ACCEL_FF_MAX_COUNT) {
+        requestedCount = H_TASK_ACCEL_FF_MAX_COUNT;
+    } else if (requestedCount < -H_TASK_ACCEL_FF_MAX_COUNT) {
+        requestedCount = -H_TASK_ACCEL_FF_MAX_COUNT;
+    }
+    return (int16_t)((requestedCount >= 0.0f) ?
+        (requestedCount + 0.5f) : (requestedCount - 0.5f));
 }
 
 static uint32_t h_add_u32(uint32_t value, uint32_t increment)
@@ -182,7 +242,7 @@ static uint8_t h_apply_chassis_profile(void)
         g_wheelRampOverrideActive = 1U;
     }
     g_appConfig.wheel_control_max_accel_cmps2 =
-        H_TASK_WHEEL_MAX_ACCEL_CMPS2;
+        H_TASK_WHEEL_LAUNCH_ACCEL_CMPS2;
     g_appConfig.wheel_control_max_decel_cmps2 =
         H_TASK_WHEEL_MAX_DECEL_CMPS2;
     LineController_ResetControlState();
@@ -192,6 +252,12 @@ static uint8_t h_apply_chassis_profile(void)
 
 static void h_release_chassis_profile(void)
 {
+    (void)BalanceBallControl_SetTransferAssist(0U, 0U, 0U, 0U, 0U);
+    BalanceBallControl_SetAngleFeedforwardCount(0);
+    g_vehicleLaunchStage = 0U;
+    g_vehicleLaunchStableMs = 0U;
+    g_vehicleLaunchRampRemainder = 0U;
+    g_vehicleLaunchCommand = 0;
     if (g_wheelRampOverrideActive != 0U) {
         g_appConfig.wheel_control_max_accel_cmps2 =
             g_savedWheelMaxAccelCmps2;
@@ -281,14 +347,20 @@ static void h_start_car(void)
     }
 
     g_startCenterDistanceCm = wheel->center_distance_cm;
+    g_vehicleLaunchStage = 1U;
+    g_vehicleLaunchStableMs = 0U;
+    g_vehicleLaunchRampRemainder = 0U;
+    g_vehicleLaunchCommand = H_TASK_LINE_START_COMMAND;
+    BalanceBallControl_SetAngleFeedforwardCount(0);
     CarController_StartFollowLineAtCommand(CAR_TURN_POLICY_IGNORE,
-        g_chassisTuning.normal_command);
-    g_runtime.vehicle_level = H_TASK_VEHICLE_NORMAL;
+        g_vehicleLaunchCommand);
+    g_runtime.vehicle_level = H_TASK_VEHICLE_LOW;
     h_set_state(H_TASK_STATE_CAR_RUNNING);
 }
 
 static void h_mark_done(void)
 {
+    (void)BalanceBallControl_SetTransferAssist(0U, 0U, 0U, 0U, 0U);
     g_runtime.finish_latched = 1U;
     g_runtime.completion_time_ms = g_runtime.task_elapsed_ms;
     h_set_state(H_TASK_STATE_DONE);
@@ -370,6 +442,14 @@ static void h_update_start_verify(HMeasurementEvent event,
             h_fault(H_TASK_FAULT_TARGET_INVALID);
             return;
         }
+        if (BalanceBallControl_SetTransferAssist(1U,
+                H_TASK_H3_TRANSFER_MIN_COUNT,
+                H_TASK_H3_TRANSFER_MAX_COUNT,
+                H_TASK_H3_TRANSFER_EXIT_ERROR_MM,
+                H_TASK_H3_TRANSFER_MAX_BALL_SPEED_MM_S) == 0U) {
+            h_fault(H_TASK_FAULT_BALL_CONTROL);
+            return;
+        }
         h_set_state(H_TASK_STATE_BALL_POSITIVE);
     } else if (g_runtime.task_id == H_TASK_ID_H6) {
         g_runtime.target_lock_mm = h_median3(g_verifyPositions[0],
@@ -438,9 +518,93 @@ static void h_update_h3(HMeasurementEvent event, int16_t position_mm,
 }
 
 static void h_update_vehicle_supervision(uint32_t elapsed_ms,
-    uint8_t vision_degraded)
+    uint8_t vision_degraded, uint8_t ball_ready)
 {
     int32_t errorMagnitude = h_abs_i32(g_runtime.error_mm);
+
+    if (g_vehicleLaunchStage != 0U) {
+        uint32_t rampBudget = g_vehicleLaunchRampRemainder +
+            H_TASK_LAUNCH_COMMAND_RATE_PER_S * elapsed_ms;
+        int16_t commandDelta = (int16_t)(rampBudget / 1000U);
+
+        g_vehicleLaunchRampRemainder = rampBudget % 1000U;
+        if ((vision_degraded != 0U) || (ball_ready == 0U) ||
+            (errorMagnitude > H_TASK_LAUNCH_RESET_ERROR_MM)) {
+            g_vehicleLaunchStableMs = 0U;
+            g_vehicleLaunchStage = 1U;
+            if ((commandDelta > 0) &&
+                (g_vehicleLaunchCommand > H_TASK_LINE_START_COMMAND)) {
+                int16_t nextCommand = g_vehicleLaunchCommand - commandDelta;
+
+                if (nextCommand < H_TASK_LINE_START_COMMAND) {
+                    nextCommand = H_TASK_LINE_START_COMMAND;
+                }
+                if (!CarController_SetFollowLineBaseCommand(
+                        nextCommand)) {
+                    h_fault(H_TASK_FAULT_CAR_CONTROL);
+                    return;
+                }
+                g_vehicleLaunchCommand = nextCommand;
+            }
+            g_runtime.vehicle_level = H_TASK_VEHICLE_LOW;
+            BalanceBallControl_SetAngleFeedforwardCount(0);
+            return;
+        }
+
+        if (g_vehicleLaunchStage == 1U) {
+            if ((g_vehicleLaunchCommand == H_TASK_LINE_START_COMMAND) &&
+                (errorMagnitude <= H_TASK_LAUNCH_STABLE_ERROR_MM)) {
+                g_vehicleLaunchStableMs = h_add_u32(
+                    g_vehicleLaunchStableMs, elapsed_ms);
+            } else {
+                g_vehicleLaunchStableMs = 0U;
+            }
+            if (g_vehicleLaunchStableMs >= H_TASK_LAUNCH_SETTLE_MS) {
+                g_vehicleLaunchStage = 2U;
+                g_vehicleLaunchStableMs = 0U;
+                g_vehicleLaunchRampRemainder = 0U;
+            }
+            BalanceBallControl_SetAngleFeedforwardCount(0);
+            return;
+        }
+
+        /* Stage 2 is a continuous speed-target ramp.  The wheel PI loop owns
+         * speed regulation while the ball error gates whether the ramp may
+         * advance.  Constant positive target acceleration receives a
+         * theta_ff=-atan(a/g) physical tilt feedforward. */
+        if (errorMagnitude <= H_TASK_LAUNCH_STABLE_ERROR_MM) {
+            if ((commandDelta > 0) &&
+                (g_vehicleLaunchCommand <
+                    g_chassisTuning.normal_command)) {
+                int16_t nextCommand = g_vehicleLaunchCommand + commandDelta;
+
+                if (nextCommand > g_chassisTuning.normal_command) {
+                    nextCommand = g_chassisTuning.normal_command;
+                }
+                if (!CarController_SetFollowLineBaseCommand(nextCommand)) {
+                    h_fault(H_TASK_FAULT_CAR_CONTROL);
+                    return;
+                }
+                g_vehicleLaunchCommand = nextCommand;
+            }
+            BalanceBallControl_SetAngleFeedforwardCount(
+                h_acceleration_feedforward_count(
+                    H_TASK_WHEEL_LAUNCH_ACCEL_CMPS2));
+        } else {
+            BalanceBallControl_SetAngleFeedforwardCount(0);
+        }
+
+        if (g_vehicleLaunchCommand >= g_chassisTuning.normal_command) {
+            g_vehicleLaunchStage = 0U;
+            g_vehicleLaunchStableMs = 0U;
+            g_vehicleLaunchRampRemainder = 0U;
+            g_runtime.vehicle_level = H_TASK_VEHICLE_NORMAL;
+            g_appConfig.wheel_control_max_accel_cmps2 =
+                H_TASK_WHEEL_MAX_ACCEL_CMPS2;
+            BalanceBallControl_SetAngleFeedforwardCount(0);
+        }
+        return;
+    }
 
     if (errorMagnitude >= H_TASK_STOP_ENTER_ERROR_MM) {
         g_stopConditionMs = h_add_u32(g_stopConditionMs, elapsed_ms);
@@ -527,8 +691,15 @@ static void h_update_vision_hold(HMeasurementEvent event)
     }
 
     if (h_is_car_task(g_runtime.task_id) != 0U) {
+        g_appConfig.wheel_control_max_accel_cmps2 =
+            H_TASK_WHEEL_LAUNCH_ACCEL_CMPS2;
         CarController_StartFollowLineAtCommand(CAR_TURN_POLICY_IGNORE,
-            h_low_line_command());
+            H_TASK_LINE_START_COMMAND);
+        g_vehicleLaunchStage = 1U;
+        g_vehicleLaunchStableMs = 0U;
+        g_vehicleLaunchRampRemainder = 0U;
+        g_vehicleLaunchCommand = H_TASK_LINE_START_COMMAND;
+        BalanceBallControl_SetAngleFeedforwardCount(0);
         g_runtime.vehicle_level = H_TASK_VEHICLE_LOW;
     }
     h_set_state(g_resumeState);
@@ -697,8 +868,11 @@ void HTaskController_Update20ms(uint32_t elapsed_ms)
         }
 
         h_update_vehicle_supervision(elapsed_ms,
-            (ball.state == BALANCE_BALL_STATE_HOLD_LAST) ? 1U : 0U);
-        if (g_runtime.state == H_TASK_STATE_VISION_HOLD) {
+            (ball.state == BALANCE_BALL_STATE_HOLD_LAST) ? 1U : 0U,
+            ((ball.state == BALANCE_BALL_STATE_ACTIVE) &&
+             (ball.measurement_valid != 0U)) ? 1U : 0U);
+        if ((g_runtime.state == H_TASK_STATE_VISION_HOLD) ||
+            (g_runtime.state == H_TASK_STATE_FAULT)) {
             return;
         }
         if ((g_runtime.task_id == H_TASK_ID_H4) &&
@@ -748,6 +922,10 @@ void HTaskController_Reset(void)
     g_finalStableCount = 0U;
     g_resumeState = H_TASK_STATE_IDLE;
     g_startCenterDistanceCm = 0.0f;
+    g_vehicleLaunchStage = 0U;
+    g_vehicleLaunchStableMs = 0U;
+    g_vehicleLaunchRampRemainder = 0U;
+    g_vehicleLaunchCommand = 0;
     for (uint8_t i = 0U; i < H_TASK_START_CONFIRM_FRAMES; i++) {
         g_verifyPositions[i] = 0;
     }

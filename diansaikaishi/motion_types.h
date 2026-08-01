@@ -101,6 +101,7 @@ typedef struct {
             uint16_t low_speed_percent;
             uint8_t finish_black_min;
             uint8_t finish_confirm_frames;
+            uint16_t finish_stop_delay_ms;
         } follow_line_to_finish;
 
         struct {

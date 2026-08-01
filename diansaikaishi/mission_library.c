@@ -34,14 +34,16 @@ typedef enum {
 #define TASK1_HIGH_SPEED_PERCENT         (250U)
 #define TASK1_LOW_SPEED_PERCENT          (50U)
 #define TASK1_FINISH_BLACK_MIN           (5U)
-#define TASK1_FINISH_CONFIRM_FRAMES      (2U)
+#define TASK1_FINISH_CONFIRM_FRAMES      (4U)
+#define TASK1_FINISH_STOP_DELAY_MS       (300U)
 #define TASK1_TIMEOUT_MS                 (35000U)
 
 static const MotionAction g_missionTask1[] = {
     ACTION_FOLLOW_TO_FINISH(TASK1_EXPECTED_DISTANCE_CM,
         TASK1_DECEL_PERCENT, TASK1_HIGH_SPEED_PERCENT,
         TASK1_LOW_SPEED_PERCENT, TASK1_FINISH_BLACK_MIN,
-        TASK1_FINISH_CONFIRM_FRAMES, TASK1_TIMEOUT_MS),
+        TASK1_FINISH_CONFIRM_FRAMES, TASK1_FINISH_STOP_DELAY_MS,
+        TASK1_TIMEOUT_MS),
     ACTION_STOP()
 };
 
@@ -291,7 +293,9 @@ bool MissionLibrary_Validate(const MissionDefinition *mission,
              (action->params.follow_line_to_finish.finish_black_min == 0U) ||
              (action->params.follow_line_to_finish.finish_black_min > 7U) ||
              (action->params.follow_line_to_finish.finish_confirm_frames ==
-                0U))) {
+                0U) ||
+             (action->params.follow_line_to_finish.finish_stop_delay_ms >
+                3000U))) {
             set_error(error_code, MISSION_VALIDATE_INVALID_ACTION);
             return false;
         }

@@ -263,6 +263,8 @@ void MotionAction_Init(void)
     g_motionActionRuntime.follow_finish_high_command = 0;
     g_motionActionRuntime.follow_finish_low_command = 0;
     g_motionActionRuntime.follow_finish_confirm_count = 0U;
+    g_motionActionRuntime.follow_finish_stop_delay_elapsed_ms = 0U;
+    g_motionActionRuntime.follow_finish_marker_latched = false;
     g_motionActionRuntime.follow_finish_low_speed = false;
     g_motionActionRuntime.started = false;
     g_motionActionRuntime.controller_started = false;
@@ -354,7 +356,9 @@ static bool motion_action_start_internal(const MotionAction *action,
             action->params.follow_line_to_finish.high_speed_percent) ||
          (action->params.follow_line_to_finish.finish_black_min == 0U) ||
          (action->params.follow_line_to_finish.finish_black_min > 7U) ||
-         (action->params.follow_line_to_finish.finish_confirm_frames == 0U))) {
+         (action->params.follow_line_to_finish.finish_confirm_frames == 0U) ||
+         (action->params.follow_line_to_finish.finish_stop_delay_ms >
+            3000U))) {
         motion_action_set_result(MOTION_RESULT_FAILED,
             MOTION_ERROR_INVALID_ACTION);
         motion_action_stop_car();
@@ -654,6 +658,9 @@ MotionActionResult MotionAction_Update_20ms(uint32_t elapsed_ms)
                     g_motionActionRuntime.follow_finish_decel_distance_cm)) {
                 g_motionActionRuntime.follow_finish_low_speed = true;
                 g_motionActionRuntime.follow_finish_confirm_count = 0U;
+                g_motionActionRuntime.follow_finish_stop_delay_elapsed_ms =
+                    0U;
+                g_motionActionRuntime.follow_finish_marker_latched = false;
                 if (!CarController_SetFollowLineBaseCommand(
                         g_motionActionRuntime.follow_finish_low_command)) {
                     motion_action_stop_car();
@@ -664,19 +671,40 @@ MotionActionResult MotionAction_Update_20ms(uint32_t elapsed_ms)
             }
 
             if (g_motionActionRuntime.follow_finish_low_speed) {
-                if (feedback->black_count >=
-                    action->params.follow_line_to_finish.finish_black_min) {
-                    if (g_motionActionRuntime.follow_finish_confirm_count <
-                        UINT8_MAX) {
-                        g_motionActionRuntime.follow_finish_confirm_count++;
+                if (!g_motionActionRuntime.follow_finish_marker_latched) {
+                    if (feedback->black_count >=
+                        action->params.follow_line_to_finish.finish_black_min) {
+                        if (g_motionActionRuntime.follow_finish_confirm_count <
+                            UINT8_MAX) {
+                            g_motionActionRuntime.follow_finish_confirm_count++;
+                        }
+                    } else {
+                        g_motionActionRuntime.follow_finish_confirm_count = 0U;
+                    }
+
+                    if (g_motionActionRuntime.follow_finish_confirm_count >=
+                        action->params.follow_line_to_finish.
+                            finish_confirm_frames) {
+                        /* Once the finish stripe is confirmed, keep the
+                         * event latched even after the sensors leave it. */
+                        g_motionActionRuntime.follow_finish_marker_latched =
+                            true;
+                        g_motionActionRuntime.
+                            follow_finish_stop_delay_elapsed_ms = 0U;
                     }
                 } else {
-                    g_motionActionRuntime.follow_finish_confirm_count = 0U;
+                    g_motionActionRuntime.follow_finish_stop_delay_elapsed_ms =
+                        motion_action_add_elapsed_u16(
+                            g_motionActionRuntime.
+                                follow_finish_stop_delay_elapsed_ms,
+                            elapsed_ms);
                 }
 
-                if (g_motionActionRuntime.follow_finish_confirm_count >=
-                    action->params.follow_line_to_finish.
-                        finish_confirm_frames) {
+                if (g_motionActionRuntime.follow_finish_marker_latched &&
+                    (g_motionActionRuntime.
+                        follow_finish_stop_delay_elapsed_ms >=
+                     action->params.follow_line_to_finish.
+                        finish_stop_delay_ms)) {
                     motion_action_stop_car();
                     motion_action_set_result(MOTION_RESULT_SUCCESS,
                         MOTION_ERROR_NONE);

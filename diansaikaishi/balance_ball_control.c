@@ -22,6 +22,13 @@ static uint8_t g_jumpCandidateActive;
 static uint8_t g_jumpCandidateCount;
 static int16_t g_jumpCandidatePositionMm;
 static uint32_t g_jumpCandidateTimeMs;
+static uint8_t g_transferAssistEnabled;
+static uint8_t g_transferAssistRangeActive;
+static uint16_t g_transferAssistMinimumCount;
+static uint16_t g_transferAssistMaximumCount;
+static uint16_t g_transferAssistErrorThresholdMm;
+static uint16_t g_transferAssistMaximumBallSpeedMmS;
+static int16_t g_angleFeedforwardCount;
 
 static void load_default_config(void)
 {
@@ -152,7 +159,7 @@ static uint8_t axis_is_ready(const BalanceSoftLimitsRuntime *limits,
         (position->fault == BALANCE_POSITION_FAULT_NONE)) ? 1U : 0U;
 }
 
-static int32_t maximum_offset_count(
+static int32_t safe_offset_room_count(
     const BalanceSoftLimitsRuntime *limits)
 {
     uint32_t negative_room = magnitude_i32(
@@ -163,15 +170,19 @@ static int32_t maximum_offset_count(
         negative_room : positive_room;
     uint32_t safe_room = (room > BALANCE_POSITION_LIMIT_MARGIN_COUNTS) ?
         (room - BALANCE_POSITION_LIMIT_MARGIN_COUNTS) : 0U;
-    uint32_t offset = (uint32_t)g_config.maximum_offset_count;
+    return (int32_t)safe_room;
+}
 
-    /* MAX is the operator-visible control-authority limit.  The calibrated
-     * software limits and their safety margin remain the final hard clamp;
-     * there is no additional hidden percentage cap. */
-    if (offset > safe_room) {
-        offset = safe_room;
-    }
-    return (int32_t)offset;
+static int32_t maximum_offset_count(
+    const BalanceSoftLimitsRuntime *limits)
+{
+    int32_t safeRoom = safe_offset_room_count(limits);
+
+    /* MAX is the operator-visible normal control-authority limit.  A
+     * task-scoped transfer helper may request a larger explicit maximum, but
+     * both paths remain clamped by the calibrated software-limit room. */
+    return (g_config.maximum_offset_count < safeRoom) ?
+        g_config.maximum_offset_count : safeRoom;
 }
 
 static void clear_jump_candidate(void)
@@ -420,7 +431,9 @@ static uint8_t command_offset(const BalanceSoftLimitsRuntime *limits,
     int32_t requested_offset)
 {
     return command_offset_limited(limits, requested_offset,
-        maximum_offset_count(limits),
+        (g_transferAssistRangeActive != 0U) ?
+            (int32_t)g_transferAssistMaximumCount :
+            maximum_offset_count(limits),
         g_config.target_slew_count_per_20ms);
 }
 
@@ -429,7 +442,7 @@ static uint8_t command_offset_limited(
     int32_t requested_offset, int32_t requested_maximum,
     int32_t requested_slew)
 {
-    int32_t maximum_offset = maximum_offset_count(limits);
+    int32_t maximum_offset = safe_offset_room_count(limits);
     int32_t target_count;
 
     if (requested_maximum < maximum_offset) {
@@ -512,12 +525,33 @@ static int32_t calculate_cascade_request(uint8_t weak_control)
         (int64_t)g_config.neutral_bias_count +
         targetComponent + velocityComponent);
     requestedOffset *= g_config.tilt_sign;
+    requestedOffset = clamp_i64_to_i32(
+        (int64_t)requestedOffset + g_angleFeedforwardCount);
+
+    g_transferAssistRangeActive =
+        ((g_transferAssistEnabled != 0U) &&
+         (magnitude_i32(error) > g_transferAssistErrorThresholdMm)) ? 1U : 0U;
+    if ((g_transferAssistRangeActive != 0U) &&
+        (magnitude_i32(velocity) <=
+            g_transferAssistMaximumBallSpeedMmS) &&
+        (magnitude_i32(requestedOffset) <
+            g_transferAssistMinimumCount)) {
+        int32_t requestSign = requestedOffset;
+
+        if (requestSign == 0) {
+            requestSign = error * g_config.tilt_sign;
+        }
+        requestedOffset = (requestSign < 0) ?
+            -(int32_t)g_transferAssistMinimumCount :
+            (int32_t)g_transferAssistMinimumCount;
+    }
 
     g_runtime.error_mm = clamp_i32_to_i16(error);
     g_runtime.target_velocity_mm_s =
         clamp_i32_to_i16(targetVelocity);
     g_runtime.velocity_error_mm_s =
         clamp_i32_to_i16(velocityError);
+    g_runtime.angle_feedforward_count = g_angleFeedforwardCount;
     g_runtime.braking_distance_mm = (uint16_t)stoppingDistance;
     g_runtime.p_output_count = targetComponent * g_config.tilt_sign;
     g_runtime.d_output_count = velocityComponent * g_config.tilt_sign;
@@ -563,6 +597,13 @@ void BalanceBallControl_Init(void)
     g_positionInitialized = 0U;
     g_hadMeasurementGap = 1U;
     clear_jump_candidate();
+    g_transferAssistEnabled = 0U;
+    g_transferAssistRangeActive = 0U;
+    g_transferAssistMinimumCount = 0U;
+    g_transferAssistMaximumCount = 0U;
+    g_transferAssistErrorThresholdMm = 0U;
+    g_transferAssistMaximumBallSpeedMmS = 0U;
+    g_angleFeedforwardCount = 0;
 }
 
 uint8_t BalanceBallControl_Enable(int16_t target_mm)
@@ -656,6 +697,10 @@ void BalanceBallControl_ForceStop(void)
     g_runtime.commanded_offset_count = 0;
     g_runtime.actuator_target_count = 0;
     g_runtime.weak_control_active = 0U;
+    g_transferAssistEnabled = 0U;
+    g_transferAssistRangeActive = 0U;
+    g_angleFeedforwardCount = 0;
+    g_runtime.angle_feedforward_count = 0;
     g_runtime.state = BALANCE_BALL_STATE_DISABLED;
 }
 
@@ -670,6 +715,45 @@ uint8_t BalanceBallControl_SetTargetMm(int16_t target_mm)
     }
     g_runtime.target_mm = target_mm;
     return 1U;
+}
+
+uint8_t BalanceBallControl_SetTransferAssist(uint8_t enable,
+    uint16_t transfer_minimum_count, uint16_t transfer_maximum_count,
+    uint16_t error_threshold_mm, uint16_t maximum_ball_speed_mm_s)
+{
+    if (enable == 0U) {
+        g_transferAssistEnabled = 0U;
+        g_transferAssistRangeActive = 0U;
+        return 1U;
+    }
+    if ((transfer_minimum_count == 0U) ||
+        (transfer_minimum_count > transfer_maximum_count) ||
+        (transfer_maximum_count > 1024U) ||
+        (error_threshold_mm == 0U) ||
+        (error_threshold_mm > BALANCE_BALL_PD_MAX_TARGET_ABS_MM) ||
+        (maximum_ball_speed_mm_s == 0U) ||
+        (maximum_ball_speed_mm_s > 1000U)) {
+        return 0U;
+    }
+
+    g_transferAssistMinimumCount = transfer_minimum_count;
+    g_transferAssistMaximumCount = transfer_maximum_count;
+    g_transferAssistErrorThresholdMm = error_threshold_mm;
+    g_transferAssistMaximumBallSpeedMmS = maximum_ball_speed_mm_s;
+    g_transferAssistRangeActive = 0U;
+    g_transferAssistEnabled = 1U;
+    return 1U;
+}
+
+void BalanceBallControl_SetAngleFeedforwardCount(int16_t offset_count)
+{
+    if (offset_count > 1024) {
+        offset_count = 1024;
+    } else if (offset_count < -1024) {
+        offset_count = -1024;
+    }
+    g_angleFeedforwardCount = offset_count;
+    g_runtime.angle_feedforward_count = offset_count;
 }
 
 void BalanceBallControl_Update20ms(uint32_t now_ms,
@@ -941,6 +1025,23 @@ uint8_t BalanceBallControl_SetTargetMm(int16_t target_mm)
 {
     (void)target_mm;
     return 0U;
+}
+
+uint8_t BalanceBallControl_SetTransferAssist(uint8_t enable,
+    uint16_t transfer_minimum_count, uint16_t transfer_maximum_count,
+    uint16_t error_threshold_mm, uint16_t maximum_ball_speed_mm_s)
+{
+    (void)enable;
+    (void)transfer_minimum_count;
+    (void)transfer_maximum_count;
+    (void)error_threshold_mm;
+    (void)maximum_ball_speed_mm_s;
+    return 0U;
+}
+
+void BalanceBallControl_SetAngleFeedforwardCount(int16_t offset_count)
+{
+    (void)offset_count;
 }
 
 void BalanceBallControl_Update20ms(uint32_t now_ms,

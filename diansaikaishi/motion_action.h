@@ -19,6 +19,8 @@ typedef struct {
     int16_t follow_finish_high_command;
     int16_t follow_finish_low_command;
     uint8_t follow_finish_confirm_count;
+    uint16_t follow_finish_stop_delay_elapsed_ms;
+    bool follow_finish_marker_latched;
     bool follow_finish_low_speed;
     bool started;
     bool controller_started;

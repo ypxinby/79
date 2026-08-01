@@ -51,7 +51,7 @@
     }
 
 #define ACTION_FOLLOW_TO_FINISH(distance_cm, decel_pct, high_pct, low_pct, \
-    black_min, confirm_frames, timeout) \
+    black_min, confirm_frames, stop_delay_ms, timeout) \
     { \
         .type = MOTION_ACTION_FOLLOW_LINE_TO_FINISH, \
         .timeout_ms = (uint32_t)(timeout), \
@@ -62,7 +62,8 @@
             .high_speed_percent = (uint16_t)(high_pct), \
             .low_speed_percent = (uint16_t)(low_pct), \
             .finish_black_min = (uint8_t)(black_min), \
-            .finish_confirm_frames = (uint8_t)(confirm_frames) \
+            .finish_confirm_frames = (uint8_t)(confirm_frames), \
+            .finish_stop_delay_ms = (uint16_t)(stop_delay_ms) \
         } \
     }
 

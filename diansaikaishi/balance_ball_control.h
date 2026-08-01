@@ -70,6 +70,7 @@ typedef struct {
     uint32_t velocity_gap_reset_count;
     int16_t target_velocity_mm_s;
     int16_t velocity_error_mm_s;
+    int16_t angle_feedforward_count;
     uint16_t braking_distance_mm;
     uint8_t braking_active;
     uint8_t weak_control_active;
@@ -111,6 +112,16 @@ uint8_t BalanceBallControl_Enable(int16_t target_mm);
 void BalanceBallControl_Disable(void);
 void BalanceBallControl_ForceStop(void);
 uint8_t BalanceBallControl_SetTargetMm(int16_t target_mm);
+/* Task-transfer helper: outside error_threshold_mm the normal cascade may use
+ * transfer_maximum_count, and at low ball speed it receives at least
+ * transfer_minimum_count authority. Passing enable=0 clears the helper. */
+uint8_t BalanceBallControl_SetTransferAssist(uint8_t enable,
+    uint16_t transfer_minimum_count, uint16_t transfer_maximum_count,
+    uint16_t error_threshold_mm, uint16_t maximum_ball_speed_mm_s);
+/* Independent physical tilt feedforward in logical encoder counts.  It is
+ * added after the ball cascade and therefore does not alter K230 velocity or
+ * depend on KP/KD. */
+void BalanceBallControl_SetAngleFeedforwardCount(int16_t offset_count);
 void BalanceBallControl_Update20ms(uint32_t now_ms,
     uint32_t elapsed_ms);
 void BalanceBallControl_GetSnapshot(BalanceBallControlRuntime *snapshot);
