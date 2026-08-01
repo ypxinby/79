@@ -261,7 +261,16 @@ static void menu_recover_balance_axis_after_reset(void)
         if (BalancePositionControl_HasFault() != 0U) {
             (void)BalanceSoftLimits_ResetPositionFault();
         }
-        GimbalStepper_StopHold();
+        /* K3 long is the between-task recovery gesture: preserve the saved
+         * ZERO/limits, clear the previous mission owner, and return the pipe
+         * to the calibrated horizontal position without a power cycle. */
+        if (BalancePositionControl_HasFault() == 0U) {
+            if (BalanceSoftLimits_StartPositionMoveToLogicalCount(0) == 0U) {
+                GimbalStepper_StopHold();
+            }
+        } else {
+            GimbalStepper_StopHold();
+        }
     } else {
         GimbalStepper_Release();
     }

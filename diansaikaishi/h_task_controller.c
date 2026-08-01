@@ -1,5 +1,6 @@
 #include "h_task_controller.h"
 
+#include "app_config.h"
 #include "app_features.h"
 #include "balance_ball_control.h"
 #include "balance_position_control.h"
@@ -17,14 +18,27 @@
 #define H_TASK_CENTER_TARGET_MM             BALANCE_BALL_DEFAULT_TARGET_MM
 /* Scoring targets are absolute K230 coordinates relative to physical O.
  * Mechanical neutral correction belongs to BIAS, never to target_mm. */
-#define H_TASK_H3_POSITIVE_TARGET_MM        (50)
-#define H_TASK_H3_NEGATIVE_TARGET_MM        (-50)
-#define H_TASK_LINE_NORMAL_COMMAND          (325)
-#define H_TASK_LINE_LOW_COMMAND             (150)
+/* The installed K230 pipe coordinate is opposite to the physical scoring
+ * labels observed on the vehicle: negative protocol position is physical
+ * +5 cm, positive protocol position is physical -5 cm.  Drive 10 mm beyond
+ * each scoring point so static friction and the old +/-10 mm arrival window
+ * cannot stop a leg at only 3-4 cm.  Stage changes still use the real K230
+ * position crossing the required +/-50 mm point. */
+#define H_TASK_H3_FIRST_DRIVE_TARGET_MM      (-60)
+#define H_TASK_H3_FIRST_REACH_MM             (-50)
+#define H_TASK_H3_FINAL_DRIVE_TARGET_MM      (60)
+#define H_TASK_H3_FINAL_REACH_MM             (50)
+#define H_TASK_H3_FINAL_HOLD_TARGET_MM       (50)
+#define H_TASK_LINE_NORMAL_COMMAND          (500)
+#define H_TASK_LINE_LOW_COMMAND             (330)
 #define H_TASK_LINE_FF_GAIN                  (0.60f)
 #define H_TASK_LINE_KP                       (0.60f)
 #define H_TASK_LINE_KD                       (0.010f)
 #define H_TASK_LINE_MAX_CORRECTION           (260)
+/* H4-H6 carry the ball while the chassis starts and changes speed.  Use a
+ * task-local wheel-speed ramp; Task1 keeps its faster competition ramp. */
+#define H_TASK_WHEEL_MAX_ACCEL_CMPS2          (25.0f)
+#define H_TASK_WHEEL_MAX_DECEL_CMPS2          (25.0f)
 #define H_TASK_START_LINK_MAX_AGE_MS        (500U)
 #define H_TASK_START_VERIFY_TIMEOUT_MS      (2000U)
 #define H_TASK_BALL_ACTIVE_TIMEOUT_MS       (2000U)
@@ -33,7 +47,6 @@
 #define H_TASK_START_MAX_SPEED_MM_S         \
     BALANCE_BALL_START_MAX_SPEED_MM_S
 #define H_TASK_LOCK_SPREAD_MM               (10)
-#define H_TASK_H3_REACH_TOLERANCE_MM        (10)
 #define H_TASK_H3_POSITIVE_SPEED_MM_S       (100)
 #define H_TASK_H3_POSITIVE_CONFIRM_FRAMES   (3U)
 #define H_TASK_H3_FINAL_SPEED_MM_S          (80)
@@ -70,6 +83,9 @@ static uint8_t g_finalStableCount;
 static int16_t g_verifyPositions[H_TASK_START_CONFIRM_FRAMES];
 static HTaskState g_resumeState;
 static float g_startCenterDistanceCm;
+static float g_savedWheelMaxAccelCmps2;
+static float g_savedWheelMaxDecelCmps2;
+static uint8_t g_wheelRampOverrideActive;
 
 static void h_load_default_chassis_tuning(void)
 {
@@ -158,6 +174,17 @@ static uint8_t h_apply_chassis_profile(void)
         LineController_ClearProfileOverride();
         return 0U;
     }
+    if (g_wheelRampOverrideActive == 0U) {
+        g_savedWheelMaxAccelCmps2 =
+            g_appConfig.wheel_control_max_accel_cmps2;
+        g_savedWheelMaxDecelCmps2 =
+            g_appConfig.wheel_control_max_decel_cmps2;
+        g_wheelRampOverrideActive = 1U;
+    }
+    g_appConfig.wheel_control_max_accel_cmps2 =
+        H_TASK_WHEEL_MAX_ACCEL_CMPS2;
+    g_appConfig.wheel_control_max_decel_cmps2 =
+        H_TASK_WHEEL_MAX_DECEL_CMPS2;
     LineController_ResetControlState();
     MotorControl_Reset();
     return 1U;
@@ -165,6 +192,13 @@ static uint8_t h_apply_chassis_profile(void)
 
 static void h_release_chassis_profile(void)
 {
+    if (g_wheelRampOverrideActive != 0U) {
+        g_appConfig.wheel_control_max_accel_cmps2 =
+            g_savedWheelMaxAccelCmps2;
+        g_appConfig.wheel_control_max_decel_cmps2 =
+            g_savedWheelMaxDecelCmps2;
+        g_wheelRampOverrideActive = 0U;
+    }
     LineController_ClearProfileOverride();
     MotorControl_ClearFeedforwardOverride();
     LineController_ResetControlState();
@@ -196,6 +230,7 @@ static uint8_t h_axis_ready(void)
         (limits.recalibration_armed == 0U) &&
         (limits.test_active == 0U) &&
         (limits.oscillation_active == 0U) &&
+        (BalancePositionControl_IsBusy() == 0U) &&
         (BalancePositionControl_HasFault() == 0U);
 }
 
@@ -330,7 +365,7 @@ static void h_update_start_verify(HMeasurementEvent event,
     }
 
     if (g_runtime.task_id == H_TASK_ID_H3) {
-        g_runtime.target_mm = H_TASK_H3_POSITIVE_TARGET_MM;
+        g_runtime.target_mm = H_TASK_H3_FIRST_DRIVE_TARGET_MM;
         if (BalanceBallControl_SetTargetMm(g_runtime.target_mm) == 0U) {
             h_fault(H_TASK_FAULT_TARGET_INVALID);
             return;
@@ -357,9 +392,7 @@ static void h_update_h3(HMeasurementEvent event, int16_t position_mm,
 {
     if (g_runtime.state == H_TASK_STATE_BALL_POSITIVE) {
         if ((event == H_MEASUREMENT_VALID) &&
-            (h_abs_i32((int32_t)position_mm -
-                H_TASK_H3_POSITIVE_TARGET_MM) <=
-                H_TASK_H3_REACH_TOLERANCE_MM) &&
+            (position_mm <= H_TASK_H3_FIRST_REACH_MM) &&
             (h_abs_i32(ball->velocity_mm_s) <=
                 H_TASK_H3_POSITIVE_SPEED_MM_S)) {
             if (g_positiveStableCount < UINT8_MAX) {
@@ -370,7 +403,7 @@ static void h_update_h3(HMeasurementEvent event, int16_t position_mm,
         }
         if (g_positiveStableCount >=
             H_TASK_H3_POSITIVE_CONFIRM_FRAMES) {
-            g_runtime.target_mm = H_TASK_H3_NEGATIVE_TARGET_MM;
+            g_runtime.target_mm = H_TASK_H3_FINAL_DRIVE_TARGET_MM;
             if (BalanceBallControl_SetTargetMm(g_runtime.target_mm) == 0U) {
                 h_fault(H_TASK_FAULT_TARGET_INVALID);
                 return;
@@ -381,9 +414,7 @@ static void h_update_h3(HMeasurementEvent event, int16_t position_mm,
         }
     } else if (g_runtime.state == H_TASK_STATE_BALL_NEGATIVE) {
         if ((event == H_MEASUREMENT_VALID) &&
-            (h_abs_i32((int32_t)position_mm -
-                H_TASK_H3_NEGATIVE_TARGET_MM) <=
-                H_TASK_H3_REACH_TOLERANCE_MM) &&
+            (position_mm >= H_TASK_H3_FINAL_REACH_MM) &&
             (h_abs_i32(ball->velocity_mm_s) <=
                 H_TASK_H3_FINAL_SPEED_MM_S)) {
             if (g_finalStableCount < UINT8_MAX) {
@@ -394,6 +425,13 @@ static void h_update_h3(HMeasurementEvent event, int16_t position_mm,
         }
 
         if (g_finalStableCount >= H_TASK_H3_FINAL_CONFIRM_FRAMES) {
+            /* Finish against the exact scoring position instead of keeping
+             * the 10 mm transfer overdrive after the timer is latched. */
+            g_runtime.target_mm = H_TASK_H3_FINAL_HOLD_TARGET_MM;
+            if (BalanceBallControl_SetTargetMm(g_runtime.target_mm) == 0U) {
+                h_fault(H_TASK_FAULT_TARGET_INVALID);
+                return;
+            }
             h_mark_done();
         }
     }
@@ -410,7 +448,18 @@ static void h_update_vehicle_supervision(uint32_t elapsed_ms,
         g_stopConditionMs = 0U;
     }
     if (g_stopConditionMs >= H_TASK_STOP_ENTER_MS) {
-        h_enter_vision_hold();
+        /* A large but still measured ball displacement is not a lost-vision
+         * event.  An immediate chassis stop throws the ball even farther.
+         * Stay on the line at LOW and let the encoder speed loop decelerate
+         * with the H-task ramp.  Real VISION_LOST and hard faults still stop. */
+        g_lowConditionMs = 0U;
+        g_normalConditionMs = 0U;
+        if ((g_runtime.vehicle_level == H_TASK_VEHICLE_NORMAL) &&
+            CarController_SetFollowLineBaseCommand(
+                h_low_line_command())) {
+            g_runtime.vehicle_level = H_TASK_VEHICLE_LOW;
+        }
+        g_stopConditionMs = H_TASK_STOP_ENTER_MS;
         return;
     }
 

@@ -3,6 +3,7 @@
 #include "car_controller.h"
 #include "car_state.h"
 #include "emergency_stop.h"
+#include "h_task_controller.h"
 #include "motion_action.h"
 #include "watchdog_monitor.h"
 
@@ -268,6 +269,7 @@ void MissionManager_Cancel(void)
     }
 
     MotionAction_Cancel();
+    HTaskController_Reset();
     g_transientActionActive = false;
     g_resumeCurrentAction = false;
     g_missionRuntime.definition = g_selectedDefinition;
@@ -284,6 +286,7 @@ void MissionManager_Reset(void)
         MotionAction_Cancel();
     }
     MotionAction_Init();
+    HTaskController_Reset();
     g_transientActionActive = false;
     g_resumeCurrentAction = false;
     g_missionRuntime.definition = g_selectedDefinition;
